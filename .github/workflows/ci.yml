@@ -1,9 +1,18 @@
 name: CI
 
+# Private-repo Actions minutes are billed per job, rounded UP to the minute, and
+# macOS carries a 10x multiplier. A five-version macOS matrix therefore cost ~50
+# billed minutes per run on its own. Documentation-only pushes skip CI entirely,
+# and macOS is reduced to a single canary job below.
+#
+# Public repositories get unlimited free minutes, so none of this is a constraint
+# once this repo is public -- but the matrix stays lean regardless.
 on:
   push:
     branches: [main]
+    paths-ignore: ["docs/**", "**/*.md", "LICENSE"]
   pull_request:
+    paths-ignore: ["docs/**", "**/*.md", "LICENSE"]
   workflow_dispatch:
 
 permissions:
@@ -30,12 +39,18 @@ jobs:
       # layout is not -- an advisory check that always fails is just noise.
 
   test:
+    # Linux covers the whole supported Python range; macOS gets one canary job,
+    # because the only platform-specific code is the memory probe and it does not
+    # vary by Python version. See the billing note at the top of this file.
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        include:
+          - os: macos-latest
+            python-version: "3.12"
     steps:
       - uses: actions/checkout@v7
         with:
