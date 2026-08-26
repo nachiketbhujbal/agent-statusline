@@ -190,9 +190,15 @@ python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
 ```
 
 Versioning is [hatch-vcs](https://github.com/ofek/hatch-vcs): there is no version string in
-the source, and `git tag v1.2.3` is what makes a release. CI runs lint, the test matrix
-(Linux + macOS × Python 3.9–3.13), an end-to-end install smoke test, and a build; a guard
-job fails the build if a runtime dependency is ever added.
+the source, and `git tag v1.2.3` is what makes a release. Tags are immutable
+([ADR 0019](docs/adrs/0019-release-tags-are-immutable.md)) — a mistake in a released
+version is fixed by a new patch version, never by moving the tag.
+
+CI runs Python 3.9–3.13 on Linux, plus one combined job carrying lint, the
+dependency-policy guard, both install shapes, and the build. **Hosted macOS is off by
+default** and requested through `workflow_dispatch`, because a macOS job bills about ten
+times a Linux one and Actions minutes are shared across every private repository
+([ADR 0018](docs/adrs/0018-budget-hosted-ci.md)). Documentation-only pushes skip CI.
 
 ## Troubleshooting
 

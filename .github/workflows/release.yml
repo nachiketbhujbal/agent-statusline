@@ -1,5 +1,13 @@
 name: Release
 
+# Linux only, deliberately: the published artifacts are a pure-Python wheel and
+# an sdist, so nothing about building them is platform-specific. Platform
+# evidence belongs to CI, not to the release build.
+#
+# A tag is IMMUTABLE (docs/adrs/0019-release-tags-are-immutable.md). This
+# workflow is post-tag evidence, never authorization to move one: if it fails,
+# the fix is a new patch version, not a force-pushed tag.
+
 on:
   push:
     tags: ["v*"]
@@ -10,6 +18,7 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
         with:
@@ -18,9 +27,23 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install build pytest
+
       - name: tests must pass before anything is published
         run: python -m pytest tests
+
       - run: python -m build
+
+      - name: the built artifacts carry the tagged version
+        run: |
+          python - <<'PY'
+          import os, pathlib, sys
+          tag = os.environ["GITHUB_REF_NAME"].lstrip("v")
+          names = [p.name for p in pathlib.Path("dist").iterdir()]
+          if not all(tag in n for n in names):
+              sys.exit(f"tag {tag!r} does not match built artifacts {names}")
+          print(f"artifacts match tag {tag}: {names}")
+          PY
+
       - name: publish a GitHub release with the artifacts
         uses: softprops/action-gh-release@v3
         with:

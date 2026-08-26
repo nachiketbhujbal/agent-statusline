@@ -1,12 +1,19 @@
 name: CI
 
-# Private-repo Actions minutes are billed per job, rounded UP to the minute, and
-# macOS carries a 10x multiplier. A five-version macOS matrix therefore cost ~50
-# billed minutes per run on its own. Documentation-only pushes skip CI entirely,
-# and macOS is reduced to a single canary job below.
+# Cost policy: docs/adrs/0018-budget-hosted-ci.md
 #
-# Public repositories get unlimited free minutes, so none of this is a constraint
-# once this repo is public -- but the matrix stays lean regardless.
+# Private-repository Actions minutes are billed per job, rounded UP to the whole
+# minute, with a 10x multiplier on macOS. Two consequences drive this file:
+#
+#   1. A job that finishes in ten seconds still bills a full minute, so four
+#      single-purpose Linux jobs cost four minutes to do about ninety seconds of
+#      work. Work that needs no isolation is therefore combined into one job.
+#   2. Hosted macOS is the dominant cost. It is not part of the default run; it
+#      is requested deliberately through workflow_dispatch.
+#
+# Public repositories get unlimited free minutes, at which point the macOS gate
+# can be relaxed -- but the shape below is worth keeping regardless.
+
 on:
   push:
     branches: [main]
@@ -14,6 +21,11 @@ on:
   pull_request:
     paths-ignore: ["docs/**", "**/*.md", "LICENSE"]
   workflow_dispatch:
+    inputs:
+      hosted_macos:
+        description: "Also run hosted macOS (billed at 10x -- check the account ledger first)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -23,56 +35,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint:
+  # Everything that needs no isolation from anything else, in one job: lint, the
+  # dependency-policy guard, both install shapes, and the build.
+  checks:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0        # hatch-vcs derives the version from tags
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
-      - run: pip install ruff
-      - name: ruff check
+      - run: pip install ruff build
+
+      - name: lint
         run: ruff check src tests install.py
-      # No `ruff format` gate on purpose. The render and transcript modules are
-      # written densely so each row's formatting reads as one unit; reflowing
-      # them would hurt the thing they optimise for. Lint rules are enforced,
-      # layout is not -- an advisory check that always fails is just noise.
 
-  test:
-    # Linux covers the whole supported Python range; macOS gets one canary job,
-    # because the only platform-specific code is the memory probe and it does not
-    # vary by Python version. See the billing note at the top of this file.
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
-        include:
-          - os: macos-latest
-            python-version: "3.12"
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0        # hatch-vcs needs history for the version
-      - uses: actions/setup-python@v7
-        with:
-          python-version: ${{ matrix.python-version }}
-      - run: pip install pytest
-      - name: pytest
-        run: python -m pytest tests -v
-
-  no-runtime-dependencies:
-    # The status line is spawned several times a second and must work on a
-    # machine with nothing installed. A stray runtime dependency would break
-    # that quietly, so it is a build failure rather than a review comment.
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-      - name: assert dependencies list is empty
+      - name: no runtime dependencies (ADR 0004)
         run: |
           python - <<'PY'
           import sys, tomllib
@@ -81,27 +61,14 @@ jobs:
               sys.exit(f"runtime dependencies are not allowed, found: {deps}")
           print("no runtime dependencies")
           PY
-      - name: import the package with an empty environment
+      - name: the package imports with nothing installed
         run: PYTHONPATH=src python -c "import agent_statusline.statusline"
 
-  smoke:
-    # Prove both install shapes actually work, since ADR 0017 supports two and a
-    # regression in either is invisible to the unit tests.
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-
-      - name: checkout shape - install into a scratch config dir
-        env:
-          CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-checkout
-        run: python3 install.py
-      - name: checkout shape - settings point at the symlink
+      - name: install smoke -- checkout shape
         env:
           CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-checkout
         run: |
+          python3 install.py
           python - <<'PY'
           import json, os
           d = os.environ["CLAUDE_CONFIG_DIR"]
@@ -110,21 +77,16 @@ jobs:
           assert os.path.islink(os.path.join(d, "statusline"))
           print("checkout shape wired correctly")
           PY
-      - name: checkout shape - uninstall cleanly
-        env:
-          CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-checkout
-        run: python3 install.py --uninstall
+          python3 install.py --uninstall
 
-      - name: installed shape - pip install the built package
-        run: pip install .
-      - name: installed shape - install into a scratch config dir
+      - name: install smoke -- installed shape
         env:
           CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-installed
-        run: agent-statusline install
-      - name: installed shape - settings point at the console script, no symlink
-        env:
-          CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-installed
+          AGENT_STATUSLINE_STATE: ${{ runner.temp }}/state
+          COLUMNS: "200"
         run: |
+          pip install .
+          agent-statusline install
           python - <<'PY'
           import json, os
           d = os.environ["CLAUDE_CONFIG_DIR"]
@@ -136,11 +98,6 @@ jobs:
           assert all(" hook " in h for h in hooks), hooks
           print("installed shape wired correctly")
           PY
-      - name: installed shape - every subcommand runs
-        env:
-          AGENT_STATUSLINE_STATE: ${{ runner.temp }}/state
-          COLUMNS: "200"
-        run: |
           agent-statusline version
           agent-statusline --help > /dev/null
           echo '{}' | agent-statusline
@@ -148,25 +105,53 @@ jobs:
             echo '{"session_id":"ci"}' | agent-statusline hook "$h" > /dev/null
           done
           agent-statusline ledger show
-      - name: installed shape - uninstall cleanly
-        env:
-          CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-installed
-        run: agent-statusline uninstall
+          agent-statusline uninstall
 
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0        # hatch-vcs derives the version from tags
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-      - run: pip install build
-      - run: python -m build
-      - name: show the version hatch-vcs derived
-        run: ls -la dist/
+      - name: build
+        run: python -m build
       - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
+
+  # Python-version isolation is the point of this matrix, so it stays split.
+  # Linux only: nothing here is platform-specific except the memory probe, which
+  # the macOS job below covers when it is deliberately requested.
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install pytest
+      - run: python -m pytest tests -v
+
+  # Hosted macOS certification. Off by default -- one job here costs the same
+  # allowance as ten Linux jobs. Request it before a vX.Y.0 release, or for a
+  # change to the macOS-specific probes in probes.py (vm_stat, sysctl, ps).
+  macos:
+    if: github.event_name == 'workflow_dispatch' && inputs.hosted_macos
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install pytest
+      - run: python -m pytest tests -v
+      - name: the macOS-specific probes actually return data
+        run: |
+          PYTHONPATH=src python - <<'PY'
+          from agent_statusline import probes
+          mem = probes.memory()
+          assert mem.get("total"), mem
+          assert mem.get("pct") is not None, mem
+          print(f"vm_stat/sysctl probe ok: {mem['pct']:.0f}% of {mem['total']} bytes")
+          PY

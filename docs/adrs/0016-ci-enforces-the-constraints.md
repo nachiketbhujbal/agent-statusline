@@ -1,6 +1,6 @@
 # ADR 0016: Enforce the project's constraints in continuous integration
 
-- Status: Accepted
+- Status: Accepted; matrix and triggers superseded by [ADR 0018](0018-budget-hosted-ci.md)
 - Date: 2026-08-26
 
 ## Context
@@ -22,3 +22,10 @@ ADR 0004 and ADR 0003 are enforced rather than trusted. Formatting is
 deliberately not gated: the render modules are written densely so each row reads
 as one unit, and an advisory check that can never pass is only noise. Lint rules
 are enforced; layout is not.
+
+## Partially superseded
+
+[ADR 0018](0018-budget-hosted-ci.md) keeps every guard named here but
+changes how they are scheduled: the Linux/macOS cross-product becomes Linux-only
+with hosted macOS on request, and the four single-purpose jobs are combined.
+What CI enforces is unchanged; what it costs is not.
