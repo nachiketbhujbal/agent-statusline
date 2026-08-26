@@ -21,8 +21,10 @@ old one rather than rewriting why the earlier choice was made.
 | [0013](0013-remove-the-cache-warmth-bar.md) | Removal of the cache warmth bar |
 | [0014](0014-never-exercise-cost-paths-against-the-live-ledger.md) | No cost paths against the live ledger |
 | [0015](0015-timestamp-hooks-are-a-stopgap.md) | Message-timestamp hooks as a stopgap |
-| [0016](0016-ci-enforces-the-constraints.md) | Constraints enforced in CI |
+| [0016](0016-ci-enforces-the-constraints.md) | Constraints enforced in CI *(matrix superseded by 0018)* |
 | [0017](0017-install-as-a-python-tool.md) | Install as a Python tool |
+| [0018](0018-budget-hosted-ci.md) | Hosted CI budgeted around Actions billing |
+| [0019](0019-release-tags-are-immutable.md) | Release tags are immutable |
 
 ## Reading order
 
