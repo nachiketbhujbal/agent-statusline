@@ -1,0 +1,157 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - name: ruff check
+        run: ruff check src tests install.py
+      # No `ruff format` gate on purpose. The render and transcript modules are
+      # written densely so each row's formatting reads as one unit; reflowing
+      # them would hurt the thing they optimise for. Lint rules are enforced,
+      # layout is not -- an advisory check that always fails is just noise.
+
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0        # hatch-vcs needs history for the version
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install pytest
+      - name: pytest
+        run: python -m pytest tests -v
+
+  no-runtime-dependencies:
+    # The status line is spawned several times a second and must work on a
+    # machine with nothing installed. A stray runtime dependency would break
+    # that quietly, so it is a build failure rather than a review comment.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: assert dependencies list is empty
+        run: |
+          python - <<'PY'
+          import sys, tomllib
+          deps = tomllib.load(open("pyproject.toml", "rb"))["project"]["dependencies"]
+          if deps:
+              sys.exit(f"runtime dependencies are not allowed, found: {deps}")
+          print("no runtime dependencies")
+          PY
+      - name: import the package with an empty environment
+        run: PYTHONPATH=src python -c "import agent_statusline.statusline"
+
+  smoke:
+    # Prove both install shapes actually work, since ADR 0017 supports two and a
+    # regression in either is invisible to the unit tests.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: checkout shape - install into a scratch config dir
+        env:
+          CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-checkout
+        run: python3 install.py
+      - name: checkout shape - settings point at the symlink
+        env:
+          CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-checkout
+        run: |
+          python - <<'PY'
+          import json, os
+          d = os.environ["CLAUDE_CONFIG_DIR"]
+          cfg = json.load(open(os.path.join(d, "settings.json")))
+          assert cfg["statusLine"]["command"] == "python3 ~/.claude/statusline/statusline.py", cfg
+          assert os.path.islink(os.path.join(d, "statusline"))
+          print("checkout shape wired correctly")
+          PY
+      - name: checkout shape - uninstall cleanly
+        env:
+          CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-checkout
+        run: python3 install.py --uninstall
+
+      - name: installed shape - pip install the built package
+        run: pip install .
+      - name: installed shape - install into a scratch config dir
+        env:
+          CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-installed
+        run: agent-statusline install
+      - name: installed shape - settings point at the console script, no symlink
+        env:
+          CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-installed
+        run: |
+          python - <<'PY'
+          import json, os
+          d = os.environ["CLAUDE_CONFIG_DIR"]
+          cfg = json.load(open(os.path.join(d, "settings.json")))
+          cmd = cfg["statusLine"]["command"]
+          assert cmd.strip('"').endswith("agent-statusline"), cmd
+          assert not os.path.exists(os.path.join(d, "statusline")), "must not symlink"
+          hooks = [h["command"] for v in cfg["hooks"].values() for g in v for h in g["hooks"]]
+          assert all(" hook " in h for h in hooks), hooks
+          print("installed shape wired correctly")
+          PY
+      - name: installed shape - every subcommand runs
+        env:
+          AGENT_STATUSLINE_STATE: ${{ runner.temp }}/state
+          COLUMNS: "200"
+        run: |
+          agent-statusline version
+          agent-statusline --help > /dev/null
+          echo '{}' | agent-statusline
+          for h in session-end context-guard timestamp-user timestamp-stop; do
+            echo '{"session_id":"ci"}' | agent-statusline hook "$h" > /dev/null
+          done
+          agent-statusline ledger show
+      - name: installed shape - uninstall cleanly
+        env:
+          CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-installed
+        run: agent-statusline uninstall
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0        # hatch-vcs derives the version from tags
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install build
+      - run: python -m build
+      - name: show the version hatch-vcs derived
+        run: ls -la dist/
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/

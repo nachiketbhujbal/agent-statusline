@@ -1,0 +1,23 @@
+# Runtime state never belongs in the repo - it lives in the agent's config dir
+# (~/.claude by default, or $AGENT_STATUSLINE_STATE). Listed here anyway so a
+# stray test run with AGENT_STATUSLINE_STATE=. cannot commit a cost ledger.
+cost-ledger.json
+statusline-transcript.json
+statusline-probe-cache.json
+statusline-last-payload.json
+rate-limit-history.jsonl
+hook-lastrun.json
+*.tmp
+__pycache__/
+*.pyc
+.DS_Store
+
+# hatch-vcs writes this at build time
+src/agent_statusline/_version.py
+.verify-state/
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv/
