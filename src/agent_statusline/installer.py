@@ -68,8 +68,10 @@ def console_script():
     and the hooks are spawned by Claude Code, whose environment is not
     guaranteed to include the tool directory.
     """
-    for cand in (os.path.join(os.path.dirname(sys.executable), "agent-statusline"),
-                 shutil.which("agent-statusline")):
+    for cand in (
+        os.path.join(os.path.dirname(sys.executable), "agent-statusline"),
+        shutil.which("agent-statusline"),
+    ):
         if cand and os.path.isfile(cand) and os.access(cand, os.X_OK):
             return cand
     return None
@@ -91,20 +93,18 @@ def commands(cdir=None):
     if root is None:
         exe = console_script()
         if exe is None:
-            die("installed package but no `agent-statusline` executable found.\n"
+            die(
+                "installed package but no `agent-statusline` executable found.\n"
                 "       Reinstall with `uv tool install` / `pipx install`, or run "
-                "install from a checkout.")
+                "install from a checkout."
+            )
         quoted = shlex.quote(exe)
         return quoted, (lambda slug, _mod: f"{quoted} hook {slug}"), None
     link = os.path.join(cdir or claude_dir(), "statusline")
     python = shlex.quote(sys.executable)
     return (
         f"{python} {shlex.quote(os.path.join(link, 'statusline.py'))}",
-        (
-            lambda _slug, mod: (
-                f"{python} {shlex.quote(os.path.join(link, 'hooks', mod + '.py'))}"
-            )
-        ),
+        (lambda _slug, mod: (f"{python} {shlex.quote(os.path.join(link, 'hooks', mod + '.py'))}")),
         link,
     )
 
@@ -263,9 +263,8 @@ def write_settings(cdir, dry, remove=False):
             die(f"cannot safely update {path}: hooks is not an object")
         for event, slug, mod, timeout in wanted:
             hooks.setdefault(event, []).append(
-                {"hooks": [{"type": "command",
-                            "command": hook_cmd(slug, mod),
-                            "timeout": timeout}]})
+                {"hooks": [{"type": "command", "command": hook_cmd(slug, mod), "timeout": timeout}]}
+            )
         cfg.setdefault("showMessageTimestamps", True)
         say(f"settings: statusLine + {len(wanted)} managed hooks")
 
@@ -282,9 +281,12 @@ def verify(cdir):
     if os.path.exists(sample):
         with open(sample, "rb") as fh:
             payload = fh.read()
-    proc = subprocess.run([sys.executable, os.path.join(PKG, "statusline.py")],
-                          input=payload, capture_output=True,
-                          env=dict(os.environ, AGENT_STATUSLINE_STATE=scratch))
+    proc = subprocess.run(
+        [sys.executable, os.path.join(PKG, "statusline.py")],
+        input=payload,
+        capture_output=True,
+        env=dict(os.environ, AGENT_STATUSLINE_STATE=scratch),
+    )
     shutil.rmtree(scratch, ignore_errors=True)
     if proc.returncode != 0:
         die("render failed:\n" + proc.stderr.decode("utf-8", "replace"))
@@ -318,8 +320,10 @@ def run(dry_run=False, uninstall=False):
         return 0
 
     if sys.version_info < MIN_PYTHON:
-        die(f"python {'.'.join(map(str, MIN_PYTHON))}+ required, "
-            f"this is {sys.version.split()[0]}")
+        die(
+            f"python {'.'.join(map(str, MIN_PYTHON))}+ required, "
+            f"this is {sys.version.split()[0]}"
+        )
     say(f"python:   {sys.version.split()[0]} (stdlib only, no dependencies)")
     if not dry_run:
         os.makedirs(cdir, exist_ok=True)

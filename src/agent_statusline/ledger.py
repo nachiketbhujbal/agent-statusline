@@ -31,11 +31,11 @@ COST_WINDOWS = {"d1": 86400, "d7": 7 * 86400, "d30": 30 * 86400}
 # Statuses written into a row's `reason`. Anything Claude Code reports via the
 # SessionEnd payload passes through as-is; these are the ones we write ourselves.
 REASONS = {
-    "end":     "session ended normally, hook fired",
-    "clear":   "conversation cleared",
-    "logout":  "user logged out",
-    "other":   "SessionEnd fired with an unclassified reason",
-    "killed":  "process terminated without SessionEnd; stamped out of band",
+    "end": "session ended normally, hook fired",
+    "clear": "conversation cleared",
+    "logout": "user logged out",
+    "other": "SessionEnd fired with an unclassified reason",
+    "killed": "process terminated without SessionEnd; stamped out of band",
 }
 
 # A row's lifecycle. `closed` keeps the *last* close time even after a resume, so
@@ -183,6 +183,7 @@ def load():
 
 def save(data):
     """Atomic temp+rename, pretty-printed so the file stays readable by hand."""
+
     def replace(current):
         current.clear()
         current.update(data)
@@ -194,6 +195,7 @@ def save(data):
 
 def update(updater):
     """Run one locked ledger transaction."""
+
     def normalized(data):
         if not isinstance(data, dict):
             data = {}
@@ -205,6 +207,7 @@ def update(updater):
 
 def close_session(sid, reason="end", transcript=None, when=None, create=False):
     """Stamp a row closed. Returns the row, or None if the session is unknown."""
+
     def close(data):
         row = data["sessions"].get(sid)
         if row is None:
@@ -223,8 +226,9 @@ def close_session(sid, reason="end", transcript=None, when=None, create=False):
 
 
 def _main():
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     sub = ap.add_subparsers(dest="cmd", required=True)
     c = sub.add_parser("close", help="stamp a session closed out of band")
     c.add_argument("session_id")
@@ -246,11 +250,13 @@ def _main():
     w = max((len(k) for k in rows), default=10)
     for sid, r in sorted(rows.items(), key=lambda kv: epoch(kv[1].get("started"))):
         runs = r.get("runs", "-")
-        print(f"{sid:<{w}}  {str(r.get('state','-')):<6}  ${r.get('cost',0):>9.4f}"
-              f"  (base ${r.get('cost_base',0):>8.4f} + run ${r.get('cost_run',0):>8.4f})"
-              f"  runs={runs}  started={r.get('started','-')}"
-              f"  updated={r.get('updated','-')}  closed={r.get('closed','-')}"
-              f"  reason={r.get('reason','-')}")
+        print(
+            f"{sid:<{w}}  {r.get('state','-')!s:<6}  ${r.get('cost',0):>9.4f}"
+            f"  (base ${r.get('cost_base',0):>8.4f} + run ${r.get('cost_run',0):>8.4f})"
+            f"  runs={runs}  started={r.get('started','-')}"
+            f"  updated={r.get('updated','-')}  closed={r.get('closed','-')}"
+            f"  reason={r.get('reason','-')}"
+        )
     return 0
 
 

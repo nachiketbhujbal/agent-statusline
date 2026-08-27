@@ -3,6 +3,7 @@
 Field names here are not documented by Claude Code and were verified against
 real transcripts; these tests are what stops a refactor silently renaming one.
 """
+
 from agent_statusline import transcript
 
 
@@ -31,27 +32,39 @@ class TestDig:
 class TestUsage:
     def test_token_counts_accumulate(self):
         tot = absorb(
-            assistant({"input_tokens": 1, "output_tokens": 10,
-                       "cache_creation_input_tokens": 100,
-                       "cache_read_input_tokens": 1000}),
-            assistant({"input_tokens": 2, "output_tokens": 20,
-                       "cache_creation_input_tokens": 200,
-                       "cache_read_input_tokens": 2000}),
+            assistant(
+                {
+                    "input_tokens": 1,
+                    "output_tokens": 10,
+                    "cache_creation_input_tokens": 100,
+                    "cache_read_input_tokens": 1000,
+                }
+            ),
+            assistant(
+                {
+                    "input_tokens": 2,
+                    "output_tokens": 20,
+                    "cache_creation_input_tokens": 200,
+                    "cache_read_input_tokens": 2000,
+                }
+            ),
         )
         assert (tot["in"], tot["out"], tot["cw"], tot["cr"]) == (3, 30, 300, 3000)
         assert tot["turns"] == 2
 
     def test_thinking_tokens_are_read_from_the_details_block(self):
-        tot = absorb(assistant({"input_tokens": 1,
-                                "output_tokens_details": {"thinking_tokens": 42}}))
+        tot = absorb(
+            assistant({"input_tokens": 1, "output_tokens_details": {"thinking_tokens": 42}})
+        )
         assert tot["think"] == 42
 
     def test_entries_without_usage_are_not_counted_as_turns(self):
         assert absorb({"type": "assistant", "message": {}})["turns"] == 0
 
     def test_synthetic_model_counts_as_an_api_error(self):
-        tot = absorb({"type": "assistant",
-                      "message": {"model": "<synthetic>", "usage": {"input_tokens": 1}}})
+        tot = absorb(
+            {"type": "assistant", "message": {"model": "<synthetic>", "usage": {"input_tokens": 1}}}
+        )
         assert tot["synth"] == 1
 
 
@@ -72,33 +85,61 @@ class TestCacheTtlBucket:
 
 class TestToolSignals:
     def test_tool_uses_are_counted_by_name(self):
-        tot = absorb({"type": "assistant", "message": {"content": [
-            {"type": "tool_use", "name": "Bash", "input": {}},
-            {"type": "tool_use", "name": "Bash", "input": {}},
-            {"type": "tool_use", "name": "Read", "input": {}},
-        ]}})
+        tot = absorb(
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {"type": "tool_use", "name": "Bash", "input": {}},
+                        {"type": "tool_use", "name": "Bash", "input": {}},
+                        {"type": "tool_use", "name": "Read", "input": {}},
+                    ]
+                },
+            }
+        )
         assert tot["tools"] == {"Bash": 2, "Read": 1}
 
     def test_edited_and_read_paths_are_kept_apart(self):
-        tot = absorb({"type": "assistant", "message": {"content": [
-            {"type": "tool_use", "name": "Edit", "input": {"file_path": "/a"}},
-            {"type": "tool_use", "name": "Read", "input": {"file_path": "/b"}},
-        ]}})
+        tot = absorb(
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {"type": "tool_use", "name": "Edit", "input": {"file_path": "/a"}},
+                        {"type": "tool_use", "name": "Read", "input": {"file_path": "/b"}},
+                    ]
+                },
+            }
+        )
         assert tot["f_edit"] == ["/a"]
         assert tot["f_read"] == ["/b"]
 
     def test_paths_are_deduplicated(self):
-        tot = absorb({"type": "user", "message": {"content": [
-            {"type": "tool_use", "name": "Edit", "input": {"file_path": "/a"}},
-            {"type": "tool_use", "name": "Edit", "input": {"file_path": "/a"}},
-        ]}})
+        tot = absorb(
+            {
+                "type": "user",
+                "message": {
+                    "content": [
+                        {"type": "tool_use", "name": "Edit", "input": {"file_path": "/a"}},
+                        {"type": "tool_use", "name": "Edit", "input": {"file_path": "/a"}},
+                    ]
+                },
+            }
+        )
         assert tot["f_edit"] == ["/a"]
 
     def test_error_results_are_counted(self):
-        tot = absorb({"type": "user", "message": {"content": [
-            {"type": "tool_result", "is_error": True},
-            {"type": "tool_result", "is_error": False},
-        ]}})
+        tot = absorb(
+            {
+                "type": "user",
+                "message": {
+                    "content": [
+                        {"type": "tool_result", "is_error": True},
+                        {"type": "tool_result", "is_error": False},
+                    ]
+                },
+            }
+        )
         assert tot["errors"] == 1
 
 
@@ -108,16 +149,26 @@ class TestSystemEntries:
         assert tot["durs"] == [1234]
 
     def test_hook_summaries_record_runs_and_errors(self):
-        tot = absorb({"type": "system", "subtype": "stop_hook_summary",
-                      "hookInfos": [{"durationMs": 10}, {"durationMs": 20}],
-                      "hookErrors": ["boom"]})
+        tot = absorb(
+            {
+                "type": "system",
+                "subtype": "stop_hook_summary",
+                "hookInfos": [{"durationMs": 10}, {"durationMs": 20}],
+                "hookErrors": ["boom"],
+            }
+        )
         assert tot["hook_runs"] == 2
         assert tot["hook_ms"] == [10, 20]
         assert tot["hook_errs"] == 1
 
     def test_slash_commands_are_parsed_out_of_the_content(self):
-        tot = absorb({"type": "system", "subtype": "local_command",
-                      "content": "<command-name>/effort</command-name>"})
+        tot = absorb(
+            {
+                "type": "system",
+                "subtype": "local_command",
+                "content": "<command-name>/effort</command-name>",
+            }
+        )
         assert tot["cmds"] == {"/effort": 1}
 
 

@@ -1,4 +1,5 @@
 """The `agent-statusline` entry point and the two install shapes."""
+
 import io
 import json
 import os
@@ -25,6 +26,7 @@ class TestDispatch:
 
     def test_version(self, monkeypatch, capsys):
         from agent_statusline import __version__
+
         assert run(["version"], monkeypatch) == 0
         assert capsys.readouterr().out.strip() == __version__
 
@@ -75,8 +77,7 @@ class TestInstallShape:
         assert str(tmp_path) in hook_cmd("session-end", "session_end")
         assert link == str(tmp_path / "statusline")
 
-    def test_an_installed_package_wires_through_the_console_script(self, monkeypatch,
-                                                                   tmp_path):
+    def test_an_installed_package_wires_through_the_console_script(self, monkeypatch, tmp_path):
         exe = tmp_path / "agent-statusline"
         exe.write_text("#!/bin/sh\n")
         exe.chmod(0o755)
@@ -116,16 +117,23 @@ class TestSettings:
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
         monkeypatch.setattr(installer, "native_timestamps", lambda: False)
         cfg = tmp_path / "settings.json"
-        cfg.write_text(json.dumps({
-            "hooks": {
-                "SessionEnd": [{"hooks": [{"type": "command", "command": "keep-end"}]}],
-                "UserPromptSubmit": [
-                    {"matcher": "x", "hooks": [{"type": "command", "command": "keep-submit"}]}
-                ],
-                "Stop": [{"hooks": [{"type": "command", "command": "keep-stop"}]}],
-                "PreToolUse": [{"hooks": [{"type": "command", "command": "keep-pre"}]}],
-            }
-        }))
+        cfg.write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "SessionEnd": [{"hooks": [{"type": "command", "command": "keep-end"}]}],
+                        "UserPromptSubmit": [
+                            {
+                                "matcher": "x",
+                                "hooks": [{"type": "command", "command": "keep-submit"}],
+                            }
+                        ],
+                        "Stop": [{"hooks": [{"type": "command", "command": "keep-stop"}]}],
+                        "PreToolUse": [{"hooks": [{"type": "command", "command": "keep-pre"}]}],
+                    }
+                }
+            )
+        )
         installer.write_settings(str(tmp_path), dry=False)
         out = json.loads(cfg.read_text())
         commands = {
@@ -157,13 +165,17 @@ class TestSettings:
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
         monkeypatch.setattr(installer, "native_timestamps", lambda: False)
         cfg = tmp_path / "settings.json"
-        cfg.write_text(json.dumps({
-            "theme": "dark",
-            "hooks": {
-                "SessionEnd": [{"hooks": [{"type": "command", "command": "keep-end"}]}],
-                "Stop": [{"hooks": [{"type": "command", "command": "keep-stop"}]}],
-            },
-        }))
+        cfg.write_text(
+            json.dumps(
+                {
+                    "theme": "dark",
+                    "hooks": {
+                        "SessionEnd": [{"hooks": [{"type": "command", "command": "keep-end"}]}],
+                        "Stop": [{"hooks": [{"type": "command", "command": "keep-stop"}]}],
+                    },
+                }
+            )
+        )
         installer.write_settings(str(tmp_path), dry=False)
         installer.write_settings(str(tmp_path), dry=False, remove=True)
         out = json.loads(cfg.read_text())
@@ -178,9 +190,9 @@ class TestSettings:
     def test_uninstall_preserves_a_replaced_status_line(self, tmp_path, monkeypatch):
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
         cfg = tmp_path / "settings.json"
-        cfg.write_text(json.dumps({
-            "statusLine": {"type": "command", "command": "some-other-statusline"}
-        }))
+        cfg.write_text(
+            json.dumps({"statusLine": {"type": "command", "command": "some-other-statusline"}})
+        )
         installer.write_settings(str(tmp_path), dry=False, remove=True)
         assert json.loads(cfg.read_text())["statusLine"]["command"] == "some-other-statusline"
 

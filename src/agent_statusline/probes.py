@@ -28,6 +28,7 @@ def probe(key, ttl, fn):
         val = fn()
     except Exception:
         val = None
+
     def publish(current):
         existing = current.get(key)
         if existing and now - existing.get("at", 0) < ttl:
@@ -46,9 +47,12 @@ def _run(*args, timeout=1.0):
 def _is_claude(cmd):
     tok = cmd.split(" ", 1)[0]
     base = os.path.basename(tok)
-    return (base == "claude" or tok.endswith("/claude")
-            or "ClaudeCode.app" in tok
-            or ("/share/claude/versions/" in tok))
+    return (
+        base == "claude"
+        or tok.endswith("/claude")
+        or "ClaudeCode.app" in tok
+        or ("/share/claude/versions/" in tok)
+    )
 
 
 def processes():
@@ -91,8 +95,13 @@ def processes():
                     kids.add(p)
                     changed = True
         total_mine = sum(rss.get(p, 0) for p in kids)
-    return {"mine_rss": total_mine, "mine_pid": mine, "mine_procs": len(kids),
-            "all_rss": sum(rss.get(p, 0) for p in claude), "all_n": len(claude)}
+    return {
+        "mine_rss": total_mine,
+        "mine_pid": mine,
+        "mine_procs": len(kids),
+        "all_rss": sum(rss.get(p, 0) for p in claude),
+        "all_n": len(claude),
+    }
 
 
 def memory():
@@ -117,19 +126,24 @@ def memory():
         v = v.strip().rstrip(".")
         if v.isdigit():
             vals[k.strip()] = int(v) * page
-    used = (vals.get("Pages active", 0) + vals.get("Pages wired down", 0)
-            + vals.get("Pages occupied by compressor", 0))
-    return {"total": total, "used": used,
-            "pct": (used / total * 100) if total else None,
-            "compressed": vals.get("Pages occupied by compressor", 0)}
+    used = (
+        vals.get("Pages active", 0)
+        + vals.get("Pages wired down", 0)
+        + vals.get("Pages occupied by compressor", 0)
+    )
+    return {
+        "total": total,
+        "used": used,
+        "pct": (used / total * 100) if total else None,
+        "compressed": vals.get("Pages occupied by compressor", 0),
+    }
 
 
 def disk(path):
     st = os.statvfs(path)
     free = st.f_bavail * st.f_frsize
     total = st.f_blocks * st.f_frsize
-    return {"free": free, "total": total,
-            "pct": ((total - free) / total * 100) if total else None}
+    return {"free": free, "total": total, "pct": ((total - free) / total * 100) if total else None}
 
 
 def git_state(cwd):
@@ -140,18 +154,17 @@ def git_state(cwd):
     per redraw, which was the dominant source of status-line flicker.
     Returns None when cwd is not a repository.
     """
-    out = _run("git", "-C", cwd, "status", "--porcelain=v2", "--branch",
-               "--untracked-files=no")
+    out = _run("git", "-C", cwd, "status", "--porcelain=v2", "--branch", "--untracked-files=no")
     if not out:
         return None
     branch, ahead, behind, dirty, upstream = None, 0, 0, False, False
     for line in out.splitlines():
         if line.startswith("# branch.head "):
-            branch = line[len("# branch.head "):].strip()
+            branch = line[len("# branch.head ") :].strip()
         elif line.startswith("# branch.upstream "):
             upstream = True
         elif line.startswith("# branch.ab "):
-            for piece in line[len("# branch.ab "):].split():
+            for piece in line[len("# branch.ab ") :].split():
                 if piece.startswith("+"):
                     ahead = int(piece[1:])
                 elif piece.startswith("-"):
@@ -161,12 +174,19 @@ def git_state(cwd):
     if branch is None:
         return None
     rp = _run("git", "-C", cwd, "rev-parse", "--git-dir", "--git-common-dir").split()
-    worktree = (len(rp) == 2 and os.path.abspath(os.path.join(cwd, rp[0]))
-                != os.path.abspath(os.path.join(cwd, rp[1])))
+    worktree = len(rp) == 2 and os.path.abspath(os.path.join(cwd, rp[0])) != os.path.abspath(
+        os.path.join(cwd, rp[1])
+    )
     stash = _run("git", "-C", cwd, "stash", "list")
-    return {"branch": branch, "dirty": dirty, "ahead": ahead, "behind": behind,
-            "upstream": upstream, "worktree": worktree,
-            "stash": len([l for l in stash.splitlines() if l.strip()])}
+    return {
+        "branch": branch,
+        "dirty": dirty,
+        "ahead": ahead,
+        "behind": behind,
+        "upstream": upstream,
+        "worktree": worktree,
+        "stash": len([l for l in stash.splitlines() if l.strip()]),
+    }
 
 
 def account():
@@ -182,6 +202,8 @@ def account():
         d = json.load(fh)
     oa = d.get("oauthAccount") or {}
     gb = d.get("cachedGrowthBookFeatures") or {}
-    return {"enabled": bool(oa.get("hasExtraUsageEnabled")),
-            "disabled_reason": d.get("cachedExtraUsageDisabledReason"),
-            "included_models": gb.get("tengu_usage_overage_included_models") or []}
+    return {
+        "enabled": bool(oa.get("hasExtraUsageEnabled")),
+        "disabled_reason": d.get("cachedExtraUsageDisabledReason"),
+        "included_models": gb.get("tengu_usage_overage_included_models") or [],
+    }

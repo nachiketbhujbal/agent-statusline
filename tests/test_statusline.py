@@ -1,4 +1,5 @@
 """End-to-end rendering, against the real probes but an isolated state dir."""
+
 import io
 import json
 import re
@@ -19,8 +20,9 @@ def draw(payload, monkeypatch, capsys, cols=200):
 
 def labels(lines):
     """Row labels in the order they were emitted; continuation lines have none."""
-    return [ln.split()[0] for ln in (ANSI.sub("", x) for x in lines)
-            if ln and not ln.startswith(" ")]
+    return [
+        ln.split()[0] for ln in (ANSI.sub("", x) for x in lines) if ln and not ln.startswith(" ")
+    ]
 
 
 class TestRowOrder:
@@ -41,8 +43,7 @@ class TestWidth:
         lines = draw(payload, monkeypatch, capsys, cols=cols)
         assert max(len(ANSI.sub("", ln)) for ln in lines) <= cols
 
-    def test_narrow_terminals_wrap_rather_than_lose_rows(self, payload, monkeypatch,
-                                                         capsys):
+    def test_narrow_terminals_wrap_rather_than_lose_rows(self, payload, monkeypatch, capsys):
         wide = labels(draw(payload, monkeypatch, capsys, cols=240))
         narrow = labels(draw(payload, monkeypatch, capsys, cols=70))
         assert narrow == wide, "every row must survive; only segments are dropped"
@@ -81,14 +82,12 @@ class TestContent:
 
     def test_five_minute_cache_ttl_is_flagged_red(self, payload, monkeypatch, capsys):
         """The 5m bucket means the account dropped to a short TTL: the real signal."""
-        monkeypatch.setattr(statusline, "transcript_totals",
-                            lambda _p: _totals(last_bucket="5m"))
+        monkeypatch.setattr(statusline, "transcript_totals", lambda _p: _totals(last_bucket="5m"))
         out = "\n".join(draw(payload, monkeypatch, capsys))
         assert f"{render.RED}{render.B}5m" in out
 
     def test_one_hour_cache_ttl_is_not_flagged(self, payload, monkeypatch, capsys):
-        monkeypatch.setattr(statusline, "transcript_totals",
-                            lambda _p: _totals(last_bucket="1h"))
+        monkeypatch.setattr(statusline, "transcript_totals", lambda _p: _totals(last_bucket="1h"))
         out = "\n".join(draw(payload, monkeypatch, capsys))
         assert f"{render.GRN}{render.B}1h" in out
 
@@ -109,8 +108,10 @@ class TestRobustness:
 
 def _totals(**over):
     from agent_statusline.transcript import _blank
+
     tot = _blank()
-    tot.update({"cr": 1000, "cw": 100, "in": 10, "out": 50, "turns": 2,
-                "last_ts": "2099-01-01T00:00:00Z"})
+    tot.update(
+        {"cr": 1000, "cw": 100, "in": 10, "out": 50, "turns": 2, "last_ts": "2099-01-01T00:00:00Z"}
+    )
     tot.update(over)
     return tot

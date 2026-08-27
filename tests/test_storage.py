@@ -21,9 +21,7 @@ def test_jsonl_append_suppresses_only_unchanged_selected_facts(tmp_path):
     path = str(tmp_path / "history.jsonl")
     keys = ("five", "weekly")
     assert storage.append_json_if_changed(path, {"five": 10, "weekly": 20, "at": 1}, keys)
-    assert not storage.append_json_if_changed(
-        path, {"five": 10, "weekly": 20, "at": 2}, keys
-    )
+    assert not storage.append_json_if_changed(path, {"five": 10, "weekly": 20, "at": 2}, keys)
     assert storage.append_json_if_changed(path, {"five": 11, "weekly": 20, "at": 3}, keys)
     lines = (tmp_path / "history.jsonl").read_text().splitlines()
     assert [json.loads(line)["at"] for line in lines] == [1, 3]
@@ -46,8 +44,7 @@ for _ in range(20):
     source = os.path.abspath("src")
     env["PYTHONPATH"] = source + os.pathsep + env.get("PYTHONPATH", "")
     processes = [
-        subprocess.Popen([sys.executable, "-c", code, str(path)], env=env)
-        for _ in range(6)
+        subprocess.Popen([sys.executable, "-c", code, str(path)], env=env) for _ in range(6)
     ]
     assert [process.wait(timeout=20) for process in processes] == [0] * 6
     assert json.loads(path.read_text()) == {"count": 120}

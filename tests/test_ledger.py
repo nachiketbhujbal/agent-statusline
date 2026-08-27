@@ -4,6 +4,7 @@ These cases exist because rendering against a live ledger banked phantom runs
 twice and roughly doubled a session's reported cost (docs/adrs/0014). The defences are
 pid-keyed run detection and a high-water fallback; both are pinned here.
 """
+
 from agent_statusline import ledger
 
 
@@ -24,7 +25,7 @@ class TestApplyCost:
     def test_new_pid_reporting_less_banks_the_finished_run(self):
         row = {}
         ledger.apply_cost(row, 10.0, pid=100)
-        total = ledger.apply_cost(row, 2.0, pid=200)      # resumed: new process
+        total = ledger.apply_cost(row, 2.0, pid=200)  # resumed: new process
         assert total == 12.0
         assert row["cost_base"] == 10.0
         assert row["runs"] == 2
@@ -134,6 +135,4 @@ class TestRollingCosts:
             "cost_events": [],
         }
         rolling = ledger.rolling_costs(data, when=1_800_000_000)
-        assert not any(rolling[key] for key in (
-            "d1_complete", "d7_complete", "d30_complete"
-        ))
+        assert not any(rolling[key] for key in ("d1_complete", "d7_complete", "d30_complete"))

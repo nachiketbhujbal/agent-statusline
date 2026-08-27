@@ -11,8 +11,9 @@ import sys
 import time
 
 if __package__ in (None, ""):  # running as a plain script
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(
-        os.path.realpath(__file__)))))
+    sys.path.insert(
+        0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+    )
 
 from agent_statusline.paths import state
 from agent_statusline.storage import read_json, write_text
@@ -46,9 +47,10 @@ def live_tokens(path):
             u = json.loads(line)["message"]["usage"]
         except Exception:
             continue
-        return sum(int(u.get(k) or 0) for k in
-                   ("input_tokens", "cache_creation_input_tokens",
-                    "cache_read_input_tokens"))
+        return sum(
+            int(u.get(k) or 0)
+            for k in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
+        )
     return 0
 
 
@@ -61,9 +63,14 @@ def main():
     try:
         write_text(
             state("hook-lastrun.json"),
-            json.dumps({"hook": "UserPromptSubmit", "at": time.time(),
-                        "iso": time.strftime("%Y-%m-%d %H:%M:%S"),
-                        "session": payload.get("session_id")}),
+            json.dumps(
+                {
+                    "hook": "UserPromptSubmit",
+                    "at": time.time(),
+                    "iso": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "session": payload.get("session_id"),
+                }
+            ),
         )
     except Exception:
         pass
@@ -78,19 +85,26 @@ def main():
 
     urgency = "CRITICAL" if pct >= CRIT else "WARNING"
     human = f"{urgency}: context window {pct:.0f}% full ({live:,} of {size:,} tokens)."
-    print(json.dumps({
-        "systemMessage": human + " Consider a focused /compact.",
-        "hookSpecificOutput": {
-            "hookEventName": "UserPromptSubmit",
-            "additionalContext": (
-                f"{human} Before continuing, offer the user a focused compaction: propose "
-                f"`/compact` with a summary instruction naming only what this task still "
-                f"needs (current decisions, open questions, active file paths, the immediate "
-                f"next step), and say explicitly what would be dropped. Do not compact "
-                f"without their approval, and do not repeat this offer if they have already "
-                f"declined it this session."
-            )},
-    }))
+    print(
+        json.dumps(
+            {
+                "systemMessage": human + " Consider a focused /compact.",
+                "hookSpecificOutput": {
+                    "hookEventName": "UserPromptSubmit",
+                    "additionalContext": (
+                        f"{human} Before continuing, offer the user a focused compaction: propose "
+                        f"`/compact` with a summary instruction naming only what this task still "
+                        f"needs (current decisions, open questions, active file paths, the "
+                        f"immediate "
+                        f"next step), and say explicitly what would be dropped. Do not compact "
+                        f"without their approval, and do not repeat this offer if they have "
+                        f"already "
+                        f"declined it this session."
+                    ),
+                },
+            }
+        )
+    )
     return 0
 
 

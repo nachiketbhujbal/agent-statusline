@@ -1,5 +1,8 @@
 [build-system]
-requires = ["hatchling>=1.21", "hatch-vcs>=0.4"]
+requires = [
+    "hatchling>=1.27,<2",
+    "hatch-vcs>=0.5,<1",
+]
 build-backend = "hatchling.build"
 
 [project]
@@ -24,9 +27,6 @@ classifiers = [
 # status line is spawned several times a second and must work on a machine with
 # nothing installed. See docs/adrs/0004-no-runtime-dependencies.md.
 dependencies = []
-
-[project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.6"]
 
 [project.scripts]
 # One entry point with subcommands. Bare `agent-statusline` renders, which is the
@@ -53,11 +53,37 @@ packages = ["src/agent_statusline"]
 [tool.hatch.build.targets.sdist]
 include = ["src", "tests", "docs", "install.py", "README.md"]
 
+[dependency-groups]
+dev = [
+    "black>=25.11,<26",
+    "mypy>=1.19,<2",
+    "pre-commit>=4.3,<5",
+    "pytest>=8",
+    "pytest-cov>=7,<8",
+    "ruff>=0.16.4,<1",
+]
+
+[tool.uv]
+required-version = ">=0.12"
+
 # ------------------------------------------------------------------ tooling
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-q --strict-markers"
+
+[tool.coverage.run]
+source = ["agent_statusline"]
+parallel = true
+patch = ["subprocess"]
+
+[tool.coverage.report]
+skip_empty = true
+show_missing = true
+
+[tool.black]
+line-length = 100
+target-version = ["py39"]
 
 [tool.ruff]
 line-length = 100
@@ -65,25 +91,25 @@ src = ["src", "tests"]
 target-version = "py39"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM"]
-# The status line trades conventional spacing for density in its formatting
-# code; E501 and E701 are checked, the rest of the whitespace rules are not
-# worth reflowing hot render paths over.
-# SIM105 (contextlib.suppress) is refused on purpose: it builds a context
-# manager per call, and these are render paths that run several times a second.
-# A bare try/except/pass is measurably cheaper and reads no worse here.
+select = ["B", "C4", "E", "F", "I", "RUF", "SIM", "UP", "W"]
 ignore = ["E731", "E741", "SIM105"]
 
 [tool.ruff.lint.per-file-ignores]
 # Entry points must extend sys.path before importing the package, so their
 # imports genuinely cannot all sit at the top of the file.
-"src/agent_statusline/statusline.py" = ["E402", "E501", "E701", "E702"]
-"src/agent_statusline/ledger.py" = ["E402", "E501"]
+"src/agent_statusline/statusline.py" = ["E402"]
+"src/agent_statusline/ledger.py" = ["E402"]
 "install.py" = ["E402"]
 "src/agent_statusline/hooks/*.py" = ["E402"]
 "tests/conftest.py" = ["E402"]
-# statusline.py and transcript.py are written in a deliberately compact style:
-# one-line guards and multiple statements per line keep each row's formatting
-# readable as a unit. Reflowing them would hurt the thing they optimise for.
-"src/agent_statusline/transcript.py" = ["E501", "E701", "E702"]
-"src/agent_statusline/probes.py" = ["E501"]
+
+[tool.mypy]
+python_version = "3.9"
+files = ["src/agent_statusline"]
+check_untyped_defs = true
+no_implicit_optional = true
+strict_equality = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_configs = true
