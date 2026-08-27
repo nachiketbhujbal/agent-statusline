@@ -27,6 +27,41 @@ def test_jsonl_append_suppresses_only_unchanged_selected_facts(tmp_path):
     assert [json.loads(line)["at"] for line in lines] == [1, 3]
 
 
+def test_jsonl_history_is_bounded_and_malformed_rows_are_discarded(tmp_path):
+    path = tmp_path / "history.jsonl"
+    path.write_text('{"value": 0}\nnot-json\n')
+    for value in range(1, 6):
+        storage.append_json_if_changed(str(path), {"value": value}, ("value",), max_records=3)
+
+    records = [json.loads(line) for line in path.read_text().splitlines()]
+    assert records == [{"value": 3}, {"value": 4}, {"value": 5}]
+    assert stat.S_IMODE(path.stat().st_mode) == 0o600
+
+
+def test_jsonl_byte_bound_compacts_without_changing_the_latest_record(tmp_path):
+    path = tmp_path / "history.jsonl"
+    for value in range(20):
+        storage.append_json_if_changed(
+            str(path), {"value": value, "padding": "x" * 30}, ("value",), max_bytes=180
+        )
+
+    records = [json.loads(line) for line in path.read_text().splitlines()]
+    assert path.stat().st_size <= 180
+    assert records[-1]["value"] == 19
+
+
+def test_bounded_jsonl_hot_path_reads_only_the_tail(tmp_path, monkeypatch):
+    path = tmp_path / "history.jsonl"
+    path.write_text('{"value": 1}\n')
+    monkeypatch.setattr(
+        storage,
+        "_jsonl_records",
+        lambda _path: (_ for _ in ()).throw(AssertionError("full scan")),
+    )
+
+    assert not storage.append_json_if_changed(str(path), {"value": 1}, ("value",), max_bytes=1024)
+
+
 def test_concurrent_json_transactions_lose_no_updates(tmp_path):
     path = tmp_path / "counter.json"
     code = r"""

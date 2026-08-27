@@ -4,7 +4,12 @@ Field names here are not documented by Claude Code and were verified against
 real transcripts; these tests are what stops a refactor silently renaming one.
 """
 
+import json
+
+import pytest
+
 from agent_statusline import transcript
+from agent_statusline.storage import read_json, update_json
 
 
 def absorb(*entries):
@@ -189,3 +194,52 @@ class TestMissingFiles:
 
     def test_absent_transcript_has_no_conversation_root(self):
         assert transcript.conversation_root("/nonexistent/x.jsonl") is None
+
+
+class TestCacheLifecycle:
+    @pytest.fixture(autouse=True)
+    def empty_cache(self):
+        update_json(transcript.TSTATE, {}, lambda state: (True, state.clear()))
+
+    def test_active_transcript_is_retained_while_stale_rows_are_pruned(self, tmp_path, monkeypatch):
+        now = 2_000_000_000.0
+        active = tmp_path / "active.jsonl"
+        active.write_text(json.dumps(assistant({"input_tokens": 1})) + "\n")
+        stale = str(tmp_path / "stale.jsonl")
+        update_json(
+            transcript.TSTATE,
+            {},
+            lambda state: (
+                True,
+                state.update(
+                    {
+                        stale: {
+                            "accessed_at": now - transcript.CACHE_RETENTION_S - 1,
+                            "schema": transcript.SCHEMA,
+                        }
+                    }
+                ),
+            ),
+        )
+        monkeypatch.setattr(transcript.time, "time", lambda: now)
+
+        transcript.transcript_totals(str(active))
+
+        cached = read_json(transcript.TSTATE, {})
+        assert str(active) in cached
+        assert stale not in cached
+
+    def test_transcript_cache_retains_only_the_most_recent_rows(self):
+        rows = {
+            f"/tmp/transcript-{index}.jsonl": {"accessed_at": index}
+            for index in range(transcript.MAX_CACHED_TRANSCRIPTS + 10)
+        }
+        active = "/tmp/current.jsonl"
+        rows[active] = {"accessed_at": 10_000}
+
+        row, changed = transcript._maintain_cache(rows, active, 10_000)
+
+        assert changed
+        assert row is rows[active]
+        assert active in rows
+        assert len(rows) == transcript.MAX_CACHED_TRANSCRIPTS

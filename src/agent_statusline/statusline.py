@@ -48,6 +48,7 @@ from agent_statusline.transcript import (
 
 RLHIST = state("rate-limit-history.jsonl")
 PAYLOAD = state("statusline-last-payload.json")
+RATE_HISTORY_MAX_BYTES = 1024 * 1024
 
 # Server-side prompt cache TTL. Detected from the usage block's cache_creation
 # buckets (ephemeral_1h vs ephemeral_5m); this is only the fallback.
@@ -170,7 +171,12 @@ def rl_log(node5, node7):
             "7d_reset": dig(node7, "resets_at"),
         }
         cur["at"] = ledger.iso()
-        append_json_if_changed(RLHIST, cur, ("5h", "5h_reset", "7d", "7d_reset"))
+        append_json_if_changed(
+            RLHIST,
+            cur,
+            ("5h", "5h_reset", "7d", "7d_reset"),
+            max_bytes=RATE_HISTORY_MAX_BYTES,
+        )
     except Exception:
         pass
 

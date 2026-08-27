@@ -13,6 +13,7 @@ nowhere else; do not guess at them (see docs/INTERNALS.md).
 import datetime
 import json
 import os
+import time
 
 from agent_statusline.paths import state
 from agent_statusline.storage import update_json
@@ -20,6 +21,45 @@ from agent_statusline.storage import update_json
 TSTATE = state("statusline-transcript.json")
 
 SCHEMA = 3
+CACHE_RETENTION_S = 35 * 24 * 60 * 60
+CACHE_TOUCH_S = 60 * 60
+MAX_CACHED_TRANSCRIPTS = 512
+
+
+def _maintain_cache(cache, path, now):
+    """Touch the active transcript and prune old or excess cache rows."""
+    changed = False
+    row = cache.get(path)
+    if not isinstance(row, dict):
+        row = {}
+        cache[path] = row
+        changed = True
+    try:
+        accessed = float(row.get("accessed_at", 0))
+    except (TypeError, ValueError):
+        accessed = 0
+    if now - accessed >= CACHE_TOUCH_S:
+        row["accessed_at"] = now
+        changed = True
+
+    for cached_path, cached_row in list(cache.items()):
+        if cached_path == path:
+            continue
+        try:
+            last_access = float(cached_row.get("accessed_at", now))
+        except (AttributeError, TypeError, ValueError):
+            last_access = 0
+        if now - last_access > CACHE_RETENTION_S:
+            del cache[cached_path]
+            changed = True
+
+    if len(cache) > MAX_CACHED_TRANSCRIPTS:
+        candidates = [key for key in cache if key != path]
+        candidates.sort(key=lambda key: float(cache[key].get("accessed_at", 0)))
+        for key in candidates[: len(cache) - MAX_CACHED_TRANSCRIPTS]:
+            del cache[key]
+            changed = True
+    return row, changed
 
 
 def dig(d, *path, default=None):
@@ -148,13 +188,16 @@ def transcript_totals(path):
         st = os.stat(path)
     except Exception:
         return z
+    now = time.time()
 
     def absorb_new(state):
         if not isinstance(state, dict):
             state = {}
-        row = state.get(path) or {}
+        row, changed = _maintain_cache(state, path, now)
         if row.get("schema") != SCHEMA:
-            row = {}
+            row = {"accessed_at": now}
+            state[path] = row
+            changed = True
         off = row.get("offset", 0)
         tot = row.get("totals") or _blank()
         for k, v in _blank().items():
@@ -162,18 +205,18 @@ def transcript_totals(path):
         if st.st_size < off:
             off, tot = 0, _blank()
         if st.st_size == off:
-            return False, tot
+            return changed, tot
         try:
             with open(path, "rb") as fh:
                 fh.seek(off)
                 chunk = fh.read()
                 newoff = fh.tell()
         except Exception:
-            return False, tot
+            return changed, tot
         if not chunk.endswith(b"\n"):
             cut = chunk.rfind(b"\n")
             if cut == -1:
-                return False, tot
+                return changed, tot
             tail = chunk[cut + 1 :]
             chunk = chunk[: cut + 1]
             newoff -= len(tail)
@@ -186,7 +229,13 @@ def transcript_totals(path):
                 continue
             _absorb(tot, e)
         prev = state.get(path) or {}
-        state[path] = {"offset": newoff, "totals": tot, "schema": SCHEMA, "root": prev.get("root")}
+        state[path] = {
+            "offset": newoff,
+            "totals": tot,
+            "schema": SCHEMA,
+            "root": prev.get("root"),
+            "accessed_at": now,
+        }
         return True, tot
 
     return update_json(TSTATE, {}, absorb_new)
@@ -196,13 +245,14 @@ def conversation_root(path):
     """First user message uuid -- identical across forks of one conversation."""
     if not path or not os.path.exists(path):
         return None
+    now = time.time()
 
     def discover(st):
         if not isinstance(st, dict):
             st = {}
-        row = st.get(path) or {}
+        row, changed = _maintain_cache(st, path, now)
         if row.get("root"):
-            return False, row["root"]
+            return changed, row["root"]
         root = None
         try:
             with open(path) as fh:
@@ -217,11 +267,11 @@ def conversation_root(path):
                         root = e["uuid"]
                         break
         except Exception:
-            return False, None
+            return changed, None
         if root:
             row["root"] = root
             st[path] = row
             return True, root
-        return False, None
+        return changed, None
 
     return update_json(TSTATE, {}, discover)

@@ -17,7 +17,7 @@ regression exist on the named release branch; release status remains separate.
 | TEST-001 | Medium | Tool versions, formatting, typing, coverage, and commit-time checks were not reproducible. | 0.3.0 | Resolved by ADR 0023 and `uv.lock` |
 | STATE-003 | High | Concurrent sessions shared one process-probe cache row, so all could display the first session's PID and RSS. | 0.3.0 | Resolved by ADR 0024 and distinct-session cache regressions |
 | STATE-004 | Medium | Path- and session-qualified probe rows accumulated without a lifecycle bound. | 0.3.0 | Resolved by seven-day and 256-row cache bounds |
-| STATE-005 | Medium | Transcript cache rows and rate-limit history still grow without a lifecycle bound. | 0.3.0 | Open |
+| STATE-005 | Medium | Transcript cache rows and rate-limit history grew without a lifecycle bound. | 0.3.0 | Resolved by ADR 0025 and retention, byte-bound, and hot-path regressions |
 | RENDER-001 | Medium | Printable width used code-point count rather than terminal-cell width for wide and combining Unicode. | 0.3.0 | Open |
 | RENDER-002 | Medium | Host and user-controlled labels were emitted without control-character sanitization. | 0.3.0 | Open |
 | DOC-001 | Low | README claims Python 3.8 while package metadata and installer require 3.9. | 0.3.0 | Open |

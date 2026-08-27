@@ -13,6 +13,8 @@ This project follows semantic versioning. Versions come from immutable Git tags.
   gate.
 - Isolate each concurrent session's process metrics and bound retained probe
   cache state.
+- Bound transcript and rate-limit observation state without adding a full-file
+  scan to normal redraws.
 
 ## 0.2.0
 
