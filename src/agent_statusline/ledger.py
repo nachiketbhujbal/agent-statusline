@@ -25,7 +25,7 @@ from agent_statusline.storage import read_json, update_json
 
 LEDGER = state("cost-ledger.json")
 COST_EVENT_SCHEMA = 1
-COST_EVENT_RETENTION_SECONDS = 30 * 86400
+COST_EVENT_RETENTION_SECONDS = 35 * 86400
 COST_WINDOWS = {"d1": 86400, "d7": 7 * 86400, "d30": 30 * 86400}
 
 # Statuses written into a row's `reason`. Anything Claude Code reports via the
@@ -93,8 +93,8 @@ def apply_cost(row, payload_cost, pid=None):
     return row["cost"]
 
 
-def record_cost_delta(data, sid, previous_cost, current_cost, when=None):
-    """Record one positive observed cost delta in the versioned rolling ledger."""
+def record_cost_delta(data, sid, previous_cost, current_cost, when=None, accrued_at=None):
+    """Seed or append one positive lifetime-cost delta."""
     now = datetime.datetime.now().astimezone().timestamp() if when is None else float(when)
     changed = False
     schema = data.get("cost_event_schema")
@@ -102,10 +102,11 @@ def record_cost_delta(data, sid, previous_cost, current_cost, when=None):
         data["cost_event_schema"] = COST_EVENT_SCHEMA
         data["cost_tracking_started"] = iso(now)
         data["cost_events"] = []
-        schema = COST_EVENT_SCHEMA
-        changed = True
+        for session, row in data.get("sessions", {}).items():
+            changed = _seed_cost_row(data, session, row, now) or changed
+        return True
     if schema != COST_EVENT_SCHEMA or not isinstance(data.get("cost_events"), list):
-        return changed
+        return False
 
     events = data["cost_events"]
     cutoff = now - COST_EVENT_RETENTION_SECONDS
@@ -116,38 +117,100 @@ def record_cost_delta(data, sid, previous_cost, current_cost, when=None):
             data["cost_events"] = events = retained
             changed = True
 
+    row = data.get("sessions", {}).get(sid, {})
+    if not row.get("cost_journal_seeded"):
+        return _seed_cost_row(data, sid, row, now) or changed
+
     delta = float(current_cost) - float(previous_cost)
     if math.isfinite(delta) and delta > 1e-9:
-        events.append({"at": iso(now), "session": sid, "amount": delta})
+        accrued = epoch(accrued_at) or now
+        events.append(
+            {
+                "at": iso(now),
+                "accrued_at": iso(accrued),
+                "session": sid,
+                "delta": delta,
+                "lifetime": float(current_cost),
+                "seed": False,
+            }
+        )
         changed = True
     return changed
 
 
 def rolling_costs(data, when=None):
-    """Return rolling sums plus completeness for every displayed horizon."""
+    """Return exact sums or proven lower bounds for every displayed horizon."""
     now = datetime.datetime.now().astimezone().timestamp() if when is None else float(when)
     result = {}
     schema_ok = data.get("cost_event_schema") == COST_EVENT_SCHEMA
     events = data.get("cost_events")
-    events_ok = isinstance(events, list) and all(_valid_cost_event(event) for event in events)
-    started = epoch(data.get("cost_tracking_started"))
+    events_ok = isinstance(events, list)
+    valid_events = [event for event in events or [] if _valid_cost_event(event)]
+    if len(valid_events) != len(events or []):
+        events_ok = False
+    tracking_started = epoch(data.get("cost_tracking_started"))
     for key, seconds in COST_WINDOWS.items():
         cutoff = now - seconds
         amount = 0.0
-        if events_ok:
-            amount = sum(float(event["amount"]) for event in events if epoch(event["at"]) >= cutoff)
+        unattributed = 0.0
+        open_sessions = set()
+        exact = bool(schema_ok and events_ok and tracking_started)
+        for event in valid_events:
+            delta = float(event["delta"])
+            if not event["seed"]:
+                if epoch(event["accrued_at"]) >= cutoff:
+                    amount += delta
+                continue
+            started = epoch(event.get("started_at"))
+            through = epoch(event["accrued_at"])
+            if started >= cutoff:
+                amount += delta
+            elif through >= cutoff:
+                unattributed += delta
+                open_sessions.add(event["session"])
+                exact = False
         result[key] = amount
-        result[key + "_complete"] = bool(schema_ok and events_ok and started and started <= cutoff)
+        result[key + "_complete"] = exact
+        result[key + "_unattributed"] = unattributed
+        result[key + "_open_rows"] = len(open_sessions)
     return result
 
 
 def _valid_cost_event(event):
     if not isinstance(event, dict) or not isinstance(event.get("session"), str):
         return False
-    if epoch(event.get("at")) <= 0:
+    if epoch(event.get("at")) <= 0 or epoch(event.get("accrued_at")) <= 0:
         return False
-    amount = event.get("amount")
-    return isinstance(amount, (int, float)) and math.isfinite(amount) and amount >= 0
+    if event.get("seed") not in (True, False):
+        return False
+    if event["seed"] and event.get("started_at") is not None and epoch(event["started_at"]) <= 0:
+        return False
+    delta = event.get("delta")
+    return isinstance(delta, (int, float)) and math.isfinite(delta) and delta >= 0
+
+
+def _seed_cost_row(data, sid, row, when):
+    """Record a non-accrual baseline once for one session."""
+    if not isinstance(row, dict) or row.get("cost_journal_seeded"):
+        return False
+    row["cost_journal_seeded"] = True
+    amount = float(row.get("cost", 0.0))
+    if not math.isfinite(amount) or amount <= 1e-9:
+        return True
+    started = epoch(row.get("started"))
+    through = epoch(row.get("updated")) or when
+    data["cost_events"].append(
+        {
+            "at": iso(when),
+            "accrued_at": iso(through),
+            "started_at": iso(started) if started else None,
+            "session": sid,
+            "delta": amount,
+            "lifetime": amount,
+            "seed": True,
+        }
+    )
+    return True
 
 
 def iso(when=None):

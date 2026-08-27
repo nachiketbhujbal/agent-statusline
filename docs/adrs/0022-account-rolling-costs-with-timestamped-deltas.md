@@ -16,18 +16,23 @@ Inventing that timing would violate [ADR 0001](0001-exactly-accountable-money.md
 
 ## Decision
 
-Preserve all three fields and add a versioned stream of positive cost deltas to
-`cost-ledger.json`. Each delta records its observation time and session. Rolling
-totals sum only deltas inside the requested horizon.
+Preserve all three fields and add a versioned stream of positive lifetime-cost
+deltas to `cost-ledger.json`. Each delta records its observation time, newest
+known assistant timestamp, and session. Rolling totals attribute ordinary
+deltas by the assistant timestamp, falling back to observation time.
 
-The tracking start is explicit. Until a complete horizon has elapsed after the
-upgrade, render its amount with `≥`: the amount is a proven lower bound because
-pre-upgrade timing is unknowable. The marker disappears independently after 24
-hours, 7 days, and 30 days. Lifetime session, `last5`, and `all` totals retain
-the existing compatible ledger data.
+First sightings are non-accrual seed records. During migration, a seed is fully
+counted when its session began inside the window, excluded when it ended before
+the window, and otherwise reported as unattributable. Render `≥` only for the
+last case or invalid evidence: the amount remains a proven lower bound because
+pre-upgrade timing is unknowable. A window can therefore be complete before the
+journal itself reaches that age when every seed is already classifiable.
+Lifetime session, `last5`, and `all` totals retain the existing compatible
+ledger data.
 
-Retain only the event history required by the longest window. Unknown or
-malformed event schemas never receive a complete-window claim.
+Retain 35 days of events, giving the longest 30-day window margin around
+observation and pruning boundaries. Unknown or malformed event schemas never
+receive a complete-window claim.
 
 ## Consequences
 

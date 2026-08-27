@@ -95,13 +95,32 @@ class TestPersistence:
 
 
 class TestRollingCosts:
-    def test_legacy_ledger_starts_as_an_honest_lower_bound(self):
-        data = {"sessions": {"old": {"cost": 50.0}}}
+    def test_spanning_legacy_session_starts_as_an_honest_lower_bound(self):
+        now = 1_800_000_000
+        data = {
+            "sessions": {
+                "old": {
+                    "cost": 50.0,
+                    "started": ledger.iso(now - 2 * 86400),
+                    "updated": ledger.iso(now),
+                }
+            }
+        }
         assert ledger.record_cost_delta(data, "old", 50.0, 50.0, when=1_800_000_000)
         rolling = ledger.rolling_costs(data, when=1_800_000_001)
         assert rolling["d1"] == 0.0
+        assert rolling["d1_unattributed"] == 50.0
         assert not rolling["d1_complete"]
-        assert not rolling["d7_complete"]
+        assert rolling["d7"] == 50.0 and rolling["d7_complete"]
+        assert rolling["d30"] == 50.0 and rolling["d30_complete"]
+
+    def test_missing_legacy_start_never_receives_an_exact_claim(self):
+        now = 1_800_000_000
+        data = {"sessions": {"old": {"cost": 50.0, "updated": ledger.iso(now)}}}
+        ledger.record_cost_delta(data, "old", 50.0, 50.0, when=now)
+        rolling = ledger.rolling_costs(data, when=now)
+        assert rolling["d30"] == 0.0
+        assert rolling["d30_unattributed"] == 50.0
         assert not rolling["d30_complete"]
 
     def test_positive_deltas_land_in_the_applicable_windows(self):
@@ -110,9 +129,30 @@ class TestRollingCosts:
             "cost_event_schema": ledger.COST_EVENT_SCHEMA,
             "cost_tracking_started": ledger.iso(now - 40 * 86400),
             "cost_events": [
-                {"at": ledger.iso(now - 12 * 3600), "session": "a", "amount": 1.0},
-                {"at": ledger.iso(now - 3 * 86400), "session": "b", "amount": 2.0},
-                {"at": ledger.iso(now - 20 * 86400), "session": "c", "amount": 4.0},
+                {
+                    "at": ledger.iso(now - 12 * 3600),
+                    "accrued_at": ledger.iso(now - 12 * 3600),
+                    "session": "a",
+                    "delta": 1.0,
+                    "lifetime": 1.0,
+                    "seed": False,
+                },
+                {
+                    "at": ledger.iso(now - 3 * 86400),
+                    "accrued_at": ledger.iso(now - 3 * 86400),
+                    "session": "b",
+                    "delta": 2.0,
+                    "lifetime": 2.0,
+                    "seed": False,
+                },
+                {
+                    "at": ledger.iso(now - 20 * 86400),
+                    "accrued_at": ledger.iso(now - 20 * 86400),
+                    "session": "c",
+                    "delta": 4.0,
+                    "lifetime": 4.0,
+                    "seed": False,
+                },
             ],
         }
         rolling = ledger.rolling_costs(data, when=now)
@@ -127,6 +167,50 @@ class TestRollingCosts:
         data = {}
         ledger.record_cost_delta(data, "a", 1.0, 1.0, when=1_800_000_000)
         assert data["cost_events"] == []
+
+    def test_first_sighting_is_a_seed_not_new_accrual(self):
+        now = 1_800_000_000
+        data = {
+            "sessions": {
+                "a": {
+                    "cost": 8.0,
+                    "started": ledger.iso(now - 3600),
+                    "updated": ledger.iso(now),
+                }
+            }
+        }
+        ledger.record_cost_delta(data, "a", 0.0, 8.0, when=now)
+        assert data["cost_events"] == [
+            {
+                "at": ledger.iso(now),
+                "accrued_at": ledger.iso(now),
+                "started_at": ledger.iso(now - 3600),
+                "session": "a",
+                "delta": 8.0,
+                "lifetime": 8.0,
+                "seed": True,
+            }
+        ]
+
+    def test_subsequent_delta_uses_accrual_timestamp(self):
+        now = 1_800_000_000
+        data = {
+            "sessions": {
+                "a": {
+                    "cost": 5.0,
+                    "started": ledger.iso(now - 3600),
+                    "updated": ledger.iso(now),
+                }
+            }
+        }
+        ledger.record_cost_delta(data, "a", 0.0, 5.0, when=now)
+        data["sessions"]["a"]["cost"] = 7.0
+        accrued = ledger.iso(now + 30)
+        ledger.record_cost_delta(data, "a", 5.0, 7.0, when=now + 60, accrued_at=accrued)
+        event = data["cost_events"][-1]
+        assert not event["seed"]
+        assert event["delta"] == 2.0
+        assert event["accrued_at"] == accrued
 
     def test_unknown_schema_never_claims_a_complete_window(self):
         data = {

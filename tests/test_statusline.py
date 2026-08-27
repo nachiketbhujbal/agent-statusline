@@ -3,6 +3,7 @@
 import io
 import json
 import re
+import time
 
 import pytest
 
@@ -64,16 +65,25 @@ class TestContent:
         out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
         assert "$1.25" in out, "cost must be passed through, never recomputed"
 
-    def test_new_rolling_cost_history_is_marked_as_a_lower_bound(
-        self, payload, monkeypatch, capsys
-    ):
+    def test_spanning_legacy_cost_is_marked_as_a_lower_bound(self, payload, monkeypatch, capsys):
         from agent_statusline import ledger
 
-        ledger.save({"sessions": {}})
+        now = time.time()
+        ledger.save(
+            {
+                "sessions": {
+                    "legacy": {
+                        "cost": 10.0,
+                        "started": ledger.iso(now - 2 * 86400),
+                        "updated": ledger.iso(now),
+                    }
+                }
+            }
+        )
         out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
         assert "24h ≥$1.25" in out
-        assert "7d ≥$1.25" in out
-        assert "30d ≥$1.25" in out
+        assert "7d $11.25" in out
+        assert "30d $11.25" in out
 
     def test_permission_mode_uses_claude_codes_own_colours(self):
         assert statusline.MODES["auto"][0] == render.YEL
