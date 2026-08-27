@@ -115,6 +115,24 @@ class TestRobustness:
         payload.pop("rate_limits")
         assert "USAGE" not in labels(draw(payload, monkeypatch, capsys))
 
+    def test_process_probe_is_scoped_to_each_concurrent_session(self, payload, monkeypatch, capsys):
+        keys = []
+        real_probe = statusline.pr.probe
+
+        def capture(key, ttl, fn):
+            if key.startswith("procs:"):
+                keys.append(key)
+                return {}
+            return real_probe(key, ttl, fn)
+
+        monkeypatch.setattr(statusline.pr, "probe", capture)
+        payload["session_id"] = "session-a"
+        draw(payload, monkeypatch, capsys)
+        payload["session_id"] = "session-b"
+        draw(payload, monkeypatch, capsys)
+
+        assert keys == ["procs:session-a", "procs:session-b"]
+
 
 def _totals(**over):
     from agent_statusline.transcript import _blank

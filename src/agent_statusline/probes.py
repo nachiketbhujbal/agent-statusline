@@ -15,6 +15,37 @@ from agent_statusline.paths import state
 from agent_statusline.storage import read_json, update_json
 
 STATE = state("statusline-probe-cache.json")
+MAX_CACHE_AGE_S = 7 * 24 * 60 * 60
+MAX_CACHE_ENTRIES = 256
+
+
+def _prune(cache, now):
+    """Bound stale per-session and per-worktree probe state."""
+    changed = False
+    for key, row in list(cache.items()):
+        try:
+            stale = now - float(row.get("at", 0)) > MAX_CACHE_AGE_S
+        except (AttributeError, TypeError, ValueError):
+            stale = True
+        if stale:
+            del cache[key]
+            changed = True
+    if len(cache) > MAX_CACHE_ENTRIES:
+        oldest = sorted(
+            cache,
+            key=lambda key: float(cache[key].get("at", 0)),
+        )[: len(cache) - MAX_CACHE_ENTRIES]
+        for key in oldest:
+            del cache[key]
+        changed = True
+    return changed
+
+
+def _fresh(row, now, ttl):
+    try:
+        return isinstance(row, dict) and now - float(row.get("at", 0)) < ttl
+    except (TypeError, ValueError):
+        return False
 
 
 def probe(key, ttl, fn):
@@ -22,7 +53,7 @@ def probe(key, ttl, fn):
     now = time.time()
     cache = read_json(STATE, {})
     row = cache.get(key)
-    if row and now - row.get("at", 0) < ttl:
+    if _fresh(row, now, ttl):
         return row.get("val")
     try:
         val = fn()
@@ -30,10 +61,12 @@ def probe(key, ttl, fn):
         val = None
 
     def publish(current):
+        changed = _prune(current, now)
         existing = current.get(key)
-        if existing and now - existing.get("at", 0) < ttl:
-            return False, existing.get("val")
+        if _fresh(existing, now, ttl):
+            return changed, existing.get("val")
         current[key] = {"at": now, "val": val}
+        _prune(current, now)
         return True, val
 
     return update_json(STATE, {}, publish)

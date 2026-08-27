@@ -25,6 +25,11 @@ old one rather than rewriting why the earlier choice was made.
 | [0017](0017-install-as-a-python-tool.md) | Install as a Python tool |
 | [0018](0018-budget-hosted-ci.md) | Hosted CI budgeted around Actions billing |
 | [0019](0019-release-tags-are-immutable.md) | Release tags are immutable |
+| [0020](0020-own-only-managed-configuration.md) | Mutate only managed configuration |
+| [0021](0021-lock-and-privatize-runtime-state.md) | Lock and privatize runtime state |
+| [0022](0022-account-rolling-costs-with-timestamped-deltas.md) | Timestamped rolling-cost accounting |
+| [0023](0023-use-a-locked-local-quality-gate.md) | Locked local quality gate |
+| [0024](0024-scope-process-probes-by-session.md) | Session-scoped process probes |
 
 ## Reading order
 

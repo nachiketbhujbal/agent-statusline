@@ -447,7 +447,11 @@ def main():
     rows["TIMING"] = row("TIMING", r6)
 
     # ---------- row 7: machine pressure ----------
-    procs = pr.probe("procs", 8, pr.processes) or {}
+    # Process results contain both machine-wide totals and this session's PID/RSS.
+    # Qualifying the cache key prevents one concurrent session from receiving
+    # another session's identity and footprint during the probe TTL.
+    process_scope = d.get("session_id") or f"parent:{os.getppid()}"
+    procs = pr.probe(f"procs:{process_scope}", 8, pr.processes) or {}
     mem = pr.probe("mem", 8, pr.memory) or {}
     dsk = pr.probe(f"disk:{cwd}", 30, lambda c=cwd: pr.disk(c)) or {}
     # Ordered so the two figures people compare -- this session's footprint and
