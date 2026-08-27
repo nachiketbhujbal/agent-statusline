@@ -2,6 +2,7 @@
 import io
 import json
 import os
+import shlex
 
 import pytest
 
@@ -64,9 +65,15 @@ class TestInstallShape:
 
     def test_a_checkout_wires_through_the_symlink(self):
         status_cmd, hook_cmd, link = installer.commands()
-        assert status_cmd == "python3 ~/.claude/statusline/statusline.py"
+        assert status_cmd.endswith("/.claude/statusline/statusline.py")
         assert hook_cmd("session-end", "session_end").endswith("hooks/session_end.py")
         assert link and link.endswith("statusline")
+
+    def test_checkout_commands_honor_a_custom_config_directory(self, tmp_path):
+        status_cmd, hook_cmd, link = installer.commands(str(tmp_path))
+        assert str(tmp_path) in status_cmd
+        assert str(tmp_path) in hook_cmd("session-end", "session_end")
+        assert link == str(tmp_path / "statusline")
 
     def test_an_installed_package_wires_through_the_console_script(self, monkeypatch,
                                                                    tmp_path):
@@ -76,8 +83,10 @@ class TestInstallShape:
         monkeypatch.setattr(installer, "checkout_root", lambda: None)
         monkeypatch.setattr(installer, "console_script", lambda: str(exe))
         status_cmd, hook_cmd, link = installer.commands()
-        assert status_cmd == f'"{exe}"'
-        assert hook_cmd("session-end", "session_end") == f'"{exe}" hook session-end'
+        assert status_cmd == shlex.quote(str(exe))
+        assert hook_cmd("session-end", "session_end") == (
+            f"{shlex.quote(str(exe))} hook session-end"
+        )
         assert link is None, "an installed package must not symlink anything"
 
     def test_installed_with_no_executable_is_fatal(self, monkeypatch):
@@ -103,6 +112,41 @@ class TestSettings:
         assert out["statusLine"]["command"]
         assert "SessionEnd" in out["hooks"]
 
+    def test_install_preserves_unrelated_hooks_in_managed_events(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
+        monkeypatch.setattr(installer, "native_timestamps", lambda: False)
+        cfg = tmp_path / "settings.json"
+        cfg.write_text(json.dumps({
+            "hooks": {
+                "SessionEnd": [{"hooks": [{"type": "command", "command": "keep-end"}]}],
+                "UserPromptSubmit": [
+                    {"matcher": "x", "hooks": [{"type": "command", "command": "keep-submit"}]}
+                ],
+                "Stop": [{"hooks": [{"type": "command", "command": "keep-stop"}]}],
+                "PreToolUse": [{"hooks": [{"type": "command", "command": "keep-pre"}]}],
+            }
+        }))
+        installer.write_settings(str(tmp_path), dry=False)
+        out = json.loads(cfg.read_text())
+        commands = {
+            event: [hook["command"] for group in groups for hook in group["hooks"]]
+            for event, groups in out["hooks"].items()
+        }
+        assert "keep-end" in commands["SessionEnd"]
+        assert "keep-submit" in commands["UserPromptSubmit"]
+        assert "keep-stop" in commands["Stop"]
+        assert commands["PreToolUse"] == ["keep-pre"]
+
+    def test_malformed_existing_settings_fail_closed(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
+        cfg = tmp_path / "settings.json"
+        original = b"{ malformed but valuable settings"
+        cfg.write_bytes(original)
+        with pytest.raises(SystemExit):
+            installer.write_settings(str(tmp_path), dry=False)
+        assert cfg.read_bytes() == original
+        assert not list(tmp_path.glob("settings.json.bak.*"))
+
     def test_install_backs_the_file_up_first(self, tmp_path, monkeypatch):
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
         (tmp_path / "settings.json").write_text(json.dumps({"theme": "dark"}))
@@ -111,13 +155,34 @@ class TestSettings:
 
     def test_uninstall_removes_only_what_it_added(self, tmp_path, monkeypatch):
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
+        monkeypatch.setattr(installer, "native_timestamps", lambda: False)
         cfg = tmp_path / "settings.json"
-        cfg.write_text(json.dumps({"theme": "dark"}))
+        cfg.write_text(json.dumps({
+            "theme": "dark",
+            "hooks": {
+                "SessionEnd": [{"hooks": [{"type": "command", "command": "keep-end"}]}],
+                "Stop": [{"hooks": [{"type": "command", "command": "keep-stop"}]}],
+            },
+        }))
         installer.write_settings(str(tmp_path), dry=False)
         installer.write_settings(str(tmp_path), dry=False, remove=True)
         out = json.loads(cfg.read_text())
         assert out["theme"] == "dark"
-        assert "statusLine" not in out and "hooks" not in out
+        assert "statusLine" not in out
+        commands = {
+            event: [hook["command"] for group in groups for hook in group["hooks"]]
+            for event, groups in out["hooks"].items()
+        }
+        assert commands == {"SessionEnd": ["keep-end"], "Stop": ["keep-stop"]}
+
+    def test_uninstall_preserves_a_replaced_status_line(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
+        cfg = tmp_path / "settings.json"
+        cfg.write_text(json.dumps({
+            "statusLine": {"type": "command", "command": "some-other-statusline"}
+        }))
+        installer.write_settings(str(tmp_path), dry=False, remove=True)
+        assert json.loads(cfg.read_text())["statusLine"]["command"] == "some-other-statusline"
 
     def test_reinstalling_does_not_duplicate_hooks(self, tmp_path, monkeypatch):
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
