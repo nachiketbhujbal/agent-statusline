@@ -28,12 +28,10 @@ Implemented on the active branch:
 - Session-scoped process metrics for concurrent hosts.
 - A locked uv, pre-commit, formatting, lint, typing, coverage, and build gate.
 - Tracked project instructions, handoff, review ledger, roadmap, and research.
+- Terminal-cell-aware Unicode fitting and control-sequence sanitization.
 
 Required before release:
 
-- Make terminal fitting use display-cell width for wide and combining Unicode.
-- Sanitize untrusted control characters without stripping intentional SGR
-  styling.
 - Add a realistic synthetic end-to-end renderer fixture (D3).
 - Add a self-test and privacy-safe last-error breadcrumb (D4).
 - Reconcile README, fields, internals, and porting documentation with current

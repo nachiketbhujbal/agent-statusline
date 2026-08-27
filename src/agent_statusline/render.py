@@ -6,6 +6,7 @@ layer any host can reuse (see docs/PORTING.md).
 
 import re
 import shutil
+import unicodedata
 
 R = "\033[0m"
 D = "\033[2m"
@@ -26,6 +27,36 @@ MAXLINES = 2
 FALLBACK_WIDTH = 120
 
 ANSI = re.compile(r"\033\[[0-9;]*m")
+ESCAPE = re.compile(r"\033(?:\[[0-?]*[ -/]*[@-~]|[^\033]?)")
+
+
+def sanitize(s):
+    """Remove terminal controls while preserving our intentional SGR styles."""
+    s = str(s)
+    out = []
+    i = 0
+    while i < len(s):
+        sgr = ANSI.match(s, i)
+        if sgr:
+            out.append(sgr.group())
+            i = sgr.end()
+            continue
+        if s[i] == "\033":
+            control = ESCAPE.match(s, i)
+            i = control.end() if control else i + 1
+            continue
+        if unicodedata.category(s[i]).startswith("C"):
+            i += 1
+            continue
+        out.append(s[i])
+        i += 1
+    return "".join(out)
+
+
+def _cell_width(char):
+    if unicodedata.combining(char):
+        return 0
+    return 2 if unicodedata.east_asian_width(char) in ("W", "F") else 1
 
 
 def vis(s):
@@ -35,7 +66,7 @@ def vis(s):
     budget -- measuring len(s) directly makes every coloured row look roughly
     twice as wide as it is and truncates almost everything.
     """
-    return len(ANSI.sub("", s))
+    return sum(_cell_width(char) for char in ANSI.sub("", sanitize(s)))
 
 
 def width():
@@ -61,18 +92,24 @@ def clip(s, budget):
     counted, and a reset is appended so a cut inside a coloured run cannot leak
     its colour into the rest of the line.
     """
-    if budget <= 0 or vis(s) <= budget:
+    s = sanitize(s)
+    if budget <= 0:
+        return ""
+    if vis(s) <= budget:
         return s
     out, seen, i = [], 0, 0
-    keep = max(1, budget - 1)  # leave a column for the ellipsis
-    while i < len(s) and seen < keep:
+    keep = max(0, budget - 1)  # leave a column for the ellipsis
+    while i < len(s):
         m = ANSI.match(s, i)
         if m:
             out.append(m.group())
             i = m.end()
             continue
+        cells = _cell_width(s[i])
+        if seen + cells > keep:
+            break
         out.append(s[i])
-        seen += 1
+        seen += cells
         i += 1
     return "".join(out) + f"{R}{D}…{R}"
 
@@ -110,8 +147,9 @@ def row(label, segs, sep=None, maxlines=MAXLINES):
     the content genuinely does not fit the current terminal. Continuation lines
     are indented under the label so the row still reads as one block.
     """
-    sep = f" {D}│{R} " if sep is None else sep
-    segs = [s for s in segs if s]
+    sep = sanitize(f" {D}│{R} " if sep is None else sep)
+    label = sanitize(label)
+    segs = [sanitize(s) for s in segs if s]
     if not segs:
         return ""
     budget = width() - LABEL - 2
@@ -122,7 +160,11 @@ def row(label, segs, sep=None, maxlines=MAXLINES):
         for i, ln in enumerate(lines)
     ]
     if dropped:
-        out[-1] += f" {D}…{R}"
+        marker = f" {D}…{R}"
+        available = max(0, width() - vis(marker))
+        if vis(out[-1]) > available:
+            out[-1] = clip(out[-1], available)
+        out[-1] += marker
     return "\n".join(out)
 
 

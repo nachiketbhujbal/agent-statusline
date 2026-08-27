@@ -71,9 +71,12 @@ would trade "lose the least important segment of a row" for "lose the `TIMING` r
 entirely". Two lines is the compromise: enough to keep almost everything at realistic
 widths, bounded enough that ten rows cannot silently become twenty.
 
-Because colour escapes must not count toward the budget, `vis()` measures printable width
-by stripping ANSI first. Measuring `len()` directly makes every coloured row look roughly
-twice as wide as it is.
+Because colour escapes must not count toward the budget, `vis()` preserves only
+intentional SGR styling and measures printable terminal cells. Combining marks
+occupy zero cells, wide/full-width characters occupy two, and other printable
+characters occupy one. Row inputs are sanitized before fitting: non-SGR escapes
+and Unicode control/format characters are removed so payload text cannot inject
+physical lines, cursor commands, or bidirectional overrides.
 
 **Ordering segments is a design decision, not an implementation detail** — the last
 segment in the list is the first thing a narrow terminal loses.

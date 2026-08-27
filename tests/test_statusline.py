@@ -42,7 +42,7 @@ class TestWidth:
     @pytest.mark.parametrize("cols", [240, 200, 160, 120, 100, 80, 60, 40])
     def test_no_line_ever_exceeds_the_terminal(self, payload, monkeypatch, capsys, cols):
         lines = draw(payload, monkeypatch, capsys, cols=cols)
-        assert max(len(ANSI.sub("", ln)) for ln in lines) <= cols
+        assert max(render.vis(ln) for ln in lines) <= cols
 
     def test_narrow_terminals_wrap_rather_than_lose_rows(self, payload, monkeypatch, capsys):
         wide = labels(draw(payload, monkeypatch, capsys, cols=240))

@@ -26,6 +26,18 @@ class TestVis:
     def test_plain_text_is_its_own_length(self):
         assert render.vis("abcde") == 5
 
+    def test_counts_wide_and_combining_unicode_as_terminal_cells(self):
+        assert render.vis("A界e\u0301") == 4
+
+    def test_strips_controls_but_preserves_sgr(self):
+        text = f"{render.RED}safe\n\033[2J\u202edanger{render.R}"
+        cleaned = render.sanitize(text)
+        assert render.RED in cleaned
+        assert render.R in cleaned
+        assert "\n" not in cleaned
+        assert "\033[2J" not in cleaned
+        assert "\u202e" not in cleaned
+
 
 class TestRow:
     def test_fitting_content_stays_on_one_line(self, wide):
@@ -67,6 +79,16 @@ class TestRow:
         out = render.row("TEST", ["x" * 100])
         assert render.vis(out) <= 40
         assert "x" in out
+
+    def test_untrusted_segment_cannot_inject_a_line_or_terminal_command(self, wide):
+        out = render.row("TEST\nFAKE", ["safe\r\nFAKE\033[2J\u202evalue"])
+        assert len(out.splitlines()) == 1
+        assert "\033[2J" not in out
+        assert "\u202e" not in out
+
+    def test_wide_characters_never_exceed_the_cell_budget(self, narrow):
+        out = render.row("TEST", ["界" * 100])
+        assert max(widths(out)) <= 40
 
 
 class TestPack:
@@ -138,6 +160,9 @@ class TestClip:
 
     def test_truncates_to_the_budget(self):
         assert render.vis(render.clip("x" * 100, 20)) == 20
+
+    def test_never_splits_a_wide_character_across_the_budget(self):
+        assert render.vis(render.clip("界" * 20, 10)) <= 10
 
     def test_preserves_colour_escapes_while_counting_only_text(self):
         clipped = render.clip(f"{render.RED}{'x' * 50}{render.R}", 10)

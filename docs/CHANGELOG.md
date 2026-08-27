@@ -17,6 +17,8 @@ This project follows semantic versioning. Versions come from immutable Git tags.
   scan to normal redraws.
 - Establish tracked roadmap, research, and one-owner/one-reviewer coordination
   records.
+- Measure width in terminal cells and remove untrusted control sequences while
+  preserving intentional colour styling.
 
 ## 0.2.0
 

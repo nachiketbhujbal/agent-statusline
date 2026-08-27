@@ -5,8 +5,8 @@
 - `main` is released as `v0.2.0`.
 - The active `v0.3.0` hardening work is owned by the
   `codex/hardening/v0.3.0-production-readiness` branch.
-- The branch is pushed and tracks its namesake remote at `d991b04`; no pull
-  request is open and no hosted run was triggered by the branch push.
+- The branch is pushed and tracks its namesake remote; no pull request is open
+  and branch pushes have triggered no hosted run.
 - Hosted GitHub Actions workflows are administratively disabled while the
   private-account allowance is unavailable. Use the complete locked local gate;
   do not interpret absent hosted checks as evidence.
@@ -44,10 +44,11 @@ Completed on the branch:
 - Locked uv, pre-commit, Ruff, Black, mypy, coverage, and build tooling.
 - Session-scoped process probes plus bounded probe, transcript, and rate-limit
   observation state under ADRs 0024 and 0025.
+- Terminal-cell-aware Unicode fitting and untrusted-control sanitization under
+  ADR 0027.
 
 Still required before the pull request is merge-ready:
 
-- Finish rendering safety for terminal cell width and control characters.
 - Reconcile README and field documentation with the actual Python boundary,
   test gate, installer semantics, and cost migration.
 - Replace moving workflow action tags and decide the post-allowance hosted or
