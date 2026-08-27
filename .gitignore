@@ -20,6 +20,10 @@ dist/
 *.egg-info/
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
 .venv/
 
 # Private session handoff and local Claude project state. Kept out of Git on
