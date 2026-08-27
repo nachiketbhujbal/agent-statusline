@@ -50,7 +50,10 @@ Completed on the branch:
 Still required before the pull request is merge-ready:
 
 - Reconcile README and field documentation with the actual Python boundary,
-  test gate, installer semantics, and cost migration.
+  test gate, installer semantics, cost migration, and the current one-line →
+  two-line wrap → remaining-segment truncation model. The introductory README
+  wording already describes that model; sweep the whole file for stale or
+  contradictory remnants.
 - Replace moving workflow action tags and decide the post-allowance hosted or
   self-hosted trigger policy without enabling a run now.
 - Complete the review ledger, privacy sweep, wheel/sdist inspection, installed-
@@ -61,6 +64,14 @@ Still required before the pull request is merge-ready:
 Follow the release-equivalent gate in `AGENTS.md`. Preview the renderer only
 with a disposable `AGENT_STATUSLINE_STATE`; never replay a saved payload against
 the live ledger.
+
+## Exact resume point
+
+Continue 0.3.0 with D3 and D4 as the next bounded implementation: a committed
+realistic synthetic render fixture, then a self-test and privacy-safe last-error
+breadcrumb. After those, complete the documentation reconciliation above and
+immutable workflow-action pinning. Do not begin 0.3.1 performance work until
+0.3.0 passes its full local gate, independent review, and hosted CI.
 
 ## Cross-assistant coordination
 

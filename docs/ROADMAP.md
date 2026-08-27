@@ -35,7 +35,9 @@ Required before release:
 - Add a realistic synthetic end-to-end renderer fixture (D3).
 - Add a self-test and privacy-safe last-error breadcrumb (D4).
 - Reconcile README, fields, internals, and porting documentation with current
-  package behavior and Python support.
+  package behavior and Python support. Confirm the documented width model is
+  one line when possible, wrap to at most two lines, then drop/truncate the
+  remaining low-priority segments; remove any older contradictory wording.
 - Pin workflow actions immutably and prove the cost-controlled workflow after
   hosted execution becomes available; do not merge the safety branch without
   green CI.
