@@ -21,3 +21,8 @@ dist/
 .pytest_cache/
 .ruff_cache/
 .venv/
+
+# Private session handoff and local Claude project state. Kept out of Git on
+# purpose: it records account details, spend figures and session history that
+# must not enter a repository that may become public.
+.claude/
