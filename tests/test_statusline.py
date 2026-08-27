@@ -63,6 +63,17 @@ class TestContent:
         out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
         assert "$1.25" in out, "cost must be passed through, never recomputed"
 
+    def test_new_rolling_cost_history_is_marked_as_a_lower_bound(
+        self, payload, monkeypatch, capsys
+    ):
+        from agent_statusline import ledger
+
+        ledger.save({"sessions": {}})
+        out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
+        assert "24h ≥$1.25" in out
+        assert "7d ≥$1.25" in out
+        assert "30d ≥$1.25" in out
+
     def test_permission_mode_uses_claude_codes_own_colours(self):
         assert statusline.MODES["auto"][0] == render.YEL
         assert statusline.MODES["plan"][0] == render.CYN

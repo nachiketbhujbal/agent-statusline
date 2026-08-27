@@ -76,7 +76,7 @@ def ledger_update(sid,cost,project,name,root=None,pid=None):
     # goes through ledger.epoch so legacy numeric rows still sort correctly.
     def mutate(data):
         s=data["sessions"]; now=time.time(); stamp=ledger.iso(now); prev=s.get(sid,{})
-        session_cost=prev.get("cost",0.0); changed=False
+        previous_cost=float(prev.get("cost",0.0)); session_cost=previous_cost; changed=False
         if cost is not None:
             entry={**prev,"updated":stamp,"state":"live",
                    "started":prev.get("started",stamp),"project":project,"name":name,
@@ -87,11 +87,10 @@ def ledger_update(sid,cost,project,name,root=None,pid=None):
             s[sid]=entry
             changed=(abs(prev.get("cost",-1)-session_cost)>1e-9
                      or prev.get("state")!="live")
+            changed=(ledger.record_cost_delta(data,sid,previous_cost,session_cost,now)
+                     or changed)
         rows=sorted(s.values(),key=lambda r:ledger.epoch(r.get("updated")),reverse=True)
-        def since(days):
-            cut=now-days*86400
-            return sum(r.get("cost",0) for r in rows
-                       if ledger.epoch(r.get("updated"))>=cut)
+        rolling=ledger.rolling_costs(data,now)
         # A row counts as a real session only if it produced something: a cost, or a
         # readable transcript (its conversation root).
         real=[r for r in rows if r.get("cost",0)>0 or r.get("root")]
@@ -99,7 +98,7 @@ def ledger_update(sid,cost,project,name,root=None,pid=None):
         result={"all":sum(r.get("cost",0) for r in rows),"n":len(real),
                 "convos":len(convos),"forks":max(0,len(real)-len(convos)),
                 "last5":sum(r.get("cost",0) for r in rows[:5]),
-                "d1":since(1),"d7":since(7),"d30":since(30),
+                **rolling,
                 "session":session_cost,"base":s.get(sid,{}).get("cost_base",0.0),
                 "runs":s.get(sid,{}).get("runs",1)}
         return changed,result
@@ -375,8 +374,11 @@ def main():
                       f"{D}(run {R}{CYN}${usd:.2f}{R}{D} · {agg['runs']} runs){R}")
         else:
             p8.append(f"{CYN}${life:.2f}{R}{D} session{R}")
-    p8.append(f"{D}24h{R} ${agg['d1']:.2f} {D}·{R} {D}7d{R} ${agg['d7']:.2f} {D}·{R} "
-              f"{D}30d{R} ${agg['d30']:.2f}")
+    def rolling_amount(label,key):
+        marker="" if agg[key+"_complete"] else f"{YEL}≥{R}"
+        return f"{D}{label}{R} {marker}${agg[key]:.2f}"
+    p8.append(f"{rolling_amount('24h','d1')} {D}·{R} "
+              f"{rolling_amount('7d','d7')} {D}·{R} {rolling_amount('30d','d30')}")
     p8.append(f"{D}last5{R} ${agg['last5']:.2f} {D}·{R} {D}all{R} ${agg['all']:.2f} "
               f"{D}({agg['convos']} convo{'s' if agg['convos']!=1 else ''} · {agg['n']} sess"
               +(f" · {agg['forks']} fork{'s' if agg['forks']!=1 else ''}" if agg['forks'] else "")+f"){R}")

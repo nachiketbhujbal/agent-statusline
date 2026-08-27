@@ -91,3 +91,49 @@ class TestPersistence:
         assert row["state"] == "closed"
         assert row["cost"] == 0.0
         assert ledger.load()["sessions"]["new"]["state"] == "closed"
+
+
+class TestRollingCosts:
+    def test_legacy_ledger_starts_as_an_honest_lower_bound(self):
+        data = {"sessions": {"old": {"cost": 50.0}}}
+        assert ledger.record_cost_delta(data, "old", 50.0, 50.0, when=1_800_000_000)
+        rolling = ledger.rolling_costs(data, when=1_800_000_001)
+        assert rolling["d1"] == 0.0
+        assert not rolling["d1_complete"]
+        assert not rolling["d7_complete"]
+        assert not rolling["d30_complete"]
+
+    def test_positive_deltas_land_in_the_applicable_windows(self):
+        now = 1_800_000_000
+        data = {
+            "cost_event_schema": ledger.COST_EVENT_SCHEMA,
+            "cost_tracking_started": ledger.iso(now - 40 * 86400),
+            "cost_events": [
+                {"at": ledger.iso(now - 12 * 3600), "session": "a", "amount": 1.0},
+                {"at": ledger.iso(now - 3 * 86400), "session": "b", "amount": 2.0},
+                {"at": ledger.iso(now - 20 * 86400), "session": "c", "amount": 4.0},
+            ],
+        }
+        rolling = ledger.rolling_costs(data, when=now)
+        assert rolling["d1"] == 1.0
+        assert rolling["d7"] == 3.0
+        assert rolling["d30"] == 7.0
+        assert rolling["d1_complete"]
+        assert rolling["d7_complete"]
+        assert rolling["d30_complete"]
+
+    def test_zero_or_replayed_cost_does_not_create_an_event(self):
+        data = {}
+        ledger.record_cost_delta(data, "a", 1.0, 1.0, when=1_800_000_000)
+        assert data["cost_events"] == []
+
+    def test_unknown_schema_never_claims_a_complete_window(self):
+        data = {
+            "cost_event_schema": 999,
+            "cost_tracking_started": ledger.iso(1_700_000_000),
+            "cost_events": [],
+        }
+        rolling = ledger.rolling_costs(data, when=1_800_000_000)
+        assert not any(rolling[key] for key in (
+            "d1_complete", "d7_complete", "d30_complete"
+        ))

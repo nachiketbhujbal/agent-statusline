@@ -115,6 +115,7 @@ that number, and it may be pinned rather than climbing. See
 | `$2.10 session` | ledger | **lifetime** cost of this session across every resume |
 | `(run $X · N runs)` | ledger | shown only after a resume: this run's own spend, and the run count |
 | `24h / 7d / 30d` | ledger | spend across all sessions in those windows |
+| `≥` before a rolling cost | ledger | tracking has not yet covered that complete horizon; the displayed value is a proven post-upgrade lower bound |
 | `last5 · all` | ledger | the five most recently updated rows, and everything |
 | `(5 convos · 6 sess · 1 fork)` | ledger | conversations, real sessions, forks |
 | `+174/-0 lines` | payload | lines added/removed this session |

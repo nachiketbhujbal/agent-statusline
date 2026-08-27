@@ -13,6 +13,7 @@ crash, lost daemon):
 """
 import argparse
 import datetime
+import math
 import os
 import sys
 
@@ -23,6 +24,9 @@ from agent_statusline.paths import state
 from agent_statusline.storage import read_json, update_json
 
 LEDGER = state("cost-ledger.json")
+COST_EVENT_SCHEMA = 1
+COST_EVENT_RETENTION_SECONDS = 30 * 86400
+COST_WINDOWS = {"d1": 86400, "d7": 7 * 86400, "d30": 30 * 86400}
 
 # Statuses written into a row's `reason`. Anything Claude Code reports via the
 # SessionEnd payload passes through as-is; these are the ones we write ourselves.
@@ -87,6 +91,63 @@ def apply_cost(row, payload_cost, pid=None):
     row["cost_run"] = payload_cost
     row["cost"] = base + payload_cost
     return row["cost"]
+
+
+def record_cost_delta(data, sid, previous_cost, current_cost, when=None):
+    """Record one positive observed cost delta in the versioned rolling ledger."""
+    now = datetime.datetime.now().astimezone().timestamp() if when is None else float(when)
+    changed = False
+    schema = data.get("cost_event_schema")
+    if schema is None:
+        data["cost_event_schema"] = COST_EVENT_SCHEMA
+        data["cost_tracking_started"] = iso(now)
+        data["cost_events"] = []
+        schema = COST_EVENT_SCHEMA
+        changed = True
+    if schema != COST_EVENT_SCHEMA or not isinstance(data.get("cost_events"), list):
+        return changed
+
+    events = data["cost_events"]
+    cutoff = now - COST_EVENT_RETENTION_SECONDS
+    valid_events = [event for event in events if _valid_cost_event(event)]
+    if len(valid_events) == len(events):
+        retained = [event for event in valid_events if epoch(event["at"]) >= cutoff]
+        if retained != events:
+            data["cost_events"] = events = retained
+            changed = True
+
+    delta = float(current_cost) - float(previous_cost)
+    if math.isfinite(delta) and delta > 1e-9:
+        events.append({"at": iso(now), "session": sid, "amount": delta})
+        changed = True
+    return changed
+
+
+def rolling_costs(data, when=None):
+    """Return rolling sums plus completeness for every displayed horizon."""
+    now = datetime.datetime.now().astimezone().timestamp() if when is None else float(when)
+    result = {}
+    schema_ok = data.get("cost_event_schema") == COST_EVENT_SCHEMA
+    events = data.get("cost_events")
+    events_ok = isinstance(events, list) and all(_valid_cost_event(event) for event in events)
+    started = epoch(data.get("cost_tracking_started"))
+    for key, seconds in COST_WINDOWS.items():
+        cutoff = now - seconds
+        amount = 0.0
+        if events_ok:
+            amount = sum(float(event["amount"]) for event in events if epoch(event["at"]) >= cutoff)
+        result[key] = amount
+        result[key + "_complete"] = bool(schema_ok and events_ok and started and started <= cutoff)
+    return result
+
+
+def _valid_cost_event(event):
+    if not isinstance(event, dict) or not isinstance(event.get("session"), str):
+        return False
+    if epoch(event.get("at")) <= 0:
+        return False
+    amount = event.get("amount")
+    return isinstance(amount, (int, float)) and math.isfinite(amount) and amount >= 0
 
 
 def iso(when=None):
