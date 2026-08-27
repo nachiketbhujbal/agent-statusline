@@ -13,7 +13,6 @@ crash, lost daemon):
 """
 import argparse
 import datetime
-import json
 import os
 import sys
 
@@ -21,6 +20,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 from agent_statusline.paths import state
+from agent_statusline.storage import read_json, update_json
 
 LEDGER = state("cost-ledger.json")
 
@@ -113,10 +113,8 @@ def epoch(value):
 
 
 def load():
-    try:
-        with open(LEDGER) as fh:
-            data = json.load(fh)
-    except Exception:
+    data = read_json(LEDGER, {})
+    if not isinstance(data, dict):
         data = {}
     data.setdefault("sessions", {})
     return data
@@ -124,26 +122,43 @@ def load():
 
 def save(data):
     """Atomic temp+rename, pretty-printed so the file stays readable by hand."""
-    tmp = LEDGER + ".tmp"
-    with open(tmp, "w") as fh:
-        json.dump(data, fh, indent=2)
-        fh.write("\n")
-    os.replace(tmp, LEDGER)
+    def replace(current):
+        current.clear()
+        current.update(data)
+        current.setdefault("sessions", {})
+        return True, None
+
+    update_json(LEDGER, {}, replace)
 
 
-def close_session(sid, reason="end", transcript=None, when=None):
+def update(updater):
+    """Run one locked ledger transaction."""
+    def normalized(data):
+        if not isinstance(data, dict):
+            data = {}
+        data.setdefault("sessions", {})
+        return updater(data)
+
+    return update_json(LEDGER, {}, normalized)
+
+
+def close_session(sid, reason="end", transcript=None, when=None, create=False):
     """Stamp a row closed. Returns the row, or None if the session is unknown."""
-    data = load()
-    row = data["sessions"].get(sid)
-    if row is None:
-        return None
-    row["state"] = "closed"
-    row["closed"] = iso(when)
-    row["reason"] = reason
-    if transcript:
-        row["transcript"] = transcript
-    save(data)
-    return row
+    def close(data):
+        row = data["sessions"].get(sid)
+        if row is None:
+            if not create:
+                return False, None
+            row = {"cost": 0.0, "started": iso(when)}
+            data["sessions"][sid] = row
+        row["state"] = "closed"
+        row["closed"] = iso(when)
+        row["reason"] = reason
+        if transcript:
+            row["transcript"] = transcript
+        return True, dict(row)
+
+    return update(close)
 
 
 def _main():

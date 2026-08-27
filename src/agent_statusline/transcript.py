@@ -14,6 +14,7 @@ import json
 import os
 
 from agent_statusline.paths import state
+from agent_statusline.storage import update_json
 
 TSTATE = state("statusline-transcript.json")
 
@@ -101,63 +102,55 @@ def transcript_totals(path):
     if not path or not os.path.exists(path): return z
     try: st=os.stat(path)
     except Exception: return z
-    state={}
-    try:
-        with open(TSTATE) as fh: state=json.load(fh)
-    except Exception: pass
-    row=state.get(path) or {}
-    if row.get("schema")!=SCHEMA: row={}
-    off=row.get("offset",0); tot=row.get("totals") or _blank()
-    for k,v in _blank().items(): tot.setdefault(k,v)
-    if st.st_size < off: off,tot=0,_blank()
-    if st.st_size == off: return tot
-    try:
-        with open(path,"rb") as fh:
-            fh.seek(off); chunk=fh.read(); newoff=fh.tell()
-    except Exception:
-        return tot
-    tail=b""
-    if not chunk.endswith(b"\n"):
-        cut=chunk.rfind(b"\n")
-        if cut==-1: return tot
-        tail=chunk[cut+1:]; chunk=chunk[:cut+1]; newoff-=len(tail)
-    for line in chunk.split(b"\n"):
-        if not line.strip(): continue
-        try: e=json.loads(line)
-        except Exception: continue
-        _absorb(tot,e)
-    prev=state.get(path) or {}
-    state[path]={"offset":newoff,"totals":tot,"schema":SCHEMA,"root":prev.get("root")}
-    try:
-        tmp=TSTATE+".tmp"
-        with open(tmp,"w") as fh: json.dump(state,fh)
-        os.replace(tmp,TSTATE)
-    except Exception: pass
-    return tot
+    def absorb_new(state):
+        if not isinstance(state,dict): state={}
+        row=state.get(path) or {}
+        if row.get("schema")!=SCHEMA: row={}
+        off=row.get("offset",0); tot=row.get("totals") or _blank()
+        for k,v in _blank().items(): tot.setdefault(k,v)
+        if st.st_size < off: off,tot=0,_blank()
+        if st.st_size == off: return False,tot
+        try:
+            with open(path,"rb") as fh:
+                fh.seek(off); chunk=fh.read(); newoff=fh.tell()
+        except Exception:
+            return False,tot
+        if not chunk.endswith(b"\n"):
+            cut=chunk.rfind(b"\n")
+            if cut==-1: return False,tot
+            tail=chunk[cut+1:]; chunk=chunk[:cut+1]; newoff-=len(tail)
+        for line in chunk.split(b"\n"):
+            if not line.strip(): continue
+            try: e=json.loads(line)
+            except Exception: continue
+            _absorb(tot,e)
+        prev=state.get(path) or {}
+        state[path]={"offset":newoff,"totals":tot,"schema":SCHEMA,
+                     "root":prev.get("root")}
+        return True,tot
+
+    return update_json(TSTATE,{},absorb_new)
 
 def conversation_root(path):
     """First user message uuid -- identical across forks of one conversation."""
     if not path or not os.path.exists(path): return None
-    try:
-        with open(TSTATE) as fh: st=json.load(fh)
-    except Exception: st={}
-    row=st.get(path) or {}
-    if row.get("root"): return row["root"]
-    root=None
-    try:
-        with open(path) as fh:
-            for i,line in enumerate(fh):
-                if i>400: break
-                try: e=json.loads(line)
-                except Exception: continue
-                if e.get("type")=="user" and e.get("uuid"):
-                    root=e["uuid"]; break
-    except Exception: return None
-    if root:
-        row["root"]=root; st[path]=row
+    def discover(st):
+        if not isinstance(st,dict): st={}
+        row=st.get(path) or {}
+        if row.get("root"): return False,row["root"]
+        root=None
         try:
-            tmp=TSTATE+".tmp"
-            with open(tmp,"w") as fh: json.dump(st,fh)
-            os.replace(tmp,TSTATE)
-        except Exception: pass
-    return root
+            with open(path) as fh:
+                for i,line in enumerate(fh):
+                    if i>400: break
+                    try: e=json.loads(line)
+                    except Exception: continue
+                    if e.get("type")=="user" and e.get("uuid"):
+                        root=e["uuid"]; break
+        except Exception: return False,None
+        if root:
+            row["root"]=root; st[path]=row
+            return True,root
+        return False,None
+
+    return update_json(TSTATE,{},discover)

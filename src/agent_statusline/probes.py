@@ -12,6 +12,7 @@ import subprocess
 import time
 
 from agent_statusline.paths import state
+from agent_statusline.storage import read_json, update_json
 
 STATE = state("statusline-probe-cache.json")
 
@@ -19,11 +20,7 @@ STATE = state("statusline-probe-cache.json")
 def probe(key, ttl, fn):
     """Run fn() at most once per ttl seconds, persisting the result across renders."""
     now = time.time()
-    try:
-        with open(STATE) as fh:
-            cache = json.load(fh)
-    except Exception:
-        cache = {}
+    cache = read_json(STATE, {})
     row = cache.get(key)
     if row and now - row.get("at", 0) < ttl:
         return row.get("val")
@@ -31,15 +28,14 @@ def probe(key, ttl, fn):
         val = fn()
     except Exception:
         val = None
-    cache[key] = {"at": now, "val": val}
-    try:
-        tmp = STATE + ".tmp"
-        with open(tmp, "w") as fh:
-            json.dump(cache, fh)
-        os.replace(tmp, STATE)
-    except Exception:
-        pass
-    return val
+    def publish(current):
+        existing = current.get(key)
+        if existing and now - existing.get("at", 0) < ttl:
+            return False, existing.get("val")
+        current[key] = {"at": now, "val": val}
+        return True, val
+
+    return update_json(STATE, {}, publish)
 
 
 def _run(*args, timeout=1.0):

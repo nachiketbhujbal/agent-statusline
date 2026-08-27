@@ -26,16 +26,11 @@ def main():
     sid = payload.get("session_id")
     if sid:
         try:
-            # close_session only touches a row that exists; make sure one does, so a
-            # session that ended before its first status-line render still gets sealed.
-            data = ledger.load()
-            if sid not in data["sessions"]:
-                data["sessions"][sid] = {"cost": 0.0, "started": ledger.iso()}
-                ledger.save(data)
             ledger.close_session(
                 sid,
                 payload.get("reason") or payload.get("source") or "end",
                 transcript=payload.get("transcript_path"),
+                create=True,
             )
         except Exception:
             pass

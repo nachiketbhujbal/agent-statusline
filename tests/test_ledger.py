@@ -84,3 +84,10 @@ class TestPersistence:
     def test_closing_an_unknown_session_returns_none(self):
         ledger.save({"sessions": {}})
         assert ledger.close_session("nope") is None
+
+    def test_session_end_can_create_and_close_an_unseen_session_atomically(self):
+        ledger.save({"sessions": {}})
+        row = ledger.close_session("new", reason="end", create=True)
+        assert row["state"] == "closed"
+        assert row["cost"] == 0.0
+        assert ledger.load()["sessions"]["new"]["state"] == "closed"

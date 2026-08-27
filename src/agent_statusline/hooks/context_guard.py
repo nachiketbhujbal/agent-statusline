@@ -15,14 +15,15 @@ if __package__ in (None, ""):  # running as a plain script
         os.path.realpath(__file__)))))
 
 from agent_statusline.paths import state
+from agent_statusline.storage import read_json, write_text
 
 WARN, CRIT = 80, 90
 
 
 def window_size():
     try:
-        with open(state("statusline-last-payload.json")) as fh:
-            return int(json.load(fh)["context_window"]["context_window_size"])
+        payload = read_json(state("statusline-last-payload.json"), {})
+        return int(payload["context_window"]["context_window_size"])
     except Exception:
         return 1_000_000
 
@@ -58,10 +59,12 @@ def main():
         payload = {}
 
     try:
-        with open(state("hook-lastrun.json"), "w") as fh:
-            json.dump({"hook": "UserPromptSubmit", "at": time.time(),
-                       "iso": time.strftime("%Y-%m-%d %H:%M:%S"),
-                       "session": payload.get("session_id")}, fh)
+        write_text(
+            state("hook-lastrun.json"),
+            json.dumps({"hook": "UserPromptSubmit", "at": time.time(),
+                        "iso": time.strftime("%Y-%m-%d %H:%M:%S"),
+                        "session": payload.get("session_id")}),
+        )
     except Exception:
         pass
 

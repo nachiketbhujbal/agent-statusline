@@ -15,7 +15,7 @@ STATE_DIR = os.path.abspath(os.path.expanduser(
 def state(name):
     """Absolute path to a state file, creating the directory if needed."""
     try:
-        os.makedirs(STATE_DIR, exist_ok=True)
+        os.makedirs(STATE_DIR, mode=0o700, exist_ok=True)
     except Exception:
         pass
     return os.path.join(STATE_DIR, name)
