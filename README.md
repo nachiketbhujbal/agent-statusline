@@ -40,6 +40,8 @@ Rows are ordered by how often they answer a question worth asking — `PROJECT` 
 | [docs/adrs/](docs/adrs/README.md) | architecture decision records — one file per durable decision, with an index. **Read 0001, 0014 and 0004 before changing anything that touches money or dependencies** |
 | [docs/DEFERRED.md](docs/DEFERRED.md) | ideas considered and consciously not built |
 | [docs/PORTING.md](docs/PORTING.md) | adapting this to Codex or another agent, and why Codex cannot run it as-is |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | promoted release sequence and completion boundaries |
+| [docs/RESEARCH.md](docs/RESEARCH.md) | measured findings and open questions not yet promoted to implementation |
 
 ## Requirements
 

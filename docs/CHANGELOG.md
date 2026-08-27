@@ -15,6 +15,8 @@ This project follows semantic versioning. Versions come from immutable Git tags.
   cache state.
 - Bound transcript and rate-limit observation state without adding a full-file
   scan to normal redraws.
+- Establish tracked roadmap, research, and one-owner/one-reviewer coordination
+  records.
 
 ## 0.2.0
 

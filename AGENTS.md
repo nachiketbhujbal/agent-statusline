@@ -62,6 +62,12 @@ tags through hatch-vcs; never duplicate a version string in source.
 - Use concise one-line commits. Open a pull request, obtain adversarial review,
   merge only after approval, and create an immutable annotated release tag only
   from the verified merge commit.
+- Give each release one branch owner and one independent reviewer. Codex owns
+  `codex/*`; Claude owns `claude/*`. Reviewers report findings and never commit
+  to or check out the owner's worktree; the owner applies corrections.
+- Use `git --no-optional-locks` for read-only inspection of an active worktree
+  where possible. Run `uv sync --locked` per worktree, but install pre-commit
+  only once from the primary clone because linked worktrees share `.git/hooks`.
 
 ## Release-equivalent local gate
 

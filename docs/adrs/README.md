@@ -31,6 +31,7 @@ old one rather than rewriting why the earlier choice was made.
 | [0023](0023-use-a-locked-local-quality-gate.md) | Locked local quality gate |
 | [0024](0024-scope-process-probes-by-session.md) | Session-scoped process probes |
 | [0025](0025-bound-ephemeral-observation-state.md) | Bounded ephemeral observation state |
+| [0026](0026-coordinate-one-owner-and-one-reviewer.md) | One owner and one reviewer per release |
 
 ## Reading order
 

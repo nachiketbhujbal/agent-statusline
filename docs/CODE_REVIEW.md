@@ -22,3 +22,4 @@ regression exist on the named release branch; release status remains separate.
 | RENDER-002 | Medium | Host and user-controlled labels were emitted without control-character sanitization. | 0.3.0 | Open |
 | DOC-001 | Low | README claims Python 3.8 while package metadata and installer require 3.9. | 0.3.0 | Open |
 | DOC-002 | Low | README hardcodes an obsolete test count. | 0.3.0 | Open |
+| DOC-003 | Medium | Roadmap, research, and cross-assistant state existed only in machine-local records. | 0.3.0 | Resolved by tracked planning records and ADR 0026 |

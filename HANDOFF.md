@@ -5,6 +5,8 @@
 - `main` is released as `v0.2.0`.
 - The active `v0.3.0` hardening work is owned by the
   `codex/hardening/v0.3.0-production-readiness` branch.
+- The branch is pushed and tracks its namesake remote at `d991b04`; no pull
+  request is open and no hosted run was triggered by the branch push.
 - Hosted GitHub Actions workflows are administratively disabled while the
   private-account allowance is unavailable. Use the complete locked local gate;
   do not interpret absent hosted checks as evidence.
@@ -26,6 +28,11 @@ the Claude Python renderer. `docs/PORTING.md` records the verified boundary and
 the recommended native-widget mapping.
 
 ## v0.3.0 work
+
+This ships as one minor release. The installer, accounting, cache, and
+concurrency changes share the production-hardening purpose, and the storage
+service is their common safety dependency. Performance work begins in 0.3.1;
+host-boundary architecture begins in 0.3.2.
 
 Completed on the branch:
 
@@ -53,3 +60,10 @@ Still required before the pull request is merge-ready:
 Follow the release-equivalent gate in `AGENTS.md`. Preview the renderer only
 with a disposable `AGENT_STATUSLINE_STATE`; never replay a saved payload against
 the live ledger.
+
+## Cross-assistant coordination
+
+ADR 0026 governs concurrent work: one branch owner applies changes and one
+independent reviewer reports findings. `AGENTS.md` is authoritative;
+`HANDOFF.md` is the tracked current-state record. Private assistant notes are
+supporting context, not a competing source of project truth.
