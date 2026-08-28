@@ -18,12 +18,18 @@ Installation and removal now mutate only configuration this package owns
 - Preserve a `statusLine` entry or a `~/.claude/statusline` symlink whose
   ownership cannot be proven, rather than removing it on uninstall.
 - Publish `settings.json` through a symlink instead of replacing it, and take
-  the file mode from the resolved target. A configuration directory that
-  symlinks into a dotfiles checkout keeps its indirection, and settings are no
-  longer widened to the symlink's own permissions.
-- Validate existing settings before any mutation, so a refused install leaves no
-  checkout symlink and no backup behind — failing closed now means nothing
-  changed at all.
+  the file mode from the resolved target, so a link inside the configuration
+  directory keeps its indirection and settings are no longer widened to the
+  symlink's own permissions. A link resolving outside the configuration
+  directory is refused, with the resolved path named, rather than followed.
+- Decide ownership by the exact commands this installer writes into the
+  configuration directory. A third-party status line or hook whose files happen
+  to live in a directory named `statusline` is no longer claimed, and is no
+  longer removed on uninstall.
+- Validate existing settings before any mutation on both the install and the
+  uninstall path, so a refusal leaves no checkout symlink, no backup, and no
+  replacement behind. (`--dry-run` still creates the configuration directory
+  itself; that is pre-existing and unchanged by this release.)
 - Back a valid existing settings file up before any applied mutation, publish
   atomically, and leave no temporary file behind if publication fails.
 - Keep reinstallation idempotent: repeated installs never accumulate duplicate
