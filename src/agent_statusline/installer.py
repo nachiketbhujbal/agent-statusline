@@ -187,10 +187,21 @@ def _load_settings(path):
 
 
 def _write_json_atomic(path, cfg):
-    directory = os.path.dirname(path)
+    """Publish settings atomically, through a symlink rather than over it.
+
+    A settings path is legitimately a symlink when someone keeps their Claude
+    configuration in a dotfiles checkout. Replacing the link with a regular file
+    would silently orphan the real file -- Claude Code would read the new one
+    while the user kept editing the old -- so resolve it and publish to the
+    target. The mode comes from the resolved file for the same reason: a
+    symlink's own bits are 0o777 on most systems, and copying those onto real
+    settings would widen them to world-readable.
+    """
+    target = os.path.realpath(path)
+    directory = os.path.dirname(target)
     mode = 0o600
     try:
-        mode = stat.S_IMODE(os.stat(path, follow_symlinks=False).st_mode)
+        mode = stat.S_IMODE(os.stat(target).st_mode)
     except FileNotFoundError:
         pass
     fd, tmp = tempfile.mkstemp(prefix=".settings.json.", dir=directory, text=True)
@@ -201,7 +212,7 @@ def _write_json_atomic(path, cfg):
             fh.write("\n")
             fh.flush()
             os.fsync(fh.fileno())
-        os.replace(tmp, path)
+        os.replace(tmp, target)
         try:
             dfd = os.open(directory, os.O_RDONLY)
             try:

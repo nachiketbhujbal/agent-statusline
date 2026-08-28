@@ -3,6 +3,7 @@ import io
 import json
 import os
 import shlex
+import stat
 
 import pytest
 
@@ -191,3 +192,132 @@ class TestSettings:
         out = json.loads((tmp_path / "settings.json").read_text())
         total = sum(len(g["hooks"]) for v in out["hooks"].values() for g in v)
         assert total == len(installer.HOOKS) + len(installer.STOPGAP_HOOKS)
+
+    def test_settings_symlink_is_published_through_not_replaced(self, tmp_path, monkeypatch):
+        """A dotfiles checkout symlinked into ~/.claude must survive an install."""
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
+        dotfiles = tmp_path / "dotfiles"
+        dotfiles.mkdir()
+        real = dotfiles / "settings.json"
+        real.write_text(json.dumps({"theme": "dark"}))
+        real.chmod(0o600)
+        link = tmp_path / "settings.json"
+        link.symlink_to(real)
+
+        installer.write_settings(str(tmp_path), dry=False)
+
+        assert link.is_symlink(), "the user's indirection must be preserved"
+        assert os.path.realpath(link) == str(real)
+        out = json.loads(real.read_text())
+        assert out["theme"] == "dark", "the real file must receive the update"
+        assert out["statusLine"]["command"]
+
+    def test_settings_symlink_does_not_widen_permissions(self, tmp_path, monkeypatch):
+        """A symlink's own 0o777 bits must never become the settings file's mode."""
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
+        dotfiles = tmp_path / "dotfiles"
+        dotfiles.mkdir()
+        real = dotfiles / "settings.json"
+        real.write_text(json.dumps({"theme": "dark"}))
+        real.chmod(0o600)
+        (tmp_path / "settings.json").symlink_to(real)
+
+        installer.write_settings(str(tmp_path), dry=False)
+
+        assert stat.S_IMODE(real.stat().st_mode) == 0o600
+
+    def test_existing_settings_keep_their_mode_and_new_ones_are_private(
+        self, tmp_path, monkeypatch
+    ):
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
+        installer.write_settings(str(tmp_path), dry=False)
+        created = tmp_path / "settings.json"
+        assert stat.S_IMODE(created.stat().st_mode) == 0o600
+
+        created.chmod(0o640)
+        installer.write_settings(str(tmp_path), dry=False)
+        assert stat.S_IMODE(created.stat().st_mode) == 0o640
+
+    def test_a_failed_publish_leaves_no_temp_file_and_preserves_bytes(
+        self, tmp_path, monkeypatch
+    ):
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
+        cfg = tmp_path / "settings.json"
+        cfg.write_text(json.dumps({"theme": "dark"}))
+        original = cfg.read_bytes()
+
+        def explode(*_args, **_kwargs):
+            raise OSError("disk full")
+
+        monkeypatch.setattr(installer.os, "replace", explode)
+        with pytest.raises(OSError, match="disk full"):
+            installer.write_settings(str(tmp_path), dry=False)
+
+        assert cfg.read_bytes() == original
+        assert not list(tmp_path.glob(".settings.json.*")), "no abandoned temp file"
+
+    def test_repeated_cycles_never_collide_on_a_backup_name(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
+        (tmp_path / "settings.json").write_text(json.dumps({"theme": "dark"}))
+        for _ in range(5):
+            installer.write_settings(str(tmp_path), dry=False)
+            installer.write_settings(str(tmp_path), dry=False, remove=True)
+        backups = list(tmp_path.glob("settings.json.bak.*"))
+        assert len(backups) == 10, "every cycle keeps its own backup"
+        assert len({b.name for b in backups}) == len(backups)
+
+    def test_a_configuration_path_containing_spaces_round_trips(self, tmp_path):
+        spaced = tmp_path / "my claude config"
+        spaced.mkdir()
+        status, hook, link = installer.commands(str(spaced))
+        assert installer.managed_status_command(status)
+        assert installer.managed_hook_command(hook("session-end", "session_end"))
+        assert shlex.split(status)[1].startswith(str(spaced))
+
+    def test_settings_in_a_directory_containing_spaces_are_written(self, tmp_path, monkeypatch):
+        spaced = tmp_path / "my claude config"
+        spaced.mkdir()
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(spaced))
+        installer.write_settings(str(spaced), dry=False)
+        out = json.loads((spaced / "settings.json").read_text())
+        assert installer.managed_status_command(out["statusLine"]["command"])
+
+    def test_unparseable_commands_are_never_claimed_as_managed(self):
+        for broken in ('python "unclosed', "python 'unclosed", '"', None, 42, ""):
+            assert not installer.managed_status_command(broken)
+            assert not installer.managed_hook_command(broken)
+
+    def test_a_hook_command_with_spaces_is_preserved(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
+        keep = '"/opt/my tools/notify" --event session-end'
+        cfg = tmp_path / "settings.json"
+        cfg.write_text(json.dumps({
+            "hooks": {"SessionEnd": [{"hooks": [{"type": "command", "command": keep}]}]}
+        }))
+        installer.write_settings(str(tmp_path), dry=False)
+        installer.write_settings(str(tmp_path), dry=False, remove=True)
+        out = json.loads(cfg.read_text())
+        kept = [h["command"] for g in out["hooks"]["SessionEnd"] for h in g["hooks"]]
+        assert kept == [keep]
+
+    def test_malformed_hook_containers_are_preserved(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
+        cfg = tmp_path / "settings.json"
+        cfg.write_text(json.dumps({
+            "hooks": {
+                "SessionEnd": ["a valuable string a schema change introduced", {"hooks": "later"}],
+            }
+        }))
+        installer.write_settings(str(tmp_path), dry=False, remove=True)
+        out = json.loads(cfg.read_text())
+        assert out["hooks"]["SessionEnd"][0] == "a valuable string a schema change introduced"
+        assert out["hooks"]["SessionEnd"][1] == {"hooks": "later"}
+
+    def test_a_non_object_hooks_container_fails_closed(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
+        cfg = tmp_path / "settings.json"
+        original = json.dumps({"hooks": ["not an object"]})
+        cfg.write_text(original)
+        with pytest.raises(SystemExit):
+            installer.write_settings(str(tmp_path), dry=False)
+        assert json.loads(cfg.read_text()) == {"hooks": ["not an object"]}
