@@ -19,8 +19,21 @@ command, hook commands, and checkout symlink. Unrelated entries remain in their
 original order and shape. A malformed or unreadable existing settings file is
 an error: preserve it byte-for-byte and stop before writing.
 
-Configuration writes use a same-directory private temporary file, durable
-flush, atomic replacement, and a timestamped backup of an existing valid file.
+Ownership is decided by comparing an existing command against the exact command
+this installer would write into the selected configuration directory. A trailing
+path fragment is not sufficient evidence of ownership: `statusline` is the most
+natural directory name another status line would choose, and claiming it means
+deleting it.
+
+Configuration writes use a private temporary file in the target's own directory,
+durable flush, atomic replacement, and a timestamped backup of an existing valid
+file. A `settings.json` that is a symlink is published *through*, so the file the
+user actually edits is the file that changes, and the mode is taken from that
+resolved file rather than from the link. Resolution is confined to the selected
+configuration directory: a link pointing outside it is refused, naming the
+resolved path, because following it would let an installer write anywhere the
+user happened to point a link.
+
 Checkout commands use the selected Claude configuration directory rather than
 assuming `~/.claude`.
 
