@@ -321,3 +321,17 @@ class TestSettings:
         with pytest.raises(SystemExit):
             installer.write_settings(str(tmp_path), dry=False)
         assert json.loads(cfg.read_text()) == {"hooks": ["not an object"]}
+
+    def test_a_refused_install_creates_no_checkout_symlink(self, tmp_path, monkeypatch):
+        """Failing closed must mean nothing changed, not 'settings survived'."""
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
+        cfg = tmp_path / "settings.json"
+        original = b"{ malformed but valuable settings"
+        cfg.write_bytes(original)
+
+        with pytest.raises(SystemExit):
+            installer.run()
+
+        assert cfg.read_bytes() == original
+        assert not (tmp_path / "statusline").exists(), "no half-installed symlink"
+        assert not list(tmp_path.glob("settings.json.bak.*"))

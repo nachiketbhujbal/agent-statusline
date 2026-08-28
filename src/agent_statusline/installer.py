@@ -334,6 +334,10 @@ def run(dry_run=False, uninstall=False):
     say(f"python:   {sys.version.split()[0]} (stdlib only, no dependencies)")
     if not dry_run:
         os.makedirs(cdir, exist_ok=True)
+    # Refuse before touching anything. write_settings would catch this too, but
+    # by then the checkout symlink already exists, which leaves a half-installed
+    # tree behind a failure that is supposed to change nothing.
+    _load_settings(os.path.join(cdir, "settings.json"))
     _, _, link = commands(cdir)
     if link:
         link_checkout(link, dry_run)
