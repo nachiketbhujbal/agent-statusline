@@ -72,8 +72,10 @@ It only ever touches configuration it owns. Unrelated top-level settings, hook e
 hook groups and matchers are preserved in place, and if `settings.json` is unreadable,
 malformed, or not a JSON object the install refuses and leaves the file byte for byte as
 it was rather than guessing. If your `settings.json` is a symlink into a dotfiles
-checkout, the link is followed and the real file is updated, so the indirection and its
-permissions survive ([ADR 0020](docs/adrs/0020-own-only-managed-configuration.md)).
+configuration directory is a symlink, the link is followed and the real file is updated, so
+the indirection and its permissions survive; a link resolving outside that directory is
+refused rather than followed
+([ADR 0020](docs/adrs/0020-own-only-managed-configuration.md)).
 
 Upgrading is `uv tool upgrade agent-statusline` followed by `agent-statusline install`
 (the second step is only needed if the wiring itself changed).
@@ -193,14 +195,16 @@ command you replaced by hand, and a `~/.claude/statusline` symlink pointing some
 else, are left alone and reported rather than removed. Your ledger and history in
 `~/.claude/` are untouched — delete them by hand if you want them gone.
 
-If an install goes wrong, the timestamped `settings.json.bak.*` beside your settings is
-the state from immediately before it ran.
+If an install goes wrong, the timestamped `settings.json.bak.*` in your configuration
+directory is the state from immediately before it ran. If your `settings.json` is a
+symlink, restore by copying that backup over the *link target*, not over the link, or you
+will replace the link with a regular file.
 
 ## Development
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
-.venv/bin/python -m pytest        # 127 tests, none of which touch ~/.claude
+.venv/bin/python -m pytest        # 137 tests, none of which touch ~/.claude
 .venv/bin/ruff check src tests install.py
 ```
 

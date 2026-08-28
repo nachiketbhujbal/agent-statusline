@@ -35,10 +35,12 @@ Implemented on this branch:
 
 - Preserve unrelated settings, hook events, groups, matchers and their order.
 - Fail closed on unreadable, malformed, non-object, or non-UTF-8 configuration
-  before any mutation, leaving no replacement, backup or symlink behind.
-- Remove only managed configuration; preserve a status line or checkout symlink
-  whose ownership cannot be proven.
+  before any mutation on both the install and uninstall paths.
+- Remove only configuration whose command exactly matches what this installer
+  writes; preserve a status line, hook, or checkout symlink whose ownership
+  cannot be proven.
 - Honour `CLAUDE_CONFIG_DIR`, including paths containing spaces.
-- Publish atomically through a symlink with the resolved target's mode, backing
-  up first and leaving no temporary file behind on failure.
+- Publish atomically through a symlink with the resolved target's mode, confined
+  to the configuration directory, backing up first and leaving no temporary file
+  behind on failure.
 - Keep reinstallation idempotent.
