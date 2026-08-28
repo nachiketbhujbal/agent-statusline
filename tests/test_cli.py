@@ -196,7 +196,7 @@ class TestSettings:
     def test_settings_symlink_is_published_through_not_replaced(self, tmp_path, monkeypatch):
         """A dotfiles checkout symlinked into ~/.claude must survive an install."""
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
-        dotfiles = tmp_path / "dotfiles"
+        dotfiles = tmp_path / "linked"
         dotfiles.mkdir()
         real = dotfiles / "settings.json"
         real.write_text(json.dumps({"theme": "dark"}))
@@ -215,7 +215,7 @@ class TestSettings:
     def test_settings_symlink_does_not_widen_permissions(self, tmp_path, monkeypatch):
         """A symlink's own 0o777 bits must never become the settings file's mode."""
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
-        dotfiles = tmp_path / "dotfiles"
+        dotfiles = tmp_path / "linked"
         dotfiles.mkdir()
         real = dotfiles / "settings.json"
         real.write_text(json.dumps({"theme": "dark"}))
@@ -270,8 +270,8 @@ class TestSettings:
         spaced = tmp_path / "my claude config"
         spaced.mkdir()
         status, hook, link = installer.commands(str(spaced))
-        assert installer.managed_status_command(status)
-        assert installer.managed_hook_command(hook("session-end", "session_end"))
+        assert installer.managed_status_command(status, str(spaced))
+        assert installer.managed_hook_command(hook("session-end", "session_end"), str(spaced))
         assert shlex.split(status)[1].startswith(str(spaced))
 
     def test_settings_in_a_directory_containing_spaces_are_written(self, tmp_path, monkeypatch):
@@ -280,7 +280,7 @@ class TestSettings:
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(spaced))
         installer.write_settings(str(spaced), dry=False)
         out = json.loads((spaced / "settings.json").read_text())
-        assert installer.managed_status_command(out["statusLine"]["command"])
+        assert installer.managed_status_command(out["statusLine"]["command"], str(spaced))
 
     def test_unparseable_commands_are_never_claimed_as_managed(self):
         for broken in ('python "unclosed', "python 'unclosed", '"', None, 42, ""):
@@ -335,3 +335,121 @@ class TestSettings:
         assert cfg.read_bytes() == original
         assert not (tmp_path / "statusline").exists(), "no half-installed symlink"
         assert not list(tmp_path.glob("settings.json.bak.*"))
+
+    def test_ownership_is_anchored_to_the_configuration_directory(self, tmp_path):
+        """A suffix match would claim any tool whose files live in a 'statusline' dir."""
+        mine = installer.commands(str(tmp_path))
+        assert installer.managed_status_command(mine[0], str(tmp_path))
+        assert installer.managed_hook_command(mine[1]("session-end", "session_end"), str(tmp_path))
+
+        for stranger in (
+            "python3 /home/me/my-own-tool/statusline/statusline.py",
+            "python /opt/other/statusline/statusline.py",
+        ):
+            assert not installer.managed_status_command(stranger, str(tmp_path))
+        assert not installer.managed_hook_command(
+            "python3 /home/me/my-own-tool/statusline/hooks/session_end.py", str(tmp_path)
+        )
+
+    def test_uninstall_preserves_a_third_party_status_line_and_hooks(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
+        stranger_status = "python3 /home/me/my-own-tool/statusline/statusline.py"
+        stranger_hook = "python3 /home/me/my-own-tool/statusline/hooks/session_end.py"
+        cfg = tmp_path / "settings.json"
+        cfg.write_text(json.dumps({
+            "statusLine": {"type": "command", "command": stranger_status},
+            "hooks": {"SessionEnd": [{"hooks": [{"type": "command", "command": stranger_hook}]}]},
+        }))
+
+        installer.write_settings(str(tmp_path), dry=False, remove=True)
+
+        out = json.loads(cfg.read_text())
+        assert out["statusLine"]["command"] == stranger_status
+        kept = [h["command"] for g in out["hooks"]["SessionEnd"] for h in g["hooks"]]
+        assert kept == [stranger_hook]
+
+    def test_settings_resolving_outside_the_config_directory_are_refused(
+        self, tmp_path, monkeypatch
+    ):
+        """Following a link anywhere would make the installer a write-anywhere tool."""
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        victim = elsewhere / "unrelated.json"
+        original = json.dumps({"registry": "https://example.invalid"})
+        victim.write_text(original)
+        (cdir / "settings.json").symlink_to(victim)
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+
+        with pytest.raises(SystemExit):
+            installer.write_settings(str(cdir), dry=False)
+
+        assert victim.read_text() == original, "an unrelated file must never be rewritten"
+
+    def test_a_refused_uninstall_leaves_the_symlink_in_place(self, tmp_path, monkeypatch):
+        """Uninstall must fail closed the same way install does."""
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
+        cfg = tmp_path / "settings.json"
+        original = b"{ malformed but valuable settings"
+        cfg.write_bytes(original)
+        link = tmp_path / "statusline"
+        link.symlink_to(installer.PKG)
+
+        with pytest.raises(SystemExit):
+            installer.run(uninstall=True)
+
+        assert link.is_symlink(), "removing the link then refusing is worse than not starting"
+        assert cfg.read_bytes() == original
+
+    def test_uninstall_preserves_a_non_owned_checkout_symlink(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
+        (tmp_path / "settings.json").write_text(json.dumps({"theme": "dark"}))
+        foreign = tmp_path / "somebody-elses-package"
+        foreign.mkdir()
+        link = tmp_path / "statusline"
+        link.symlink_to(foreign)
+
+        installer.run(uninstall=True)
+
+        assert link.is_symlink() and os.path.realpath(link) == str(foreign.resolve())
+
+    def test_uninstall_removes_its_own_checkout_symlink(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
+        (tmp_path / "settings.json").write_text(json.dumps({"theme": "dark"}))
+        link = tmp_path / "statusline"
+        link.symlink_to(installer.PKG)
+
+        installer.run(uninstall=True)
+
+        assert not link.exists() and not link.is_symlink()
+
+    def test_a_non_object_settings_file_fails_closed(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
+        cfg = tmp_path / "settings.json"
+        original = json.dumps(["a", "list", "not", "an", "object"])
+        cfg.write_text(original)
+        with pytest.raises(SystemExit):
+            installer.write_settings(str(tmp_path), dry=False)
+        assert cfg.read_text() == original
+
+    def test_the_suite_never_reads_a_live_claude_config(self):
+        """Guards the README claim that no test touches the real ~/.claude."""
+        home = os.environ["HOME"]
+        assert os.path.basename(home).startswith("agent-statusline-home-")
+        assert not os.path.exists(os.path.join(home, ".claude.json"))
+
+    def test_an_out_of_tree_refusal_writes_no_backup(self, tmp_path, monkeypatch):
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        victim = elsewhere / "unrelated.json"
+        victim.write_text(json.dumps({"registry": "https://example.invalid"}))
+        (cdir / "settings.json").symlink_to(victim)
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+
+        with pytest.raises(SystemExit):
+            installer.write_settings(str(cdir), dry=False)
+
+        assert not list(cdir.glob("settings.json.bak.*")), "a refusal must change nothing"

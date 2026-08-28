@@ -8,7 +8,12 @@ real spend figures before (docs/adrs/0014).
 import os
 import tempfile
 
+# HOME too, not just the state dir: the installer reads ~/.claude.json for the
+# native-timestamp feature flag, so a suite that leaves HOME alone passes or
+# fails depending on a live flag on the developer's machine.
+_HOME = tempfile.mkdtemp(prefix="agent-statusline-home-")
 _STATE = tempfile.mkdtemp(prefix="agent-statusline-tests-")
+os.environ["HOME"] = _HOME
 os.environ["AGENT_STATUSLINE_STATE"] = _STATE
 
 import pytest  # noqa: E402
