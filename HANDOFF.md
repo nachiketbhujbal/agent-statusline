@@ -46,6 +46,8 @@ Completed on the branch:
   observation state under ADRs 0024 and 0025.
 - Terminal-cell-aware Unicode fitting and untrusted-control sanitization under
   ADR 0027.
+- A shared synthetic payload/transcript fixture that exercises all ten rows in
+  pytest and the installed-package smoke under ADR 0028.
 
 Still required before the pull request is merge-ready:
 
@@ -67,11 +69,11 @@ the live ledger.
 
 ## Exact resume point
 
-Continue 0.3.0 with D3 and D4 as the next bounded implementation: a committed
-realistic synthetic render fixture, then a self-test and privacy-safe last-error
-breadcrumb. After those, complete the documentation reconciliation above and
-immutable workflow-action pinning. Do not begin 0.3.1 performance work until
-0.3.0 passes its full local gate, independent review, and hosted CI.
+Continue 0.3.0 with D4 as the next bounded implementation: a self-test and
+privacy-safe last-error breadcrumb. After that, complete the documentation
+reconciliation above and immutable workflow-action pinning. Do not begin 0.3.1
+performance work until 0.3.0 passes its full local gate, independent review,
+and hosted CI.
 
 ## Cross-assistant coordination
 

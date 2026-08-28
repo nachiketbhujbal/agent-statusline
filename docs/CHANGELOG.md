@@ -19,6 +19,8 @@ This project follows semantic versioning. Versions come from immutable Git tags.
   records.
 - Measure width in terminal cells and remove untrusted control sequences while
   preserving intentional colour styling.
+- Gate the installed renderer and every approved row with one committed,
+  privacy-neutral payload and transcript fixture.
 
 ## 0.2.0
 

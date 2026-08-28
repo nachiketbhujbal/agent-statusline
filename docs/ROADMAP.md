@@ -29,10 +29,11 @@ Implemented on the active branch:
 - A locked uv, pre-commit, formatting, lint, typing, coverage, and build gate.
 - Tracked project instructions, handoff, review ledger, roadmap, and research.
 - Terminal-cell-aware Unicode fitting and control-sequence sanitization.
+- A shared synthetic end-to-end fixture that gates every approved row through
+  pytest and the installed-package smoke.
 
 Required before release:
 
-- Add a realistic synthetic end-to-end renderer fixture (D3).
 - Add a self-test and privacy-safe last-error breadcrumb (D4).
 - Reconcile README, fields, internals, and porting documentation with current
   package behavior and Python support. Confirm the documented width model is

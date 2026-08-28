@@ -27,6 +27,9 @@ def labels(lines):
 
 
 class TestRowOrder:
+    def test_committed_fixture_exercises_every_approved_row(self, payload, monkeypatch, capsys):
+        assert labels(draw(payload, monkeypatch, capsys)) == statusline.ORDER
+
     def test_rows_follow_the_declared_order(self, payload, monkeypatch, capsys):
         got = labels(draw(payload, monkeypatch, capsys))
         assert got == [k for k in statusline.ORDER if k in got]
@@ -59,7 +62,7 @@ class TestWidth:
 
 class TestContent:
     def test_model_and_effort_are_shown(self, payload, monkeypatch, capsys):
-        assert "Opus 5" in ANSI.sub("", draw(payload, monkeypatch, capsys)[1])
+        assert "Synthetic Opus" in ANSI.sub("", draw(payload, monkeypatch, capsys)[1])
 
     def test_cost_comes_straight_from_the_payload(self, payload, monkeypatch, capsys):
         out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))

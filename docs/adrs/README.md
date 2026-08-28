@@ -33,6 +33,7 @@ old one rather than rewriting why the earlier choice was made.
 | [0025](0025-bound-ephemeral-observation-state.md) | Bounded ephemeral observation state |
 | [0026](0026-coordinate-one-owner-and-one-reviewer.md) | One owner and one reviewer per release |
 | [0027](0027-measure-cells-and-sanitize-terminal-output.md) | Cell width and terminal-output sanitization |
+| [0028](0028-gate-the-installed-renderer-with-synthetic-evidence.md) | Synthetic installed-renderer evidence |
 
 ## Reading order
 
