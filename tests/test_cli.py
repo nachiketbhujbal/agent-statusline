@@ -3,6 +3,7 @@ import io
 import json
 import os
 import shlex
+import shutil
 import stat
 
 import pytest
@@ -250,7 +251,8 @@ class TestSettings:
             raise OSError("disk full")
 
         monkeypatch.setattr(installer.os, "replace", explode)
-        with pytest.raises(OSError, match="disk full"):
+        # An expected filesystem failure exits with a message, not a traceback.
+        with pytest.raises(SystemExit):
             installer.write_settings(str(tmp_path), dry=False)
 
         assert cfg.read_bytes() == original
@@ -453,3 +455,489 @@ class TestSettings:
             installer.write_settings(str(cdir), dry=False)
 
         assert not list(cdir.glob("settings.json.bak.*")), "a refusal must change nothing"
+
+
+def _snapshot(cdir):
+    """Everything a refused operation promises not to change."""
+    settings = cdir / "settings.json"
+    return {
+        "bytes": settings.read_bytes() if settings.exists() else None,
+        "link": os.readlink(str(cdir / "statusline"))
+        if os.path.islink(str(cdir / "statusline")) else None,
+        "link_exists": os.path.lexists(str(cdir / "statusline")),
+        "backups": sorted(p.name for p in cdir.glob("settings.json.bak.*")),
+        "temps": sorted(p.name for p in cdir.glob(".settings.json.*")),
+    }
+
+
+class TestOwnershipIsAnchoredToAnExactCommand:
+    """INSTALL-010: a shared basename is not ownership.
+
+    `/opt/foreign/agent-statusline` is a different program from ours. Matching on
+    the basename claimed it, and claiming it meant deleting it.
+    """
+
+    def _installed(self, monkeypatch, tmp_path):
+        exe = tmp_path / "bin" / "agent-statusline"
+        exe.parent.mkdir(parents=True, exist_ok=True)
+        exe.write_text("#!/bin/sh\n")
+        exe.chmod(0o755)
+        monkeypatch.setattr(installer, "checkout_root", lambda: None)
+        monkeypatch.setattr(installer, "console_script", lambda: str(exe))
+        return exe
+
+    def test_the_exact_installed_status_command_is_owned(self, monkeypatch, tmp_path):
+        exe = self._installed(monkeypatch, tmp_path)
+        assert installer.managed_status_command(shlex.quote(str(exe)))
+
+    @pytest.mark.parametrize(
+        "slug", sorted({s for _, s, _, _ in installer.HOOKS + installer.STOPGAP_HOOKS})
+    )
+    def test_every_installed_hook_slug_is_owned(self, slug, monkeypatch, tmp_path):
+        exe = self._installed(monkeypatch, tmp_path)
+        assert installer.managed_hook_command(f"{shlex.quote(str(exe))} hook {slug}")
+
+    def test_a_same_basename_different_path_status_line_is_not_owned(
+        self, monkeypatch, tmp_path
+    ):
+        self._installed(monkeypatch, tmp_path)
+        assert not installer.managed_status_command("/opt/foreign/agent-statusline")
+
+    @pytest.mark.parametrize(
+        "slug", sorted({s for _, s, _, _ in installer.HOOKS + installer.STOPGAP_HOOKS})
+    )
+    def test_a_same_basename_different_path_hook_is_not_owned(
+        self, slug, monkeypatch, tmp_path
+    ):
+        self._installed(monkeypatch, tmp_path)
+        assert not installer.managed_hook_command(f"/opt/foreign/agent-statusline hook {slug}")
+
+    def test_an_unrelated_tool_survives_a_full_uninstall(self, monkeypatch, tmp_path):
+        """The whole point, proven through `run()` rather than the predicate."""
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        self._installed(monkeypatch, tmp_path)
+        original = {
+            "statusLine": {"type": "command",
+                           "command": "/opt/foreign/agent-statusline", "padding": 0},
+            "hooks": {"SessionEnd": [{"hooks": [
+                {"type": "command",
+                 "command": "/opt/foreign/agent-statusline hook session-end"}]}]},
+            "keepMe": True,
+        }
+        settings = cdir / "settings.json"
+        settings.write_text(json.dumps(original, indent=2))
+        before = settings.read_bytes()
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+
+        assert installer.run(uninstall=True) == 0
+
+        assert json.loads(settings.read_text()) == original
+        assert settings.read_bytes() == before, "a pure no-op rewrites nothing"
+
+
+class TestLegacyReleaseCompatibility:
+    """INSTALL-015: v0.2.0 wrote a literal `~/.claude/...` command.
+
+    Those installations must still be recognized, or a reinstall stacks a second
+    set of hooks on top and an uninstall leaves the first set behind.
+    """
+
+    LEGACY_STATUS = "python3 ~/.claude/statusline/statusline.py"
+
+    @pytest.fixture
+    def home_config(self, tmp_path, monkeypatch):
+        monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
+        monkeypatch.setenv("HOME", str(tmp_path))
+        cdir = tmp_path / ".claude"
+        cdir.mkdir()
+        return cdir
+
+    def test_the_released_status_command_is_recognized(self, home_config):
+        assert installer.managed_status_command(self.LEGACY_STATUS, str(home_config))
+
+    @pytest.mark.parametrize(
+        "mod", sorted({m for _, _, m, _ in installer.HOOKS + installer.STOPGAP_HOOKS})
+    )
+    def test_every_released_hook_command_is_recognized(self, mod, home_config):
+        cmd = f"python3 ~/.claude/statusline/hooks/{mod}.py"
+        assert installer.managed_hook_command(cmd, str(home_config))
+
+    @pytest.mark.parametrize("cmd", [
+        "python3 /opt/other/statusline/statusline.py",
+        "python3 ~/.config/statusline/statusline.py",
+        "python3 ~/elsewhere/statusline/statusline.py",
+    ])
+    def test_a_lookalike_path_is_not_claimed(self, cmd, home_config):
+        """The tilde is expanded, not treated as a wildcard suffix."""
+        assert not installer.managed_status_command(cmd, str(home_config))
+
+    def test_a_legacy_config_dir_does_not_claim_a_custom_one(self, tmp_path):
+        """`~/.claude/...` is not owned when the config dir is somewhere else."""
+        assert not installer.managed_status_command(self.LEGACY_STATUS, str(tmp_path))
+
+    def _legacy_settings(self):
+        def hook(mod, timeout):
+            return {"hooks": [{"type": "command",
+                               "command": f"python3 ~/.claude/statusline/hooks/{mod}.py",
+                               "timeout": timeout}]}
+        return {
+            "statusLine": {"type": "command", "command": self.LEGACY_STATUS, "padding": 0},
+            "hooks": {
+                "SessionEnd": [hook("session_end", 10)],
+                "UserPromptSubmit": [hook("context_guard", 10), hook("timestamp_user", 5)],
+                "Stop": [hook("timestamp_stop", 5)],
+            },
+            "keepMe": True,
+        }
+
+    def test_upgrading_from_the_release_does_not_stack_hooks(self, home_config):
+        settings = home_config / "settings.json"
+        settings.write_text(json.dumps(self._legacy_settings(), indent=2))
+
+        assert installer.run() == 0
+
+        cfg = json.loads(settings.read_text())
+        total = sum(len(g["hooks"]) for groups in cfg["hooks"].values() for g in groups)
+        assert total == 4, "the released hooks were replaced, not appended to"
+        assert cfg["keepMe"] is True
+
+    def test_uninstalling_a_release_installation_leaves_nothing_behind(self, home_config):
+        settings = home_config / "settings.json"
+        settings.write_text(json.dumps(self._legacy_settings(), indent=2))
+
+        assert installer.run(uninstall=True) == 0
+
+        cfg = json.loads(settings.read_text())
+        assert "statusLine" not in cfg
+        assert "hooks" not in cfg
+        assert cfg["keepMe"] is True
+
+
+class TestInstallRefusesBeforeMutating:
+    """INSTALL-011/012: nothing is created before every refusal has had its say."""
+
+    def test_a_foreign_status_line_is_never_overwritten(self, tmp_path, monkeypatch):
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        settings = cdir / "settings.json"
+        settings.write_text(json.dumps(
+            {"statusLine": {"type": "command", "command": "some-other-statusline"}}))
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+        before = _snapshot(cdir)
+
+        with pytest.raises(SystemExit):
+            installer.run()
+
+        assert _snapshot(cdir) == before
+
+    def test_a_foreign_checkout_symlink_is_never_replaced(self, tmp_path, monkeypatch):
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        other = tmp_path / "other-package"
+        other.mkdir()
+        os.symlink(str(other), str(cdir / "statusline"))
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+        before = _snapshot(cdir)
+
+        with pytest.raises(SystemExit):
+            installer.run()
+
+        assert _snapshot(cdir) == before
+        assert os.path.realpath(str(cdir / "statusline")) == str(other)
+
+    def test_reinstalling_over_our_own_configuration_is_idempotent(
+        self, tmp_path, monkeypatch
+    ):
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+        assert installer.run() == 0
+        first = json.loads((cdir / "settings.json").read_text())
+
+        assert installer.run() == 0
+
+        assert json.loads((cdir / "settings.json").read_text()) == first
+
+    def test_a_non_object_hooks_container_stops_before_the_symlink(
+        self, tmp_path, monkeypatch
+    ):
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        (cdir / "settings.json").write_text(json.dumps({"hooks": ["valuable"]}))
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+        before = _snapshot(cdir)
+
+        with pytest.raises(SystemExit):
+            installer.run()
+
+        assert _snapshot(cdir) == before
+        assert not before["link_exists"] and not before["backups"]
+
+    def test_a_non_object_hooks_container_also_fails_uninstall_closed(
+        self, tmp_path, monkeypatch
+    ):
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        (cdir / "settings.json").write_text(json.dumps({"hooks": ["valuable"]}))
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+        before = _snapshot(cdir)
+
+        with pytest.raises(SystemExit):
+            installer.run(uninstall=True)
+
+        assert _snapshot(cdir) == before
+
+    @pytest.mark.parametrize("uninstall", [False, True])
+    def test_a_non_list_event_container_is_refused_before_any_mutation(
+        self, uninstall, tmp_path, monkeypatch
+    ):
+        """`{"SessionEnd": "valuable"}` used to reach `.append` and raise."""
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        (cdir / "settings.json").write_text(json.dumps({"hooks": {"SessionEnd": "valuable"}}))
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+        before = _snapshot(cdir)
+
+        with pytest.raises(SystemExit):
+            installer.run(uninstall=uninstall)
+
+        assert _snapshot(cdir) == before
+
+    def test_settings_reached_through_an_outside_link_stop_before_the_symlink(
+        self, tmp_path, monkeypatch
+    ):
+        """INSTALL-015: confinement is checked before the link is touched."""
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        victim = elsewhere / "other-tool.json"
+        victim.write_text(json.dumps({"registry": "https://example.invalid"}))
+        original = victim.read_bytes()
+        (cdir / "settings.json").symlink_to(victim)
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+
+        with pytest.raises(SystemExit):
+            installer.run()
+
+        assert victim.read_bytes() == original
+        assert not os.path.lexists(str(cdir / "statusline"))
+
+    def test_an_outside_link_stops_uninstall_before_removing_the_symlink(
+        self, tmp_path, monkeypatch
+    ):
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        victim = elsewhere / "other-tool.json"
+        victim.write_text(json.dumps({"registry": "https://example.invalid"}))
+        (cdir / "settings.json").symlink_to(victim)
+        os.symlink(installer.PKG, str(cdir / "statusline"))
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+
+        with pytest.raises(SystemExit):
+            installer.run(uninstall=True)
+
+        assert os.path.islink(str(cdir / "statusline")), "the link survives a refusal"
+
+
+class TestUninstallIsATrueNoOp:
+    """Removing nothing must write nothing."""
+
+    def test_uninstall_with_no_settings_creates_no_file(self, tmp_path, monkeypatch):
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+
+        assert installer.run(uninstall=True) == 0
+
+        assert not (cdir / "settings.json").exists(), "no empty {} left behind"
+        assert not list(cdir.glob("settings.json.bak.*"))
+
+    def test_uninstall_with_nothing_owned_writes_no_backup(self, tmp_path, monkeypatch):
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        settings = cdir / "settings.json"
+        settings.write_text(json.dumps({"theme": "dark", "hooks": {"Notification": []}}))
+        before = settings.read_bytes()
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+
+        assert installer.run(uninstall=True) == 0
+
+        assert settings.read_bytes() == before
+        assert not list(cdir.glob("settings.json.bak.*"))
+
+    def test_an_empty_foreign_hook_group_keeps_its_shape(self, tmp_path, monkeypatch):
+        """Unrelated entries keep their order and shape, not just their commands."""
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+        assert installer.run() == 0
+        cfg = json.loads((cdir / "settings.json").read_text())
+        cfg["hooks"]["SessionEnd"].insert(0, {"matcher": "keep-me", "hooks": []})
+        cfg["hooks"]["Notification"] = []
+        (cdir / "settings.json").write_text(json.dumps(cfg, indent=2))
+
+        assert installer.run(uninstall=True) == 0
+
+        after = json.loads((cdir / "settings.json").read_text())
+        assert after["hooks"]["SessionEnd"] == [{"matcher": "keep-me", "hooks": []}]
+        assert after["hooks"]["Notification"] == []
+
+
+class TestVerificationIsolation:
+    """INSTALL-013/016: verification is a preview, not a mutation."""
+
+    def test_a_pre_existing_verify_state_directory_survives(self, tmp_path, monkeypatch):
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        scratch = cdir / ".verify-state"
+        scratch.mkdir()
+        precious = scratch / "user-data.json"
+        precious.write_text(json.dumps({"keep": "me"}))
+        original = precious.read_bytes()
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+
+        assert installer.run() == 0
+
+        assert precious.read_bytes() == original, "verification deleted user data"
+
+    def test_a_dry_run_against_an_absent_directory_creates_nothing(
+        self, tmp_path, monkeypatch
+    ):
+        cdir = tmp_path / "absent"
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+
+        assert installer.run(dry_run=True) == 0
+
+        assert not cdir.exists(), "dry run promised to write nothing"
+
+    def test_verification_scratch_state_never_lands_in_the_config_dir(
+        self, tmp_path, monkeypatch
+    ):
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+
+        assert installer.run() == 0
+
+        assert not (cdir / ".verify-state").exists()
+
+
+class TestExpectedFilesystemFailures:
+    """INSTALL-014: an expected `OSError` is a message, not a traceback."""
+
+    def test_a_read_only_configuration_directory_is_reported(self, tmp_path, monkeypatch):
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        settings = cdir / "settings.json"
+        settings.write_text(json.dumps({"theme": "dark"}))
+        original = settings.read_bytes()
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+        cdir.chmod(0o500)
+        try:
+            with pytest.raises(SystemExit):
+                installer.write_settings(str(cdir), dry=False)
+        finally:
+            cdir.chmod(0o700)
+
+        assert settings.read_bytes() == original
+        assert not list(cdir.glob(".settings.json.*"))
+
+    def test_a_missing_configuration_directory_is_reported(self, tmp_path, monkeypatch):
+        cdir = tmp_path / "gone"
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+        with pytest.raises(SystemExit):
+            installer.write_settings(str(cdir), dry=False)
+
+    def test_a_failed_backup_is_reported_and_changes_nothing(self, tmp_path, monkeypatch):
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        settings = cdir / "settings.json"
+        settings.write_text(json.dumps({"theme": "dark"}))
+        original = settings.read_bytes()
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+
+        def explode(*_args, **_kwargs):
+            raise OSError("no space left on device")
+
+        monkeypatch.setattr(installer.shutil, "copy2", explode)
+        with pytest.raises(SystemExit):
+            installer.write_settings(str(cdir), dry=False)
+
+        assert settings.read_bytes() == original
+        assert not list(cdir.glob(".settings.json.*"))
+
+    def test_a_failed_symlink_publication_is_reported(self, tmp_path, monkeypatch):
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+
+        def explode(*_args, **_kwargs):
+            raise OSError("operation not permitted")
+
+        monkeypatch.setattr(installer.os, "symlink", explode)
+        with pytest.raises(SystemExit):
+            installer.run()
+
+
+class TestPublicationCannotBeRedirected:
+    """INSTALL-017: the confinement decision is bound to a descriptor.
+
+    A path check followed by path-named writes leaves a window: swap a checked
+    directory for a symlink inside it and publication follows the attacker's
+    link. Every write below happens relative to an already-opened descriptor,
+    and the walk that produces it refuses to traverse a link at all.
+    """
+
+    def test_a_directory_swapped_after_the_check_fails_closed(self, tmp_path, monkeypatch):
+        cdir = tmp_path / "config"
+        (cdir / "sub").mkdir(parents=True)
+        real = cdir / "sub" / "real.json"
+        real.write_text(json.dumps({"theme": "dark"}))
+        (cdir / "settings.json").symlink_to(real)
+
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        victim = elsewhere / "real.json"
+        victim.write_text(json.dumps({"registry": "https://example.invalid"}))
+        original = victim.read_bytes()
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+
+        real_publish_target = installer._publish_target
+        swapped = []
+
+        def swap_then_return(path, cdir_arg):
+            """Stand in for losing the race, deterministically.
+
+            The swap lands *after* confinement is decided and before the
+            descriptor is opened -- the exact window a second `realpath()` check
+            cannot see, because it would simply re-run the same race.
+            """
+            target = real_publish_target(path, cdir_arg)
+            sub = cdir / "sub"
+            if not swapped:
+                swapped.append(True)
+                shutil.rmtree(str(sub))
+                os.symlink(str(elsewhere), str(sub))
+            return target
+
+        monkeypatch.setattr(installer, "_publish_target", swap_then_return)
+
+        # Called directly: `write_settings` resolves the path twice, so going
+        # through it would let the second resolution catch the swap and prove
+        # nothing about the descriptor.
+        with pytest.raises(SystemExit):
+            installer._write_json_atomic(
+                str(cdir / "settings.json"), {"ours": True}, str(cdir))
+
+        assert swapped, "the injected swap never ran; the test proves nothing"
+
+        assert victim.read_bytes() == original, "publication followed the swapped link"
+        assert not list(elsewhere.glob(".real.json.*")), "no temp file outside the tree"
+
+    def test_publication_uses_directory_relative_operations(self):
+        """The guarantee above rests on openat; say so if it is unavailable."""
+        assert os.open in os.supports_dir_fd
