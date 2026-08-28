@@ -81,6 +81,27 @@ class TestDispatch:
         assert os.path.dirname(seen["HOME"]) == os.path.dirname(seen["AGENT_STATUSLINE_STATE"])
         assert "selftest ok" in capsys.readouterr().out
 
+    def test_selftest_rejects_non_private_state_and_symlinks(self, tmp_path):
+        from agent_statusline import selftest
+
+        state = tmp_path / "state"
+        state.mkdir(mode=0o700)
+        private_file = state / "private.json"
+        private_file.write_text("{}")
+        private_file.chmod(0o600)
+        assert selftest._private_state(str(state))
+
+        state.chmod(0o755)
+        assert not selftest._private_state(str(state))
+        state.chmod(0o700)
+        private_file.chmod(0o644)
+        assert not selftest._private_state(str(state))
+        private_file.chmod(0o600)
+
+        link = state / "linked.json"
+        link.symlink_to(private_file)
+        assert not selftest._private_state(str(state))
+
     def test_unknown_command_is_an_error(self, monkeypatch, capsys):
         assert run(["nonsense"], monkeypatch) == 2
 

@@ -1,5 +1,6 @@
 """An isolated installed-renderer health check."""
 
+import datetime
 import json
 import os
 import re
@@ -9,18 +10,9 @@ import sys
 import tempfile
 import time
 
-EXPECTED_ROWS = (
-    "PROJECT",
-    "MODEL",
-    "CONTEXT",
-    "USAGE",
-    "COST",
-    "SYSTEM",
-    "TOOLS",
-    "CACHE",
-    "TOKENS",
-    "TIMING",
-)
+from agent_statusline.statusline import ORDER
+
+EXPECTED_ROWS = tuple(ORDER)
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
 
@@ -28,21 +20,26 @@ def _write_transcript(path, now):
     entries = [
         {
             "type": "user",
-            "uuid": "selftest-root",
+            "uuid": "synthetic-root-0001",
             "permissionMode": "plan",
-            "message": {"content": "Synthetic self-test prompt"},
+            "message": {"content": "Synthetic prompt"},
         },
         {
             "type": "assistant",
-            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now)),
+            "timestamp": datetime.datetime.fromtimestamp(now, datetime.timezone.utc).isoformat(),
             "message": {
-                "model": "synthetic-selftest-model",
+                "model": "claude-opus-synthetic",
                 "content": [
                     {
                         "type": "tool_use",
                         "name": "Read",
-                        "input": {"file_path": "/tmp/synthetic-project/README.md"},
-                    }
+                        "input": {"file_path": "/synthetic/project/README.md"},
+                    },
+                    {
+                        "type": "tool_use",
+                        "name": "Edit",
+                        "input": {"file_path": "/synthetic/project/example.py"},
+                    },
                 ],
                 "usage": {
                     "input_tokens": 20,
@@ -51,10 +48,18 @@ def _write_transcript(path, now):
                     "cache_read_input_tokens": 2000,
                     "output_tokens_details": {"thinking_tokens": 25},
                     "cache_creation": {"ephemeral_1h_input_tokens": 200},
+                    "service_tier": "standard",
                 },
             },
         },
+        {"type": "user", "message": {"content": [{"type": "tool_result", "is_error": False}]}},
         {"type": "system", "subtype": "turn_duration", "durationMs": 1234},
+        {
+            "type": "system",
+            "subtype": "stop_hook_summary",
+            "hookInfos": [{"durationMs": 12}],
+            "hookErrors": [],
+        },
     ]
     with open(path, "w", encoding="utf-8") as handle:
         for entry in entries:
@@ -63,14 +68,15 @@ def _write_transcript(path, now):
 
 def _payload(root, transcript, now):
     return {
-        "session_id": "synthetic-selftest-session",
-        "session_name": "Synthetic self-test",
+        "session_id": "synthetic-session-0001",
+        "session_name": "Synthetic smoke session",
         "transcript_path": transcript,
         "cwd": root,
-        "version": "selftest",
+        "version": "2.1.246",
         "effort": {"level": "high"},
-        "model": {"id": "synthetic-selftest-model", "display_name": "Synthetic model"},
+        "model": {"id": "claude-opus-synthetic", "display_name": "Synthetic Opus"},
         "workspace": {"current_dir": root, "project_dir": root, "added_dirs": []},
+        "output_style": {"name": "default"},
         "thinking": {"enabled": True},
         "fast_mode": False,
         "cost": {
@@ -103,15 +109,23 @@ def _labels(output):
 
 
 def _private_state(state_dir):
-    if not os.path.isdir(state_dir) or stat.S_IMODE(os.stat(state_dir).st_mode) != 0o700:
+    if (
+        os.path.islink(state_dir)
+        or not os.path.isdir(state_dir)
+        or stat.S_IMODE(os.stat(state_dir).st_mode) != 0o700
+    ):
         return False
-    for directory, _, files in os.walk(state_dir):
-        if stat.S_IMODE(os.stat(directory).st_mode) != 0o700:
+    for directory, directories, files in os.walk(state_dir):
+        if os.path.islink(directory) or stat.S_IMODE(os.stat(directory).st_mode) != 0o700:
             return False
-        if any(
-            stat.S_IMODE(os.stat(os.path.join(directory, name)).st_mode) != 0o600 for name in files
-        ):
-            return False
+        for name in directories:
+            path = os.path.join(directory, name)
+            if os.path.islink(path) or stat.S_IMODE(os.stat(path).st_mode) != 0o700:
+                return False
+        for name in files:
+            path = os.path.join(directory, name)
+            if os.path.islink(path) or stat.S_IMODE(os.stat(path).st_mode) != 0o600:
+                return False
     return True
 
 

@@ -562,6 +562,10 @@ def _render():
 def main():
     try:
         _render()
+    except BrokenPipeError:
+        # The host closing its status-line pipe is normal lifecycle behavior,
+        # not renderer-health evidence.
+        raise
     except Exception as error:
         try:
             from agent_statusline.diagnostics import record_render_failure

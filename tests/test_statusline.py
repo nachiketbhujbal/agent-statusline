@@ -199,6 +199,20 @@ class TestRobustness:
         with pytest.raises(ValueError, match="original"):
             statusline.main()
 
+    def test_broken_pipe_is_not_recorded_as_a_renderer_failure(self, monkeypatch):
+        from agent_statusline import diagnostics
+
+        recorded = []
+
+        def closed_pipe():
+            raise BrokenPipeError
+
+        monkeypatch.setattr(statusline, "_render", closed_pipe)
+        monkeypatch.setattr(diagnostics, "record_render_failure", recorded.append)
+        with pytest.raises(BrokenPipeError):
+            statusline.main()
+        assert recorded == []
+
     def test_process_probe_is_scoped_to_each_concurrent_session(self, payload, monkeypatch, capsys):
         keys = []
         real_probe = statusline.pr.probe

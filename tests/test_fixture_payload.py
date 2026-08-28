@@ -1,9 +1,11 @@
 """Hermetic evidence materialization shared by pytest and installed smoke."""
 
 import datetime
+import json
 import os
 from pathlib import Path
 
+from agent_statusline import selftest
 from fixture_payload import materialize_payload
 
 
@@ -28,3 +30,24 @@ def test_test_process_home_is_disposable_and_has_no_live_claude_config():
     home = Path(os.environ["HOME"])
     assert home.name.startswith("agent-statusline-home-")
     assert not (home / ".claude.json").exists()
+
+
+def test_runtime_selftest_matches_the_committed_synthetic_contract(tmp_path):
+    now = 1_800_000_000.0
+    workspace = (tmp_path / "workspace").resolve()
+    committed = materialize_payload(workspace, now=now)
+    committed_entries = [
+        json.loads(line)
+        for line in Path(committed["transcript_path"]).read_text(encoding="utf-8").splitlines()
+    ]
+
+    selftest._write_transcript(committed["transcript_path"], now)
+    runtime = selftest._payload(str(workspace), committed["transcript_path"], now)
+    runtime_entries = [
+        json.loads(line)
+        for line in Path(committed["transcript_path"]).read_text(encoding="utf-8").splitlines()
+    ]
+
+    assert runtime == committed
+    assert runtime_entries == committed_entries
+    assert tuple(selftest.ORDER) == selftest.EXPECTED_ROWS

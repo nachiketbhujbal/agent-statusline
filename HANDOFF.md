@@ -59,6 +59,9 @@ Completed on the branch:
   missing reset evidence, a future-accrual defect, disk-probe path rebinding,
   and host-trimmed continuation indentation. Focused corrections exist locally
   and require the complete gate plus independent re-review.
+- Claude's D4 review additionally exposed an untested private-state rejection
+  path and divergent synthetic contracts. Negative mode/symlink regressions and
+  exact runtime/committed-contract equivalence now close those gaps locally.
 
 Still required before the pull request is merge-ready:
 
