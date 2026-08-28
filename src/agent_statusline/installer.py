@@ -289,10 +289,16 @@ def _check_install_ownership(cfg, link, cdir, path):
     foreign one destroys it with no way to put it back. Reinstalling our own
     entry, or over our own link, stays idempotent.
     """
-    command = _status_command(cfg)
-    if command is not None and not managed_status_command(command, cdir):
+    status = cfg.get("statusLine")
+    if status is not None and not managed_status_command(_status_command(cfg), cdir):
+        # Keyed on the entry, not on a command we managed to parse out of it. A
+        # `statusLine` we cannot read is one we certainly cannot prove we own,
+        # and overwriting it destroys it just as thoroughly as overwriting a
+        # well-formed one.
+        command = _status_command(cfg)
+        shown = command if isinstance(command, str) else json.dumps(status)
         die(f"{path} already has a status line this package does not own:\n"
-            f"       {command}\n"
+            f"       {shown}\n"
             "       Only one status line can be configured. Remove it first if "
             "you want to switch.")
     if link and os.path.islink(link) and os.path.realpath(link) != PKG:

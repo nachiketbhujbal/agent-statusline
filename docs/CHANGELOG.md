@@ -37,6 +37,10 @@ Installation and removal now mutate only configuration this package owns
   belonging to another tool, or a `~/.claude/statusline` symlink pointing at one,
   stops the install with an explanation instead of being overwritten; only one
   status line can be configured, so replacing yours would be unrecoverable.
+  The refusal is keyed on the presence of a `statusLine` entry, not on being able
+  to read a command out of it, so an entry in an unexpected shape — a bare
+  string, a list, an object without a `command` — is protected rather than
+  replaced. A `statusLine` of `null` counts as nothing configured.
   Reinstalling over this package's own entry and link stays idempotent.
 - Validate every schema condition an operation depends on — the settings file's
   readability and top-level type, the `hooks` container's type, and each managed
