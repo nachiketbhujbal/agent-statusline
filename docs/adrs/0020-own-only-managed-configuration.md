@@ -40,6 +40,11 @@ it irrecoverably; the same is true of replacing a `statusline` symlink pointing
 at another package. Both are refused, and reinstalling over our own entry or
 link stays idempotent.
 
+That refusal is keyed on the *entry*, not on a command parsed out of it. An
+entry whose shape the matcher cannot read is one whose ownership certainly
+cannot be proven, and overwriting it loses exactly as much as overwriting a
+well-formed one. Only an absent or `null` entry counts as nothing to protect.
+
 Every condition that can refuse is checked before the first mutation -- the
 settings file's readability, its top-level type, the `hooks` container's type,
 and the type of each managed event's container. Refusing after a backup exists,

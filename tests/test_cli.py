@@ -631,6 +631,61 @@ class TestInstallRefusesBeforeMutating:
 
         assert _snapshot(cdir) == before
 
+    @pytest.mark.parametrize("entry", [
+        pytest.param("some-other-tool", id="a-bare-string"),
+        pytest.param(["some-other-tool"], id="a-list"),
+        pytest.param({"type": "command", "padding": 0}, id="a-dict-with-no-command"),
+        pytest.param({"type": "command", "command": 12345}, id="a-non-string-command"),
+    ])
+    def test_a_status_line_we_cannot_read_is_never_overwritten(
+        self, entry, tmp_path, monkeypatch
+    ):
+        """Unprovable is not unowned.
+
+        Refusing only when a command string can be parsed out left every other
+        shape to be silently replaced -- the same unrecoverable loss, reached by
+        a `statusLine` the matcher simply could not read.
+        """
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        settings = cdir / "settings.json"
+        settings.write_text(json.dumps({"statusLine": entry, "keepMe": True}))
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+        before = _snapshot(cdir)
+
+        with pytest.raises(SystemExit):
+            installer.run()
+
+        assert _snapshot(cdir) == before
+        assert json.loads(settings.read_text())["statusLine"] == entry
+
+    def test_a_null_status_line_is_treated_as_absent(self, tmp_path, monkeypatch):
+        """JSON null is nothing configured, not something to protect."""
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        (cdir / "settings.json").write_text(json.dumps({"statusLine": None}))
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+
+        assert installer.run() == 0
+
+        cfg = json.loads((cdir / "settings.json").read_text())
+        assert installer.managed_status_command(cfg["statusLine"]["command"], str(cdir))
+
+    def test_an_unreadable_status_line_is_preserved_by_uninstall_too(
+        self, tmp_path, monkeypatch
+    ):
+        """Install and uninstall must agree about what they cannot prove."""
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        settings = cdir / "settings.json"
+        settings.write_text(json.dumps({"statusLine": "some-other-tool", "keepMe": True}))
+        before = settings.read_bytes()
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+
+        assert installer.run(uninstall=True) == 0
+
+        assert settings.read_bytes() == before
+
     def test_a_foreign_checkout_symlink_is_never_replaced(self, tmp_path, monkeypatch):
         cdir = tmp_path / "config"
         cdir.mkdir()

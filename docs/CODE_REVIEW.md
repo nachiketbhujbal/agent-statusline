@@ -22,6 +22,7 @@ once the regression that demonstrates it exists in this repository.
 | INSTALL-015 | High | The exact-command matcher introduced by INSTALL-007 no longer recognized the literal `~/.claude/statusline/...` commands written by the released v0.2.0 installer. Reinstalling stacked four new hooks beside three retained ones, and uninstalling left the originals behind. | 0.2.1 | Resolved by expanding a leading `~` before the anchored comparison, so legacy entries match only when they resolve to the managed directory, with upgrade and removal regressions and lookalike negatives |
 | INSTALL-016 | High | Verification used the fixed path `<config>/.verify-state` and always removed it recursively, so a normal install deleted a pre-existing directory of that name and its contents. | 0.2.1 | Resolved by creating a unique system temporary directory and removing only what was created, with a regression proving pre-existing contents survive |
 | INSTALL-017 | High | Confinement was checked against path strings and then acted on through those same strings. Swapping a checked directory for a symlink in that window redirected publication, overwriting an unrelated file outside the configuration directory. | 0.2.1 | Resolved by binding publication to an opened directory descriptor reached without following any symlink, with a deterministic injected-race regression |
+| INSTALL-018 | High | Installation refused over a foreign `statusLine` only when a command string could be parsed out of it. A `statusLine` that was a bare string, a list, or an object without a `command` key was silently overwritten, while uninstall preserved all three — the same install/uninstall asymmetry INSTALL-011 existed to remove. | 0.2.1 | Resolved by keying the refusal on the presence of the entry rather than on a readable command, with regressions for each unreadable shape and a matching uninstall-preservation case |
 
 INSTALL-005 through INSTALL-009 were found while reviewing and adversarially
 testing the extracted commits, not in the original implementation. Each is fixed
@@ -41,6 +42,12 @@ INSTALL-016 are properties of verification that the ownership work never
 examined. INSTALL-017 is the residue of INSTALL-008 -- refusing an out-of-tree
 path closed the obvious hole and left the window between checking a path and
 writing to it.
+
+INSTALL-018 was found by self-review after INSTALL-010..017 were pushed, and it
+is the clearest instance of the pattern below: INSTALL-011 added a refusal and
+phrased it in terms of a *command*, when the thing being protected is the
+*entry*. Every shape the matcher could not read fell through the guard that was
+written to protect it.
 
 The pattern worth naming: each round of ownership fixes narrowed *what* is
 claimed without asking what else the installer touches. Ownership matching,
