@@ -25,6 +25,8 @@ old one rather than rewriting why the earlier choice was made.
 | [0017](0017-install-as-a-python-tool.md) | Install as a Python tool |
 | [0018](0018-budget-hosted-ci.md) | Hosted CI budgeted around Actions billing |
 | [0019](0019-release-tags-are-immutable.md) | Release tags are immutable |
+| [0020](0020-own-only-managed-configuration.md) | Own only managed configuration |
+| [0030](0030-ship-hardening-as-small-pre-one-patches.md) | Ship hardening as small pre-1.0 patches |
 
 ## Reading order
 

@@ -40,6 +40,9 @@ Rows are ordered by how often they answer a question worth asking — `PROJECT` 
 | [docs/adrs/](docs/adrs/README.md) | architecture decision records — one file per durable decision, with an index. **Read 0001, 0014 and 0004 before changing anything that touches money or dependencies** |
 | [docs/DEFERRED.md](docs/DEFERRED.md) | ideas considered and consciously not built |
 | [docs/PORTING.md](docs/PORTING.md) | adapting this to Codex or another agent, and why Codex cannot run it as-is |
+| [docs/CHANGELOG.md](docs/CHANGELOG.md) | what changed in each release, and what is queued for the next one |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | the 0.2.x release sequence and what each one is for |
+| [docs/CODE_REVIEW.md](docs/CODE_REVIEW.md) | review findings, with the release that resolved each |
 
 ## Requirements
 
@@ -61,9 +64,16 @@ once the repository is public the `git+ssh://` URL becomes just the package name
 
 `agent-statusline install` writes the `statusLine` entry and the four hook entries
 into `~/.claude/settings.json`, pointing them at the installed executable. It backs the
-file up first, preserves every unrelated setting, and renders your last real payload so
-you can see it working before restarting. Add `--dry-run` to see exactly what it would
-touch, and `agent-statusline uninstall` to reverse it.
+file up first, preserves every unrelated setting and hook, and renders your last real
+payload so you can see it working before restarting. Add `--dry-run` to see exactly what
+it would touch, and `agent-statusline uninstall` to reverse it.
+
+It only ever touches configuration it owns. Unrelated top-level settings, hook events,
+hook groups and matchers are preserved in place, and if `settings.json` is unreadable,
+malformed, or not a JSON object the install refuses and leaves the file byte for byte as
+it was rather than guessing. If your `settings.json` is a symlink into a dotfiles
+checkout, the link is followed and the real file is updated, so the indirection and its
+permissions survive ([ADR 0020](docs/adrs/0020-own-only-managed-configuration.md)).
 
 Upgrading is `uv tool upgrade agent-statusline` followed by `agent-statusline install`
 (the second step is only needed if the wiring itself changed).
@@ -178,14 +188,19 @@ agent-statusline uninstall        # or: python3 install.py --uninstall
 uv tool uninstall agent-statusline
 ```
 
-That removes the symlink and the settings entries. Your ledger and history in `~/.claude/`
-are untouched — delete them by hand if you want them gone.
+That removes the symlink and the settings entries it can prove it added. A `statusLine`
+command you replaced by hand, and a `~/.claude/statusline` symlink pointing somewhere
+else, are left alone and reported rather than removed. Your ledger and history in
+`~/.claude/` are untouched — delete them by hand if you want them gone.
+
+If an install goes wrong, the timestamped `settings.json.bak.*` beside your settings is
+the state from immediately before it ran.
 
 ## Development
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
-.venv/bin/python -m pytest        # 90 tests, none of which touch ~/.claude
+.venv/bin/python -m pytest        # 127 tests, none of which touch ~/.claude
 .venv/bin/ruff check src tests install.py
 ```
 
