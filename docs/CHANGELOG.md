@@ -2,29 +2,15 @@
 
 This project follows semantic versioning. Versions come from immutable Git tags.
 
-## Unreleased — 0.3.0
+## Unreleased — 0.2.1
 
 - Preserve unrelated Claude Code hooks and fail closed on malformed settings.
-- Serialize and atomically publish private runtime state.
-- Preserve the 24h, 7d, and 30d cost fields while replacing lifetime-row
-  attribution with timestamped deltas, seed-aware migration, and exact
-  lower-bound markers.
-- Establish a locked uv, pre-commit, lint, format, typing, coverage, and build
-  gate.
-- Isolate each concurrent session's process metrics and bound retained probe
-  cache state.
-- Bound transcript and rate-limit observation state without adding a full-file
-  scan to normal redraws.
-- Establish tracked roadmap, research, and one-owner/one-reviewer coordination
-  records.
-- Measure width in terminal cells and remove untrusted control sequences while
-  preserving intentional colour styling.
-- Gate the installed renderer and every approved row with one committed,
-  privacy-neutral payload and transcript fixture.
-- Add an isolated `selftest` command and a private, field-allowlisted failure
-  breadcrumb for errors hidden by the host.
-- Align installation, development, privacy, internals, and host-porting
-  documentation with the shipped package boundary.
+- Respect the selected Claude configuration directory in checkout installs.
+- Remove only package-owned settings and symlinks during uninstall.
+
+The larger hardening branch is an integration source, not one release.
+`ROADMAP.md` assigns its remaining work to subsequent small `0.2.x` releases;
+each section will move here only when that release branch is prepared.
 
 ## 0.2.0
 

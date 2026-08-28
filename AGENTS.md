@@ -65,6 +65,10 @@ tags through hatch-vcs; never duplicate a version string in source.
 - Give each release one branch owner and one independent reviewer. Codex owns
   `codex/*`; Claude owns `claude/*`. Reviewers report findings and never commit
   to or check out the owner's worktree; the owner applies corrections.
+- Follow ADR 0030 while the project is pre-1.0: keep compatible hardening tags
+  small, never conceal a breaking change in a patch, describe future scope in
+  the roadmap, and keep the changelog limited to the next slice plus landed
+  releases.
 - Use `git --no-optional-locks` for read-only inspection of an active worktree
   where possible. Run `uv sync --locked` per worktree, but install pre-commit
   only once from the primary clone because linked worktrees share `.git/hooks`.

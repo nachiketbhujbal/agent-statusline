@@ -7,46 +7,65 @@ not yet justify implementation remain in `RESEARCH.md` or `DEFERRED.md`.
 
 | Release | Primary purpose | Status |
 | --- | --- | --- |
-| 0.3.0 | Production-readiness hardening | Active on `codex/hardening/v0.3.0-production-readiness` |
+| 0.2.1 | Ownership-safe installation and removal | Next release |
+| 0.2.2 | Private, serialized runtime state | Planned |
+| 0.2.3 | Exact rolling-cost attribution | Planned |
+| 0.2.4 | Session-scoped process evidence | Planned |
+| 0.2.5 | Bounded observation state | Planned |
+| 0.2.6 | Tracked governance and review records | Planned |
+| 0.2.7 | Width-safe, sanitized rendering | Planned |
+| 0.2.8 | Hermetic installed-renderer evidence | Planned |
+| 0.2.9 | Isolated self-test and safe diagnostics | Planned |
+| 0.2.10 | Documentation, workflow, and public-readiness closure | Planned |
+| 0.3.0 | Production-ready milestone | Planned after the patch train |
 | 0.3.1 | Measured hot-path import and benchmark hygiene | Planned after 0.3.0 |
 | 0.3.2 | Explicit host-acquisition architecture | Planned after 0.3.1 |
 
-### 0.3.0 — production-readiness hardening
+The current hardening branch is an integration source. It must not be merged as
+one release. Release branches will be cut sequentially from `main`, drawing only
+the cohesive implementation, tests, ADR, and documentation for the version
+below. This preserves review history without rewriting the shared integration
+branch.
 
-This is one minor release rather than several retroactive patches. Its changes
-share one purpose—making the 0.2 renderer safe to install and run repeatedly—and
-the locked storage service underpins the ledger, transcript, probe, and hook
-corrections.
+### 0.2.1 through 0.2.10 — hardening patch train
 
-Implemented on the active branch:
+- **0.2.1 — installation ownership:** preserve unrelated settings and hooks,
+  fail closed on malformed configuration, honor custom configuration roots, and
+  remove only owned configuration.
+- **0.2.2 — runtime-state safety:** coordinate read-modify-write operations,
+  publish atomically, and enforce private state permissions.
+- **0.2.3 — cost correctness:** record timestamped deltas and non-accrual seeds,
+  preserve exact lower bounds, clamp future transcript evidence, and establish
+  the locked local quality gate used to prove the accounting change.
+- **0.2.4 — process isolation:** prevent concurrent sessions from sharing the
+  wrong PID and memory evidence.
+- **0.2.5 — bounded state:** cap probe, transcript, and rate-limit observation
+  retention without adding full-file work to the hot redraw path.
+- **0.2.6 — governance:** track authoritative instructions, research, roadmap,
+  review findings, and one-owner/one-reviewer coordination.
+- **0.2.7 — rendering safety:** measure terminal cells, sanitize untrusted
+  controls, keep disk probes bound to the real workspace, and preserve wrapped
+  continuation indentation through the host.
+- **0.2.8 — installed evidence:** materialize a privacy-neutral payload and
+  transcript into disposable paths and require all ten rows from pytest and an
+  installed wheel.
+- **0.2.9 — diagnostics:** provide an isolated `selftest` and an allowlisted,
+  private last-error breadcrumb without relaying payload or traceback data.
+- **0.2.10 — release closure:** align public documentation, pin workflow actions
+  immutably, complete artifact and reachable-history privacy sweeps, and give a
+  direct public-repository go/no-go recommendation.
 
-- Ownership-safe, fail-closed installation and removal.
-- Private, locked, atomic runtime state.
-- Exact rolling-cost deltas, migration seeds, lower-bound markers, and 35-day
-  accounting evidence.
-- Bounded transcript, probe, and rate-limit observation state.
-- Session-scoped process metrics for concurrent hosts.
-- A locked uv, pre-commit, formatting, lint, typing, coverage, and build gate.
-- Tracked project instructions, handoff, review ledger, roadmap, and research.
-- Terminal-cell-aware Unicode fitting and control-sequence sanitization.
-- A shared synthetic end-to-end fixture that gates every approved row through
-  pytest and the installed-package smoke.
-- An isolated installed-renderer self-test and privacy-safe last-error
-  breadcrumb.
-- Source-aligned installation, privacy, development, internals, and host-
-  porting documentation.
+Every patch requires its own local gate, adversarial review, pull request,
+hosted checks when available, annotated tag, and installed-wheel proof. A later
+patch cannot be used as evidence that an earlier tag was sound.
 
-Required before release:
+### 0.3.0 — production-ready milestone
 
-- Pin workflow actions immutably and prove the cost-controlled workflow after
-  hosted execution becomes available; do not merge the safety branch without
-  green CI.
-- Complete a public-readiness audit of the current tree, reachable Git history,
-  generated artifacts, historical Actions logs, examples, privacy claims, and
-  outside-contributor workflow policy. Repository visibility remains a
-  maintainer decision after a direct go/no-go report.
-- Complete the full local gate, artifact inspection, isolated wheel install,
-  privacy sweep, independent review, and exact-release proof.
+After the patch train is released and independently proven, use 0.3.0 as the
+explicit supported baseline for public adoption. It is a milestone, not a place
+to accumulate unrelated implementation. Its only permitted changes are final
+version-boundary documentation or corrections found while proving the complete
+train.
 
 ### 0.3.1 — measured hot-path performance
 

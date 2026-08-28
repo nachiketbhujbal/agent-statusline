@@ -3,7 +3,7 @@
 ## Current state
 
 - `main` is released as `v0.2.0`.
-- The active `v0.3.0` hardening work is owned by the
+- The active hardening integration work is owned by the
   `codex/hardening/v0.3.0-production-readiness` branch.
 - The branch is pushed and tracks its namesake remote; no pull request is open
   and branch pushes have triggered no hosted run.
@@ -27,12 +27,13 @@ Codex currently exposes only a declarative built-in widget list. It cannot run
 the Claude Python renderer. `docs/PORTING.md` records the verified boundary and
 the recommended native-widget mapping.
 
-## v0.3.0 work
+## Release-train boundary
 
-This ships as one minor release. The installer, accounting, cache, and
-concurrency changes share the production-hardening purpose, and the storage
-service is their common safety dependency. Performance work begins in 0.3.1;
-host-boundary architecture begins in 0.3.2.
+The integration branch will not ship as one oversized minor release. Its
+reviewed commits are source material for sequential `0.2.1` through `0.2.10`
+release branches described in `docs/ROADMAP.md`. Each patch must be independently
+reviewable, testable, installable, and tagged before the next patch lands.
+Performance work and host-boundary architecture remain after that train.
 
 Completed on the branch:
 
@@ -54,6 +55,10 @@ Completed on the branch:
   documentation findings without claiming an unimplemented Codex adapter.
 - The shared pre-commit hook is installed from the primary clone; newly added
   files must be staged before `--all-files` so the gate includes them.
+- Claude's D3 review exposed non-hermetic fixture paths, live home reads,
+  missing reset evidence, a future-accrual defect, disk-probe path rebinding,
+  and host-trimmed continuation indentation. Focused corrections exist locally
+  and require the complete gate plus independent re-review.
 
 Still required before the pull request is merge-ready:
 
@@ -72,10 +77,11 @@ the live ledger.
 
 ## Exact resume point
 
-Continue 0.3.0 with the documentation reconciliation and immutable workflow-
-action pinning described above, then run the complete release and public-
-readiness evidence sweeps. Do not begin 0.3.1 performance work until 0.3.0
-passes its full local gate, independent review, and hosted CI.
+Finish and independently review the D3/D4 correction commits, then use the
+verified integration history to cut the sequential release branches in
+`docs/ROADMAP.md`. Do not merge the integration branch wholesale. Do not begin
+performance work until the hardening train passes its local, independent, and
+hosted release gates.
 
 ## Cross-assistant coordination
 

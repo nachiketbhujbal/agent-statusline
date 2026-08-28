@@ -35,6 +35,7 @@ old one rather than rewriting why the earlier choice was made.
 | [0027](0027-measure-cells-and-sanitize-terminal-output.md) | Cell width and terminal-output sanitization |
 | [0028](0028-gate-the-installed-renderer-with-synthetic-evidence.md) | Synthetic installed-renderer evidence |
 | [0029](0029-self-test-with-isolated-state-and-safe-failure-evidence.md) | Isolated self-test and safe failure evidence |
+| [0030](0030-ship-hardening-as-small-pre-one-patches.md) | Small pre-1.0 hardening patches |
 
 ## Reading order
 
