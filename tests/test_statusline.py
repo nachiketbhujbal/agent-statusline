@@ -42,6 +42,12 @@ class TestRowOrder:
     def test_the_declared_order_has_no_duplicates(self):
         assert len(statusline.ORDER) == len(set(statusline.ORDER))
 
+    def test_committed_fixture_is_independent_of_process_cwd(
+        self, payload, monkeypatch, capsys, tmp_path
+    ):
+        monkeypatch.chdir(tmp_path)
+        assert labels(draw(payload, monkeypatch, capsys)) == statusline.ORDER
+
 
 class TestWidth:
     @pytest.mark.parametrize("cols", [240, 200, 160, 120, 100, 80, 60, 40])
@@ -69,6 +75,43 @@ class TestContent:
     def test_cost_comes_straight_from_the_payload(self, payload, monkeypatch, capsys):
         out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
         assert "$1.25" in out, "cost must be passed through, never recomputed"
+
+    def test_usage_exercises_projection_and_reset_clock(self, payload, monkeypatch, capsys):
+        out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
+        assert "%/h" in out
+        assert "reset " in out
+
+    def test_nested_git_display_does_not_rebind_disk_probe(
+        self, payload, monkeypatch, capsys, tmp_path
+    ):
+        child = tmp_path / "synthetic-child"
+        (child / ".git").mkdir(parents=True)
+        payload["cwd"] = str(tmp_path)
+        payload["workspace"]["current_dir"] = str(tmp_path)
+        payload["workspace"]["project_dir"] = str(tmp_path)
+        keys = []
+
+        def probe(key, _ttl, function):
+            keys.append(key)
+            if key == f"git:{tmp_path}":
+                return None
+            if key == f"git:{child}":
+                return {
+                    "branch": "synthetic",
+                    "dirty": False,
+                    "ahead": 0,
+                    "behind": 0,
+                    "upstream": None,
+                    "worktree": False,
+                    "stash": 0,
+                }
+            return {}
+
+        monkeypatch.setattr(statusline.pr, "probe", probe)
+        draw(payload, monkeypatch, capsys)
+
+        assert f"disk:{tmp_path}" in keys
+        assert f"disk:{child}" not in keys
 
     def test_spanning_legacy_cost_is_marked_as_a_lower_bound(self, payload, monkeypatch, capsys):
         from agent_statusline import ledger

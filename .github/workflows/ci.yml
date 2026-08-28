@@ -54,7 +54,7 @@ jobs:
 
       - name: no runtime dependencies (ADR 0004)
         run: |
-          python - <<'PY'
+          HOME="$RENDER_HOME" python - <<'PY'
           import sys, tomllib
           deps = tomllib.load(open("pyproject.toml", "rb"))["project"]["dependencies"]
           if deps:
@@ -102,13 +102,20 @@ jobs:
           agent-statusline --help > /dev/null
           agent-statusline selftest
           export RENDER_OUTPUT="${RUNNER_TEMP}/statusline-render.txt"
-          agent-statusline < tests/fixtures/statusline-payload.json > "$RENDER_OUTPUT"
+          export RENDER_PAYLOAD="${RUNNER_TEMP}/statusline-payload.json"
+          export RENDER_HOME="${RUNNER_TEMP}/statusline-home"
+          mkdir -p "$RENDER_HOME"
+          python tests/fixture_payload.py \
+            --workspace "${RUNNER_TEMP}/statusline-workspace" \
+            --output "$RENDER_PAYLOAD"
+          HOME="$RENDER_HOME" agent-statusline < "$RENDER_PAYLOAD" > "$RENDER_OUTPUT"
           python - <<'PY'
           import os, re
+          from agent_statusline.statusline import ORDER
           ansi = re.compile(r"\x1b\[[0-9;]*m")
           lines = [ansi.sub("", line) for line in open(os.environ["RENDER_OUTPUT"])]
           labels = [line.split()[0] for line in lines if line.strip() and not line.startswith(" ")]
-          expected = "PROJECT MODEL CONTEXT USAGE COST SYSTEM TOOLS CACHE TOKENS TIMING".split()
+          expected = ORDER
           assert labels == expected, (labels, expected)
           print("installed renderer emitted every approved row in order")
           PY

@@ -14,22 +14,23 @@ risk and make repeatability depend on one machine's state.
 
 ## Decision
 
-Commit a privacy-neutral payload and transcript pair under `tests/fixtures/`.
-The fixture uses generic synthetic identifiers, paths, costs, tokens, tools,
-and timings while exercising every approved row. Use the same fixture as the
-default end-to-end pytest payload and in the installed-package smoke. Require
-the smoke to find all ten row labels in their approved order set.
+Commit privacy-neutral payload and transcript templates under `tests/fixtures/`.
+One shared materializer resolves the transcript, project directory, assistant
+timestamp, and rate-limit reset clocks into a caller-owned temporary workspace.
+Pytest and the installed-package smoke must both consume its output and require
+all ten row labels in the declared `ORDER` sequence.
 
-The fixture remains static evidence. Tests redirect `AGENT_STATUSLINE_STATE`
-before importing the package, and hosted smoke runs set it to a disposable
-runner directory, so neither path can read or mutate live accounting state.
+Tests redirect both `HOME` and `AGENT_STATUSLINE_STATE` before importing the
+package. The hosted smoke likewise renders with a disposable home and state
+directory. This prevents account probes, accounting state, repository
+discovery, and transcript reads from depending on a developer or runner host.
 
 ## Consequences
 
 - Packaging smoke now proves meaningful rendering rather than only process
   startup.
-- Test and CI payload shape cannot silently drift because they share one
-  committed source.
+- Test and CI payload shape and materialization cannot silently drift because
+  they share one committed source and one resolver.
 - No real session identifiers, filesystem paths, transcript content, or spend
   figures enter the repository.
 - Host schema changes that remove an approved field become visible in one
@@ -37,6 +38,7 @@ runner directory, so neither path can read or mutate live accounting state.
 
 ## Evidence
 
-`test_committed_fixture_exercises_every_approved_row` requires the exact
-`ORDER` sequence, and the installed-shape workflow checks every row label after
-installing the package from the checkout.
+Materializer regressions require absolute disposable paths, current transcript
+evidence, and realistic reset windows. The end-to-end pytest requires the exact
+`ORDER` sequence from an unrelated working directory, and the installed-shape
+workflow imports that same sequence after installing the package.

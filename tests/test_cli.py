@@ -59,6 +59,28 @@ class TestDispatch:
         assert "isolated renderer exited non-zero" in output.err
         assert "private" not in output.out + output.err
 
+    def test_selftest_isolates_home_as_well_as_runtime_state(self, monkeypatch, capsys):
+        from agent_statusline import selftest
+
+        seen = {}
+
+        def succeed(*args, **kwargs):
+            seen.update(kwargs["env"])
+            os.makedirs(seen["AGENT_STATUSLINE_STATE"], mode=0o700)
+            return subprocess.CompletedProcess(
+                args[0],
+                0,
+                stdout="\n".join(selftest.EXPECTED_ROWS),
+                stderr="",
+            )
+
+        monkeypatch.setattr(selftest.subprocess, "run", succeed)
+
+        assert run(["selftest"], monkeypatch) == 0
+        assert seen["HOME"] != os.environ["HOME"]
+        assert os.path.dirname(seen["HOME"]) == os.path.dirname(seen["AGENT_STATUSLINE_STATE"])
+        assert "selftest ok" in capsys.readouterr().out
+
     def test_unknown_command_is_an_error(self, monkeypatch, capsys):
         assert run(["nonsense"], monkeypatch) == 2
 

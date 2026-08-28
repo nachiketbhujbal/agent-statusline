@@ -212,6 +212,28 @@ class TestRollingCosts:
         assert event["delta"] == 2.0
         assert event["accrued_at"] == accrued
 
+    def test_future_accrual_is_clamped_to_observation_time(self):
+        now = 1_800_000_000
+        data = {
+            "cost_event_schema": ledger.COST_EVENT_SCHEMA,
+            "cost_tracking_started": ledger.iso(now - 40 * 86400),
+            "cost_events": [],
+            "sessions": {"a": {"cost_journal_seeded": True}},
+        }
+
+        ledger.record_cost_delta(
+            data,
+            "a",
+            1.0,
+            2.0,
+            when=now,
+            accrued_at=ledger.iso(now + 365 * 86400),
+        )
+
+        event = data["cost_events"][-1]
+        assert event["accrued_at"] == ledger.iso(now)
+        assert ledger.rolling_costs(data, when=now + 2 * 86400)["d1"] == 0.0
+
     def test_unknown_schema_never_claims_a_complete_window(self):
         data = {
             "cost_event_schema": 999,

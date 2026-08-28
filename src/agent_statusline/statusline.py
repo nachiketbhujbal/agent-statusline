@@ -252,6 +252,7 @@ def _render():
     # One cached probe covers branch, dirtiness, ahead/behind, worktree and stash.
     gs = pr.probe(f"git:{cwd}", 3, lambda c=cwd: pr.git_state(c))
     nested = False
+    git_cwd = cwd
     if not gs:
         # cwd is not a repo: if exactly one child directory is one, show its branch
         # marked with an arrow so it cannot be mistaken for the current directory's.
@@ -266,12 +267,12 @@ def _render():
         if len(cands) == 1:
             gs = pr.probe(f"git:{cands[0]}", 3, lambda c=cands[0]: pr.git_state(c))
             if gs:
-                cwd = cands[0]
+                git_cwd = cands[0]
                 nested = True
     if gs:
         br = gs["branch"]
         g = (
-            f"{D}↳{os.path.basename(cwd)} {R}" if nested else ""
+            f"{D}↳{os.path.basename(git_cwd)} {R}" if nested else ""
         ) + f"{RED if br in ('main','master') else GRN}{br}{R}"
         if gs.get("dirty"):
             g += f"{YEL}*{R}"

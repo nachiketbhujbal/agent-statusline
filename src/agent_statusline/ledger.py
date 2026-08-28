@@ -123,7 +123,10 @@ def record_cost_delta(data, sid, previous_cost, current_cost, when=None, accrued
 
     delta = float(current_cost) - float(previous_cost)
     if math.isfinite(delta) and delta > 1e-9:
-        accrued = epoch(accrued_at) or now
+        # Transcript clocks are evidence, not authority over wall time. A bad
+        # host clock or synthetic transcript must not keep an event inside every
+        # rolling window by placing its accrual in the future.
+        accrued = min(epoch(accrued_at) or now, now)
         events.append(
             {
                 "at": iso(now),

@@ -15,10 +15,10 @@ without reading or mutating live accounting evidence.
 
 Add `agent-statusline selftest`. It launches the installed renderer in a fresh
 Python process, supplies a full synthetic payload and transcript, redirects
-`AGENT_STATUSLINE_STATE` to a temporary directory, and requires all ten rows in
-their approved order. It also verifies that the isolated state directory and
-files have private permissions. The command prints only a generic pass or
-failure reason and never relays child output.
+both `HOME` and `AGENT_STATUSLINE_STATE` to temporary directories, and requires
+all ten rows in their approved order. It also verifies that the isolated state
+directory and files have private permissions. The command prints only a
+generic pass or failure reason and never relays child output.
 
 Wrap normal rendering so an unexpected exception atomically publishes
 `statusline-last-error.json` in the configured state directory. The breadcrumb

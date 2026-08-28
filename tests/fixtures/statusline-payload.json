@@ -1,8 +1,8 @@
 {
   "session_id": "synthetic-session-0001",
   "session_name": "Synthetic smoke session",
-  "transcript_path": "tests/fixtures/statusline-transcript.jsonl",
-  "cwd": "/tmp",
+  "transcript_path": "__MATERIALIZED_TRANSCRIPT__",
+  "cwd": "__MATERIALIZED_WORKSPACE__",
   "version": "2.1.246",
   "effort": {
     "level": "high"
@@ -12,8 +12,8 @@
     "display_name": "Synthetic Opus"
   },
   "workspace": {
-    "current_dir": "/tmp",
-    "project_dir": "/tmp",
+    "current_dir": "__MATERIALIZED_WORKSPACE__",
+    "project_dir": "__MATERIALIZED_WORKSPACE__",
     "added_dirs": []
   },
   "output_style": {

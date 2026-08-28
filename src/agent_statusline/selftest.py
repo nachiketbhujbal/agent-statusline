@@ -7,6 +7,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 
 EXPECTED_ROWS = (
     "PROJECT",
@@ -23,7 +24,7 @@ EXPECTED_ROWS = (
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
 
-def _write_transcript(path):
+def _write_transcript(path, now):
     entries = [
         {
             "type": "user",
@@ -33,7 +34,7 @@ def _write_transcript(path):
         },
         {
             "type": "assistant",
-            "timestamp": "2099-01-01T00:00:00Z",
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now)),
             "message": {
                 "model": "synthetic-selftest-model",
                 "content": [
@@ -60,7 +61,7 @@ def _write_transcript(path):
             handle.write(json.dumps(entry) + "\n")
 
 
-def _payload(root, transcript):
+def _payload(root, transcript, now):
     return {
         "session_id": "synthetic-selftest-session",
         "session_name": "Synthetic self-test",
@@ -90,8 +91,8 @@ def _payload(root, transcript):
             },
         },
         "rate_limits": {
-            "five_hour": {"used_percentage": 15},
-            "seven_day": {"used_percentage": 49},
+            "five_hour": {"used_percentage": 15, "resets_at": now + 4 * 3600},
+            "seven_day": {"used_percentage": 49, "resets_at": now + 5 * 86400},
         },
     }
 
@@ -122,16 +123,20 @@ def _fail(reason):
 def run():
     """Render a full synthetic payload in a fresh process and state directory."""
     with tempfile.TemporaryDirectory(prefix="agent-statusline-selftest-") as root:
+        now = time.time()
         transcript = os.path.join(root, "transcript.jsonl")
         state_dir = os.path.join(root, "state")
-        _write_transcript(transcript)
+        home_dir = os.path.join(root, "home")
+        os.mkdir(home_dir, mode=0o700)
+        _write_transcript(transcript, now)
         env = dict(os.environ)
+        env["HOME"] = home_dir
         env["AGENT_STATUSLINE_STATE"] = state_dir
         env["COLUMNS"] = "200"
         try:
             process = subprocess.run(
                 [sys.executable, "-m", "agent_statusline"],
-                input=json.dumps(_payload(root, transcript)),
+                input=json.dumps(_payload(root, transcript, now)),
                 capture_output=True,
                 text=True,
                 timeout=20,

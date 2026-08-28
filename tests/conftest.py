@@ -6,21 +6,20 @@ real `~/.claude` -- exercising cost paths against a live ledger has corrupted
 real spend figures before (docs/adrs/0014).
 """
 
-import json
 import os
 import tempfile
-from pathlib import Path
 
+_HOME = tempfile.mkdtemp(prefix="agent-statusline-home-")
 _STATE = tempfile.mkdtemp(prefix="agent-statusline-tests-")
+os.environ["HOME"] = _HOME
 os.environ["AGENT_STATUSLINE_STATE"] = _STATE
 
 import pytest
 
+from fixture_payload import materialize_payload
+
 
 @pytest.fixture
-def payload():
+def payload(tmp_path):
     """A realistic Claude Code status-line payload."""
-    fixture_dir = Path(__file__).parent / "fixtures"
-    value = json.loads((fixture_dir / "statusline-payload.json").read_text())
-    value["transcript_path"] = str(fixture_dir / "statusline-transcript.jsonl")
-    return value
+    return materialize_payload(tmp_path / "synthetic-workspace")
