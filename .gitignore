@@ -31,3 +31,7 @@ htmlcov/
 # purpose: it records account details, spend figures and session history that
 # must not enter a repository that may become public.
 .claude/
+
+# Local private workspace state and linked worktrees.
+/.pvt/
+/.worktrees/
