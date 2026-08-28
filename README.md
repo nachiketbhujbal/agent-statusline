@@ -10,6 +10,9 @@ reports what the session is doing, what it is costing, how well the prompt cache
 working, and how much machine it is using — all from data the agent already has, with **no
 telemetry, no network calls, and no dependencies**.
 
+This is an independent project and is not affiliated with or endorsed by
+Anthropic.
+
 ```
 PROJECT acme-web/services │ feature/ingest* ↑2 stash1 │ "Rewrite the importer"
 MODEL   Opus 5:high │ think │ fast off │ auto │ v2.1.246
@@ -45,10 +48,11 @@ Rows are ordered by how often they answer a question worth asking — `PROJECT` 
 
 ## Requirements
 
-- **Python 3.8+**, standard library only. There is nothing to `pip install`.
+- **Python 3.9+**, with no runtime packages beyond the standard library.
 - **Claude Code** (developed against v2.1.246).
-- macOS or Linux. The `SYSTEM` row's memory probe is macOS-specific (`vm_stat`, `sysctl`);
-  every other row is portable, and the row degrades to disk-only elsewhere rather than failing.
+- macOS or Linux. The `SYSTEM` row's machine-wide RAM probe is macOS-specific
+  (`vm_stat`, `sysctl`); the row retains process and disk evidence elsewhere
+  and degrades instead of failing.
 - Optional: `git`, for the `PROJECT` row.
 
 ## Install
@@ -58,14 +62,18 @@ uv tool install git+https://github.com/nachiketbhujbal/agent-statusline
 agent-statusline install
 ```
 
-Then restart Claude Code. `pipx install` and `pip install` work identically, and
-once the repository is public the `git+ssh://` URL becomes just the package name.
+Then restart Claude Code. `pipx install` and `pip install` can install from the
+same Git URL. Making the repository public removes the authentication
+requirement; installing by package name would still require a separate PyPI
+publication.
 
-`agent-statusline install` writes the `statusLine` entry and the four hook entries
-into `~/.claude/settings.json`, pointing them at the installed executable. It backs the
-file up first, preserves every unrelated setting, and renders your last real payload so
-you can see it working before restarting. Add `--dry-run` to see exactly what it would
-touch, and `agent-statusline uninstall` to reverse it.
+`agent-statusline install` writes its `statusLine` entry and two managed hooks
+into `~/.claude/settings.json`. It adds two temporary timestamp hooks only while
+Claude's native timestamp feature is unavailable. The installer points them at
+the absolute installed executable, backs up existing settings, preserves
+unrelated settings and hooks, and renders the last real payload against
+throwaway state. Add `--dry-run` to preview the selected mode and target;
+`agent-statusline uninstall` removes only entries it can prove it owns.
 
 Upgrading is `uv tool upgrade agent-statusline` followed by `agent-statusline install`
 (the second step is only needed if the wiring itself changed).
@@ -79,9 +87,9 @@ python3 install.py
 ```
 
 This symlinks `~/.claude/statusline` to the working tree, so your edits take effect with
-no reinstall. **There is nothing to `pip install`** — `install.py` and the status line
-itself are stdlib-only and run on the system Python. The installer detects which of the
-two shapes it is in; you do not tell it.
+no reinstall. The checkout bootstrap and renderer are stdlib-only and run on
+the selected Python 3.9+ interpreter. The installer detects checkout versus
+installed-package shape; you do not select it manually.
 
 ### The commands
 
@@ -112,6 +120,21 @@ the caches, the rate-limit log — is machine-local and stays in `~/.claude/`:
 Override the location with `AGENT_STATUSLINE_STATE=/some/dir` — useful for testing against
 a throwaway directory, which is the *only* safe way to exercise cost paths (see
 [ADR 0014](docs/adrs/0014-never-exercise-cost-paths-against-the-live-ledger.md)).
+
+### Privacy and trust boundary
+
+Normal rendering is local-only: it makes no network request, sends no
+telemetry, and has no cloud fallback. It reads the JSON supplied by Claude,
+the payload-selected transcript, local Git/process/memory/disk state, and
+`~/.claude.json` for local account flags. Installation additionally reads and
+writes `~/.claude/settings.json` and checks the local native-timestamp feature
+flag. Those sources can contain sensitive paths, titles, costs, and commands.
+
+Mutable state stays outside the repository, is serialized under sidecar locks,
+and is atomically replaced. Newly created state directories use `0700`; state
+files and locks use `0600`. The last-payload file intentionally contains the
+host payload; do not publish, attach, or commit it. Tests and `selftest` set
+`AGENT_STATUSLINE_STATE` before package import and use only synthetic evidence.
 
 ## Verify it works
 
@@ -153,10 +176,13 @@ agent-statusline/
 │   ├── cli.py              the `agent-statusline` entry point and its subcommands
 │   ├── installer.py        settings.json wiring for both install shapes
 │   ├── statusline.py       the status line itself: ORDER, rows, main()
+│   ├── selftest.py         isolated synthetic installed-renderer check
+│   ├── diagnostics.py      allowlisted last-error breadcrumb
 │   ├── render.py           colours, units, bars, width fitting  (host-agnostic)
 │   ├── transcript.py       incremental .jsonl parsing
 │   ├── probes.py           cached subprocess/file probes        (host-agnostic)
 │   ├── ledger.py           cost ledger + `close` / `show` CLI   (host-agnostic)
+│   ├── storage.py          locked, atomic, private persistence
 │   ├── paths.py            the one place that knows where state lives
 │   └── hooks/
 │       ├── session_end.py     seals the ledger row on exit
@@ -170,11 +196,15 @@ agent-statusline/
     ├── INTERNALS.md        data sources, adding a field, how signals were discovered
     ├── adrs/               architecture decision records, one per decision, with an index
     ├── DEFERRED.md         ideas considered and consciously not built
-    └── PORTING.md          adapting this to Codex or another agent
+    ├── PORTING.md          adapting this to Codex or another agent
+    ├── ROADMAP.md          promoted release sequence
+    └── RESEARCH.md         measured findings and open questions
 ```
 
-Only `statusline.py` and `transcript.py` know what a Claude payload looks like; the modules
-marked host-agnostic are reusable as-is. See [docs/PORTING.md](docs/PORTING.md).
+`statusline.py`, `transcript.py`, the hooks, and the installer know about
+Claude-specific contracts. The modules marked host-agnostic provide reusable
+primitives, but no second-host adapter ships today. See
+[docs/PORTING.md](docs/PORTING.md).
 
 ## Updating
 
@@ -196,21 +226,31 @@ are untouched — delete them by hand if you want them gone.
 ## Development
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
-.venv/bin/python -m pytest        # 90 tests, none of which touch ~/.claude
-.venv/bin/ruff check src tests install.py
+uv sync --locked --all-groups
+uv run --locked pre-commit install   # once in the primary clone
+uv run --locked pre-commit run --all-files
+uv run --locked pytest --cov=agent_statusline --cov-report=term-missing
+uv build
 ```
+
+The suite redirects state before importing the package; no test may touch the
+real `~/.claude`. Development tool versions are locked in `uv.lock`. Linked
+worktrees share the primary clone's Git hooks; install the hook only once, and
+stage new files before `--all-files` so they are included in the gate.
 
 Versioning is [hatch-vcs](https://github.com/ofek/hatch-vcs): there is no version string in
 the source, and `git tag v1.2.3` is what makes a release. Tags are immutable
 ([ADR 0019](docs/adrs/0019-release-tags-are-immutable.md)) — a mistake in a released
 version is fixed by a new patch version, never by moving the tag.
 
-CI runs Python 3.9–3.13 on Linux, plus one combined job carrying lint, the
-dependency-policy guard, both install shapes, and the build. **Hosted macOS is off by
-default** and requested through `workflow_dispatch`, because a macOS job bills about ten
-times a Linux one and Actions minutes are shared across every private repository
-([ADR 0018](docs/adrs/0018-budget-hosted-ci.md)). Documentation-only pushes skip CI.
+The CI workflow is designed to run Python 3.9–3.13 on Linux, plus one combined
+job carrying lint, the dependency-policy guard, both install shapes, and the
+build. **Hosted macOS is off by default** and requested through
+`workflow_dispatch`, because a macOS job bills about ten times a Linux one and
+Actions minutes are shared across every private repository
+([ADR 0018](docs/adrs/0018-budget-hosted-ci.md)). Documentation-only changes
+skip CI. Hosted workflows remain disabled until the repository visibility and
+allowance boundary is settled; the locked local gate remains mandatory.
 
 ## Troubleshooting
 

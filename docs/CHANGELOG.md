@@ -23,6 +23,8 @@ This project follows semantic versioning. Versions come from immutable Git tags.
   privacy-neutral payload and transcript fixture.
 - Add an isolated `selftest` command and a private, field-allowlisted failure
   breadcrumb for errors hidden by the host.
+- Align installation, development, privacy, internals, and host-porting
+  documentation with the shipped package boundary.
 
 ## 0.2.0
 

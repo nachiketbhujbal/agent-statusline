@@ -107,7 +107,9 @@ def _private_state(state_dir):
     for directory, _, files in os.walk(state_dir):
         if stat.S_IMODE(os.stat(directory).st_mode) != 0o700:
             return False
-        if any(stat.S_IMODE(os.stat(os.path.join(directory, name)).st_mode) != 0o600 for name in files):
+        if any(
+            stat.S_IMODE(os.stat(os.path.join(directory, name)).st_mode) != 0o600 for name in files
+        ):
             return False
     return True
 

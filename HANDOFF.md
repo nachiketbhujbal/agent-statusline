@@ -50,16 +50,17 @@ Completed on the branch:
   pytest and the installed-package smoke under ADR 0028.
 - An isolated self-test and field-allowlisted last-error breadcrumb under ADR
   0029.
+- A source-aligned README, internals, and porting sweep that closes the tracked
+  documentation findings without claiming an unimplemented Codex adapter.
+- The shared pre-commit hook is installed from the primary clone; newly added
+  files must be staged before `--all-files` so the gate includes them.
 
 Still required before the pull request is merge-ready:
 
-- Reconcile README and field documentation with the actual Python boundary,
-  test gate, installer semantics, cost migration, and the current one-line →
-  two-line wrap → remaining-segment truncation model. The introductory README
-  wording already describes that model; sweep the whole file for stale or
-  contradictory remnants.
 - Replace moving workflow action tags and decide the post-allowance hosted or
   self-hosted trigger policy without enabling a run now.
+- Complete the public-readiness audit and give the maintainer a direct go/no-go
+  recommendation before any irreversible visibility change.
 - Complete the review ledger, privacy sweep, wheel/sdist inspection, installed-
   wheel smoke test, and independent adversarial review.
 

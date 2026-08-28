@@ -16,12 +16,14 @@ regression exist on the named release branch; release status remains separate.
 | COST-003 | Medium | Observation time was weaker than the newest known assistant timestamp for window attribution. | 0.3.0 | Resolved with recorded accrual and observation timestamps |
 | TEST-001 | Medium | Tool versions, formatting, typing, coverage, and commit-time checks were not reproducible. | 0.3.0 | Resolved by ADR 0023 and `uv.lock` |
 | TEST-002 | Medium | The installed-package smoke rendered only an empty object, so it did not prove the approved display or transcript-backed fields. | 0.3.0 | Resolved by ADR 0028 and shared synthetic fixture assertions |
+| TEST-003 | Medium | An all-files gate run before staging omitted a new source file, and the shared pre-commit hook was not installed. | 0.3.0 | Resolved by primary-clone hook installation, tracked sequencing guidance, and a full tracked-tree rerun |
 | DIAG-001 | Medium | Host-swallowed render failures had no safe diagnostic path, while replaying a real payload could mutate live accounting. | 0.3.0 | Resolved by ADR 0029, isolated self-test, and allowlisted failure breadcrumb |
 | STATE-003 | High | Concurrent sessions shared one process-probe cache row, so all could display the first session's PID and RSS. | 0.3.0 | Resolved by ADR 0024 and distinct-session cache regressions |
 | STATE-004 | Medium | Path- and session-qualified probe rows accumulated without a lifecycle bound. | 0.3.0 | Resolved by seven-day and 256-row cache bounds |
 | STATE-005 | Medium | Transcript cache rows and rate-limit history grew without a lifecycle bound. | 0.3.0 | Resolved by ADR 0025 and retention, byte-bound, and hot-path regressions |
 | RENDER-001 | Medium | Printable width used code-point count rather than terminal-cell width for wide and combining Unicode. | 0.3.0 | Resolved by ADR 0027 and Unicode cell regressions |
 | RENDER-002 | Medium | Host and user-controlled labels were emitted without control-character sanitization. | 0.3.0 | Resolved by ADR 0027 and injected-control regressions |
-| DOC-001 | Low | README claims Python 3.8 while package metadata and installer require 3.9. | 0.3.0 | Open |
-| DOC-002 | Low | README hardcodes an obsolete test count. | 0.3.0 | Open |
+| DOC-001 | Low | README claims Python 3.8 while package metadata and installer require 3.9. | 0.3.0 | Resolved by package/installer-aligned requirements |
+| DOC-002 | Low | README hardcodes an obsolete test count. | 0.3.0 | Resolved by command-based locked gate documentation |
 | DOC-003 | Medium | Roadmap, research, and cross-assistant state existed only in machine-local records. | 0.3.0 | Resolved by tracked planning records and ADR 0026 |
+| DOC-004 | Medium | Installation, runtime privacy, module boundaries, and the unimplemented Codex ledger path were described inaccurately. | 0.3.0 | Resolved by source-aligned README, internals, and porting references |

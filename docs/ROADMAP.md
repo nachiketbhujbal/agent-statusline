@@ -33,16 +33,18 @@ Implemented on the active branch:
   pytest and the installed-package smoke.
 - An isolated installed-renderer self-test and privacy-safe last-error
   breadcrumb.
+- Source-aligned installation, privacy, development, internals, and host-
+  porting documentation.
 
 Required before release:
 
-- Reconcile README, fields, internals, and porting documentation with current
-  package behavior and Python support. Confirm the documented width model is
-  one line when possible, wrap to at most two lines, then drop/truncate the
-  remaining low-priority segments; remove any older contradictory wording.
 - Pin workflow actions immutably and prove the cost-controlled workflow after
   hosted execution becomes available; do not merge the safety branch without
   green CI.
+- Complete a public-readiness audit of the current tree, reachable Git history,
+  generated artifacts, historical Actions logs, examples, privacy claims, and
+  outside-contributor workflow policy. Repository visibility remains a
+  maintainer decision after a direct go/no-go report.
 - Complete the full local gate, artifact inspection, isolated wheel install,
   privacy sweep, independent review, and exact-release proof.
 

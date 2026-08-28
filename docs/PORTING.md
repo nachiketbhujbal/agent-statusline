@@ -1,19 +1,22 @@
 # Porting to other agents
 
-## Read this first: Codex cannot run this script
+## Current Codex boundary: native widgets, not this renderer
 
-Codex's status line is **declarative, not a command.** `~/.codex/config.toml` takes a list
-of built-in widget identifiers and a colour toggle, and nothing else:
+Codex's status line is **declarative, not a command.** The current
+`~/.codex/config.toml` interface accepts built-in widget identifiers and a
+colour toggle under `[tui]`:
 
 ```toml
-status_line = ["model-with-reasoning", "current-dir", "git-branch", "context-remaining", ...]
+[tui]
+status_line = ["model-with-reasoning", "current-dir", "git-branch", "context-remaining"]
 status_line_use_colors = true
 ```
 
-Codex validates those identifiers against a fixed internal enum and rejects unknown ones
-("terminal title configuration contains unknown item identifiers"). There is **no
-`command`-type status line**, so there is nowhere to plug a Python script in. Verified
-against `codex-cli 0.149.1` by inspecting the shipped binary; re-check after an upgrade.
+Codex validates widget identifiers against its own supported set. There is no
+documented arbitrary-command status-line entry point, so this Python renderer
+cannot be registered there. This boundary was verified locally against
+`codex-cli 0.149.1`; it is version-specific and must be re-checked after an
+upgrade.
 
 This is the opposite design from Claude Code, which runs an arbitrary command and renders
 whatever it prints. So a port is not a port — it is two different jobs.
@@ -43,23 +46,18 @@ closest equivalent:
 - **Machine pressure** — no RAM, disk, or process figures.
 - **Width-aware truncation**, which Codex handles its own way.
 
-### What you *can* port to Codex today
+### What ships for Codex today
 
-**The ledger.** Codex has a hook system with these events: `SessionStart`, `SessionEnd`,
-`UserPromptSubmit`, `Stop`, `PreToolUse`, `PostToolUse`, `PermissionRequest`, `PreCompact`,
-`PostCompact`, `SubagentStart`, `SubagentStop`.
+No Codex adapter or hook ships in this package. The local CLI reports a stable
+hooks feature, but this project has not established a documented event payload,
+an authoritative cost source, or a safe installation boundary for it. Claiming
+cross-agent accounting before those facts are measured would violate the
+exact-money rule.
 
-`SessionEnd` is enough to keep `cost-ledger.json` populated from Codex sessions too, giving
-you one cross-agent spend history even though Codex's own status line cannot display it.
-`src/agent_statusline/ledger.py` is deliberately free of Claude-specific assumptions — it takes a session id,
-a cost, and a timestamp — so the work is writing a Codex `SessionEnd` hook that calls
-`ledger.apply_cost` / `ledger.close_session`, not changing the ledger.
-
-Query it from anywhere:
-
-```bash
-python3 ~/.claude/statusline/ledger.py show     # or: agent-statusline-ledger show
-```
+The existing Claude ledger remains queryable with `agent-statusline ledger
+show`. A future Codex hook may reuse its host-independent arithmetic only after
+the hook contract and cost evidence are verified. That work is research, not a
+current capability.
 
 ## Porting to a third agent
 
@@ -68,21 +66,27 @@ widget list?**
 
 - **Command-based** (Claude Code): this repo ports nearly whole. Write an adapter that maps
   the agent's payload into the shape `statusline.py` expects, and keep the renderer.
-- **Widget-based** (Codex): the renderer is unusable. Port the ledger via hooks, map the
-  rest onto whatever widgets exist, and document the gaps.
+- **Widget-based** (Codex): the renderer is unusable. Map available fields onto
+  native widgets and treat any ledger hook as new acquisition work requiring
+  its own evidence and safety design.
 
 ### The seam
 
-The package is already layered, and only one layer is host-specific:
+The package is layered, but several acquisition and installation modules remain
+host-specific:
 
 | module | host-specific? |
 | --- | --- |
 | `render.py` — colours, units, bars, width fitting | no |
 | `probes.py` — cached `ps` / `vm_stat` / git / `statvfs` | no |
 | `ledger.py` — cross-session cost accounting | no |
-| `paths.py` — where state lives | no |
+| `storage.py` — locked, private, atomic persistence | no |
+| `paths.py` — where Claude-local state currently lives | partly |
+| `diagnostics.py` — privacy-safe failure evidence | no |
 | `transcript.py` — parses a Claude `.jsonl` | **yes** |
 | `statusline.py` — reads the Claude payload, builds rows | **yes** |
+| `installer.py` / `hooks/` — Claude settings and events | **yes** |
+| `selftest.py` — synthetic Claude payload health check | **yes** |
 
 So a second command-based agent needs a new acquisition layer and reuses everything else.
 The clean refactor is `src/agent_statusline/adapters/<agent>.py`

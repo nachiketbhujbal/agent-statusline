@@ -68,6 +68,8 @@ tags through hatch-vcs; never duplicate a version string in source.
 - Use `git --no-optional-locks` for read-only inspection of an active worktree
   where possible. Run `uv sync --locked` per worktree, but install pre-commit
   only once from the primary clone because linked worktrees share `.git/hooks`.
+- Stage newly added files before an all-files pre-commit gate (or pass them
+  explicitly). Git does not include untracked files in `--all-files`.
 
 ## Release-equivalent local gate
 
