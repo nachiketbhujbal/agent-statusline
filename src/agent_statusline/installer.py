@@ -118,30 +118,45 @@ def _tokens(command):
         return []
 
 
-def managed_hook_command(command):
-    """Whether a hook command belongs to this package."""
+def _same_path(candidate, expected):
+    return os.path.normpath(candidate) == os.path.normpath(expected)
+
+
+def managed_hook_command(command, cdir=None):
+    """Whether a hook command belongs to this package.
+
+    The checkout form is matched against the exact path this installer would
+    have written into `cdir`, not against a trailing path fragment. An unanchored
+    suffix match claims any tool whose hooks happen to live in a directory called
+    `statusline`, which is the most natural name another status line would pick --
+    and claiming it means deleting it on uninstall.
+    """
     tokens = _tokens(command)
     if len(tokens) == 3 and os.path.basename(tokens[0]) == "agent-statusline":
         slugs = {slug for _, slug, _, _ in HOOKS + STOPGAP_HOOKS}
         return tokens[1] == "hook" and tokens[2] in slugs
     if len(tokens) != 2 or not os.path.basename(tokens[0]).startswith("python"):
         return False
-    normalized = tokens[1].replace(os.sep, "/")
+    root = os.path.join(cdir or claude_dir(), "statusline", "hooks")
     modules = {mod for _, _, mod, _ in HOOKS + STOPGAP_HOOKS}
-    return any(normalized.endswith(f"/statusline/hooks/{mod}.py") for mod in modules)
+    return any(_same_path(tokens[1], os.path.join(root, f"{mod}.py")) for mod in modules)
 
 
-def managed_status_command(command):
-    """Whether a status-line command belongs to this package."""
+def managed_status_command(command, cdir=None):
+    """Whether a status-line command belongs to this package.
+
+    Anchored to `cdir` for the same reason as `managed_hook_command`.
+    """
     tokens = _tokens(command)
     if len(tokens) == 1 and os.path.basename(tokens[0]) == "agent-statusline":
         return True
     if len(tokens) != 2 or not os.path.basename(tokens[0]).startswith("python"):
         return False
-    return tokens[1].replace(os.sep, "/").endswith("/statusline/statusline.py")
+    expected = os.path.join(cdir or claude_dir(), "statusline", "statusline.py")
+    return _same_path(tokens[1], expected)
 
 
-def _remove_managed_hooks(cfg):
+def _remove_managed_hooks(cfg, cdir=None):
     hooks = cfg.get("hooks")
     if not isinstance(hooks, dict):
         return 0
@@ -158,7 +173,7 @@ def _remove_managed_hooks(cfg):
             kept = []
             for hook in group["hooks"]:
                 command = hook.get("command") if isinstance(hook, dict) else None
-                if managed_hook_command(command):
+                if managed_hook_command(command, cdir):
                     removed += 1
                 else:
                     kept.append(hook)
@@ -186,18 +201,38 @@ def _load_settings(path):
     return cfg
 
 
-def _write_json_atomic(path, cfg):
+def _publish_target(path, cdir):
+    """The real file settings will be written to, refusing to leave `cdir`."""
+    target = os.path.realpath(path)
+    root = os.path.realpath(cdir)
+    if target != root and not target.startswith(root + os.sep):
+        die(f"{path} resolves outside {cdir}:\n"
+            f"       {target}\n"
+            "       Refusing to write there. Point it inside the configuration "
+            "directory, or move the file and remove the link.")
+    return target
+
+
+def _write_json_atomic(path, cfg, cdir):
     """Publish settings atomically, through a symlink rather than over it.
 
-    A settings path is legitimately a symlink when someone keeps their Claude
-    configuration in a dotfiles checkout. Replacing the link with a regular file
-    would silently orphan the real file -- Claude Code would read the new one
-    while the user kept editing the old -- so resolve it and publish to the
-    target. The mode comes from the resolved file for the same reason: a
-    symlink's own bits are 0o777 on most systems, and copying those onto real
-    settings would widen them to world-readable.
+    A settings path is legitimately a symlink when someone links it within their
+    Claude configuration directory. Replacing the link with a regular file would
+    silently orphan the real file -- Claude Code would read the new one while the
+    user kept editing the old -- so resolve it and publish to the target.
+
+    The resolution is confined to `cdir`. Following a link anywhere the user
+    happens to point it turns an installer into a write-anywhere primitive: a
+    link into a dotfiles checkout, another user's home, or an unrelated
+    configuration file would be silently rewritten with our keys. Out-of-tree
+    links are refused, and the refusal names the resolved path so the user can
+    decide what to do about it.
+
+    The mode comes from the resolved file, because a symlink's own bits (measured 0o755 on
+    macOS, commonly 0o777 elsewhere) would otherwise be copied onto real settings and widen
+    them.
     """
-    target = os.path.realpath(path)
+    target = _publish_target(path, cdir)
     directory = os.path.dirname(target)
     mode = 0o600
     try:
@@ -245,16 +280,18 @@ def link_checkout(link, dry):
 def write_settings(cdir, dry, remove=False):
     path = os.path.join(cdir, "settings.json")
     cfg = _load_settings(path)
+    # Resolve before the backup: refusing after writing one is not "nothing changed".
+    _publish_target(path, cdir)
     if not dry and os.path.exists(path):
         backup = f"{path}.bak.{time.strftime('%Y%m%d%H%M%S')}.{time.time_ns()}"
         shutil.copy2(path, backup)
         say(f"backup:   {backup}")
 
-    removed = _remove_managed_hooks(cfg)
+    removed = _remove_managed_hooks(cfg, cdir)
     if remove:
         status = cfg.get("statusLine")
         command = status.get("command") if isinstance(status, dict) else None
-        if managed_status_command(command):
+        if managed_status_command(command, cdir):
             cfg.pop("statusLine", None)
             status_msg = "managed statusLine removed"
         else:
@@ -282,7 +319,7 @@ def write_settings(cdir, dry, remove=False):
 
     if dry:
         return
-    _write_json_atomic(path, cfg)
+    _write_json_atomic(path, cfg, cdir)
 
 
 def verify(cdir):
@@ -317,6 +354,10 @@ def run(dry_run=False, uninstall=False):
         say("MODE:     dry run, nothing will be written")
 
     if uninstall:
+        # Same pre-flight as the install branch below. Removing the symlink and
+        # then refusing on malformed settings leaves settings pointing at a link
+        # that no longer exists, which is worse than not starting.
+        _load_settings(os.path.join(cdir, "settings.json"))
         link = os.path.join(cdir, "statusline")
         if os.path.islink(link) and os.path.realpath(link) == PKG:
             if not dry_run:
