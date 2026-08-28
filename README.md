@@ -92,6 +92,7 @@ two shapes it is in; you do not tell it.
 | `agent-statusline uninstall` | remove the settings entries and the symlink |
 | `agent-statusline hook <name>` | run one hook: `session-end`, `context-guard`, `timestamp-user`, `timestamp-stop` |
 | `agent-statusline ledger show` | print the cost ledger; `ledger close <id>` seals a row by hand |
+| `agent-statusline selftest` | verify all ten rows in a child process using isolated synthetic state |
 | `agent-statusline version` | print the version |
 
 ### Code here, state there
@@ -106,12 +107,21 @@ the caches, the rate-limit log — is machine-local and stays in `~/.claude/`:
 | `statusline-probe-cache.json` | cached probe results |
 | `rate-limit-history.jsonl` | append-on-change rate-limit log |
 | `statusline-last-payload.json` | last payload; **load-bearing**, the context-guard hook reads it |
+| `statusline-last-error.json` | last unexpected render failure's time and type only; no message, path, or payload |
 
 Override the location with `AGENT_STATUSLINE_STATE=/some/dir` — useful for testing against
 a throwaway directory, which is the *only* safe way to exercise cost paths (see
 [ADR 0014](docs/adrs/0014-never-exercise-cost-paths-against-the-live-ledger.md)).
 
 ## Verify it works
+
+The safe first check is fully synthetic and never touches the live ledger:
+
+```bash
+agent-statusline selftest
+```
+
+For a visual preview of your own last payload, isolate the state explicitly:
 
 ```bash
 # render from your last real payload without touching any live state
@@ -204,8 +214,12 @@ times a Linux one and Actions minutes are shared across every private repository
 
 ## Troubleshooting
 
-**Nothing appears.** Claude Code silently swallows a status line that errors. Run the
-verify command above; a traceback there is the answer.
+**Nothing appears.** Claude Code silently swallows a status line that errors. Run
+`agent-statusline selftest` first; it verifies the installed renderer without reading or
+mutating live accounting. An unexpected renderer failure also leaves only its time and
+exception type in `~/.claude/statusline-last-error.json`. If the self-test passes, use the
+isolated visual-preview command above to inspect your real payload without touching the
+live ledger.
 
 **`ModuleNotFoundError: No module named 'agent_statusline'`.** In a checkout, the symlink
 is missing or points somewhere stale — re-run `python3 install.py`. If installed, the tool

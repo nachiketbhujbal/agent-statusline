@@ -4,6 +4,7 @@ import io
 import json
 import os
 import shlex
+import subprocess
 
 import pytest
 
@@ -33,6 +34,30 @@ class TestDispatch:
     def test_help(self, monkeypatch, capsys):
         assert run(["--help"], monkeypatch) == 0
         assert "agent-statusline install" in capsys.readouterr().out
+
+    def test_selftest_uses_an_isolated_renderer(self, monkeypatch, capsys):
+        assert run(["selftest"], monkeypatch) == 0
+        assert "all 10 approved rows with private state" in capsys.readouterr().out
+
+    def test_selftest_rejects_options(self, monkeypatch, capsys):
+        assert run(["selftest", "--live"], monkeypatch) == 2
+        assert "unknown option" in capsys.readouterr().err
+
+    def test_selftest_never_relays_child_output_on_failure(self, monkeypatch, capsys):
+        from agent_statusline import selftest
+
+        failed = subprocess.CompletedProcess(
+            ["python", "-m", "agent_statusline"],
+            1,
+            stdout="private rendered payload",
+            stderr="private traceback and path",
+        )
+        monkeypatch.setattr(selftest.subprocess, "run", lambda *args, **kwargs: failed)
+
+        assert run(["selftest"], monkeypatch) == 1
+        output = capsys.readouterr()
+        assert "isolated renderer exited non-zero" in output.err
+        assert "private" not in output.out + output.err
 
     def test_unknown_command_is_an_error(self, monkeypatch, capsys):
         assert run(["nonsense"], monkeypatch) == 2

@@ -48,6 +48,8 @@ Completed on the branch:
   ADR 0027.
 - A shared synthetic payload/transcript fixture that exercises all ten rows in
   pytest and the installed-package smoke under ADR 0028.
+- An isolated self-test and field-allowlisted last-error breadcrumb under ADR
+  0029.
 
 Still required before the pull request is merge-ready:
 
@@ -69,11 +71,10 @@ the live ledger.
 
 ## Exact resume point
 
-Continue 0.3.0 with D4 as the next bounded implementation: a self-test and
-privacy-safe last-error breadcrumb. After that, complete the documentation
-reconciliation above and immutable workflow-action pinning. Do not begin 0.3.1
-performance work until 0.3.0 passes its full local gate, independent review,
-and hosted CI.
+Continue 0.3.0 with the documentation reconciliation and immutable workflow-
+action pinning described above, then run the complete release and public-
+readiness evidence sweeps. Do not begin 0.3.1 performance work until 0.3.0
+passes its full local gate, independent review, and hosted CI.
 
 ## Cross-assistant coordination
 

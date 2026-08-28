@@ -203,7 +203,7 @@ def limit_seg(label, node, window_h):
     return s
 
 
-def main():
+def _render():
     raw = sys.stdin.read()
     try:
         write_text(PAYLOAD, raw)
@@ -556,6 +556,19 @@ def main():
     rows["COST"] = row("COST", p8)
 
     print("\n".join(rows[k] for k in ORDER if rows.get(k)))
+
+
+def main():
+    try:
+        _render()
+    except Exception as error:
+        try:
+            from agent_statusline.diagnostics import record_render_failure
+
+            record_render_failure(error)
+        except Exception:
+            pass
+        raise
 
 
 if __name__ == "__main__":

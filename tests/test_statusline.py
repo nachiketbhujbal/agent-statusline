@@ -3,7 +3,9 @@
 import io
 import json
 import re
+import stat
 import time
+from pathlib import Path
 
 import pytest
 
@@ -117,6 +119,42 @@ class TestRobustness:
     def test_missing_rate_limits_are_simply_absent(self, payload, monkeypatch, capsys):
         payload.pop("rate_limits")
         assert "USAGE" not in labels(draw(payload, monkeypatch, capsys))
+
+    def test_unexpected_failure_leaves_only_a_private_safe_breadcrumb(self, monkeypatch):
+        from agent_statusline import diagnostics
+
+        breadcrumb = Path(diagnostics.LAST_RENDER_ERROR)
+        breadcrumb.unlink(missing_ok=True)
+
+        def fail():
+            raise RuntimeError("sensitive /private/example/path and payload text")
+
+        monkeypatch.setattr(statusline, "_render", fail)
+        with pytest.raises(RuntimeError, match="sensitive"):
+            statusline.main()
+
+        record = json.loads(breadcrumb.read_text())
+        assert set(record) == {"schema", "occurred_at", "phase", "error_type"}
+        assert record["schema"] == 1
+        assert record["phase"] == "render"
+        assert record["error_type"] == "RuntimeError"
+        assert "sensitive" not in breadcrumb.read_text()
+        assert "private" not in breadcrumb.read_text()
+        assert stat.S_IMODE(breadcrumb.stat().st_mode) == 0o600
+
+    def test_breadcrumb_failure_never_masks_the_render_failure(self, monkeypatch):
+        from agent_statusline import diagnostics
+
+        def fail_render():
+            raise ValueError("original")
+
+        def fail_record(_error):
+            raise OSError("state unavailable")
+
+        monkeypatch.setattr(statusline, "_render", fail_render)
+        monkeypatch.setattr(diagnostics, "record_render_failure", fail_record)
+        with pytest.raises(ValueError, match="original"):
+            statusline.main()
 
     def test_process_probe_is_scoped_to_each_concurrent_session(self, payload, monkeypatch, capsys):
         keys = []

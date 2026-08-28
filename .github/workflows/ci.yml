@@ -100,6 +100,7 @@ jobs:
           PY
           agent-statusline version
           agent-statusline --help > /dev/null
+          agent-statusline selftest
           export RENDER_OUTPUT="${RUNNER_TEMP}/statusline-render.txt"
           agent-statusline < tests/fixtures/statusline-payload.json > "$RENDER_OUTPUT"
           python - <<'PY'

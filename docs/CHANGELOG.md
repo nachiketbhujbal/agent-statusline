@@ -21,6 +21,8 @@ This project follows semantic versioning. Versions come from immutable Git tags.
   preserving intentional colour styling.
 - Gate the installed renderer and every approved row with one committed,
   privacy-neutral payload and transcript fixture.
+- Add an isolated `selftest` command and a private, field-allowlisted failure
+  breadcrumb for errors hidden by the host.
 
 ## 0.2.0
 

@@ -31,10 +31,11 @@ Implemented on the active branch:
 - Terminal-cell-aware Unicode fitting and control-sequence sanitization.
 - A shared synthetic end-to-end fixture that gates every approved row through
   pytest and the installed-package smoke.
+- An isolated installed-renderer self-test and privacy-safe last-error
+  breadcrumb.
 
 Required before release:
 
-- Add a self-test and privacy-safe last-error breadcrumb (D4).
 - Reconcile README, fields, internals, and porting documentation with current
   package behavior and Python support. Confirm the documented width model is
   one line when possible, wrap to at most two lines, then drop/truncate the
