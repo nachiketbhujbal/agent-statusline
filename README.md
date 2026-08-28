@@ -46,7 +46,7 @@ Rows are ordered by how often they answer a question worth asking — `PROJECT` 
 
 ## Requirements
 
-- **Python 3.8+**, standard library only. There is nothing to `pip install`.
+- **Python 3.9+**, standard library only. There is nothing to `pip install`.
 - **Claude Code** (developed against v2.1.246).
 - macOS or Linux. The `SYSTEM` row's memory probe is macOS-specific (`vm_stat`, `sysctl`);
   every other row is portable, and the row degrades to disk-only elsewhere rather than failing.
@@ -66,16 +66,35 @@ once the repository is public the `git+ssh://` URL becomes just the package name
 into `~/.claude/settings.json`, pointing them at the installed executable. It backs the
 file up first, preserves every unrelated setting and hook, and renders your last real
 payload so you can see it working before restarting. Add `--dry-run` to see exactly what
-it would touch, and `agent-statusline uninstall` to reverse it.
+it would touch — a dry run creates nothing, not even the configuration directory — and
+`agent-statusline uninstall` to reverse it.
 
-It only ever touches configuration it owns. Unrelated top-level settings, hook events,
-hook groups and matchers are preserved in place, and if `settings.json` is unreadable,
-malformed, or not a JSON object the install refuses and leaves the file byte for byte as
-it was rather than guessing. If your `settings.json` is a symlink into a dotfiles
-configuration directory is a symlink, the link is followed and the real file is updated, so
-the indirection and its permissions survive; a link resolving outside that directory is
-refused rather than followed
+It only ever touches configuration it owns, and ownership means the exact command this
+installation wrote — not a familiar-looking filename. Unrelated top-level settings, hook
+events, hook groups and matchers are preserved in place, including their order and shape.
+A status line or hook belonging to another tool is never claimed, even when its program
+happens to be named `agent-statusline` too.
+
+Installing refuses rather than overwrites: if a `statusLine` this package does not own is
+already configured, or `~/.claude/statusline` is a symlink pointing at something else, the
+install stops and says so, because the settings format holds only one status line and
+replacing yours would be unrecoverable. Every such refusal happens before the first
+change, so no backup, symlink, or temporary file is left behind. The same applies to a
+`settings.json` that is unreadable, malformed, or not a JSON object: it is left byte for
+byte as it was rather than guessed at.
+
+If your `settings.json` is itself a symlink to another file inside your configuration
+directory, the link is followed and the real file is updated, so the indirection and its
+permissions survive. A link resolving *outside* that directory is refused rather than
+followed — an installer that writes wherever a link points is a write-anywhere primitive.
+Publication is bound to an opened directory, so redirecting it after that check has been
+made is refused too
 ([ADR 0020](docs/adrs/0020-own-only-managed-configuration.md)).
+
+One documented exception to "only what it owns": `showMessageTimestamps` is set to `true`
+when absent and is deliberately *not* removed on uninstall, because a value already in
+your settings cannot be told apart from one this installer added
+([ADR 0015](docs/adrs/0015-timestamp-hooks-are-a-stopgap.md)).
 
 Upgrading is `uv tool upgrade agent-statusline` followed by `agent-statusline install`
 (the second step is only needed if the wiring itself changed).
@@ -204,7 +223,7 @@ will replace the link with a regular file.
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
-.venv/bin/python -m pytest        # 137 tests, none of which touch ~/.claude
+.venv/bin/python -m pytest        # 180 tests, none of which touch ~/.claude
 .venv/bin/ruff check src tests install.py
 ```
 
