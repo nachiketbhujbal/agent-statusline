@@ -155,8 +155,12 @@ def row(label, segs, sep=None, maxlines=MAXLINES):
     budget = width() - LABEL - 2
     segs = [clip(s, budget) for s in segs]
     lines, dropped = pack(segs, sep, budget, maxlines)
+    # Keep an SGR prefix on continuation lines. Claude Code trims raw leading
+    # whitespace from multiline status-line output, but it preserves spaces
+    # that follow an escape sequence. This keeps wrapped content aligned with
+    # the first segment instead of snapping back under the row label.
     out = [
-        (f"{D}{label:<{LABEL}}{R}" if i == 0 else " " * LABEL) + sep.join(ln)
+        (f"{D}{label:<{LABEL}}{R}" if i == 0 else f"{D}{'':<{LABEL}}{R}") + sep.join(ln)
         for i, ln in enumerate(lines)
     ]
     if dropped:

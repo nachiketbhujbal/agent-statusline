@@ -52,7 +52,8 @@ class TestRow:
 
     def test_continuation_is_indented_under_the_label(self, narrow):
         second = render.row("TEST", ["a" * 20, "b" * 20]).split("\n")[1]
-        assert second.startswith(" " * render.LABEL)
+        assert second.startswith(render.D), "an escape prefix prevents the host trimming the indent"
+        assert render.ANSI.sub("", second).startswith(" " * render.LABEL)
 
     def test_truncates_only_after_maxlines(self, narrow):
         out = render.row("TEST", ["a" * 20, "b" * 20, "c" * 20, "d" * 20])
