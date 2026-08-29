@@ -4,10 +4,22 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.2.1
+## Unreleased — 0.2.2
+
+Establish the locked, reproducible local development and release gate
+([ADR 0023](adrs/0023-use-a-locked-local-quality-gate.md)): a committed
+`uv.lock`, pre-commit hooks running Ruff, Black, and mypy from the locked
+environment, and subprocess-aware coverage measurement. Tooling only --
+runtime behavior, dependencies, and the build backend are unchanged.
+Formatting is no longer exempted for dense render code; source layout was
+never part of the status-line output contract.
+
+## 0.2.1
 
 Installation and removal now mutate only configuration this package owns
-([ADR 0020](adrs/0020-own-only-managed-configuration.md)).
+([ADR 0020](adrs/0020-own-only-managed-configuration.md)). Also records the
+practical local-tool threat model this and future installer hardening is
+evaluated against ([ADR 0031](adrs/0031-practical-local-threat-model.md)).
 
 - Preserve unrelated top-level settings, hook events, hook groups, matchers, and
   their order. Only the managed `statusLine` entry and the managed hook commands

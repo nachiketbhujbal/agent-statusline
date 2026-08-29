@@ -76,8 +76,10 @@ def console_script():
     and the hooks are spawned by Claude Code, whose environment is not
     guaranteed to include the tool directory.
     """
-    for cand in (os.path.join(os.path.dirname(sys.executable), "agent-statusline"),
-                 shutil.which("agent-statusline")):
+    for cand in (
+        os.path.join(os.path.dirname(sys.executable), "agent-statusline"),
+        shutil.which("agent-statusline"),
+    ):
         if cand and os.path.isfile(cand) and os.access(cand, os.X_OK):
             return cand
     return None
@@ -99,20 +101,18 @@ def commands(cdir=None):
     if root is None:
         exe = console_script()
         if exe is None:
-            die("installed package but no `agent-statusline` executable found.\n"
+            die(
+                "installed package but no `agent-statusline` executable found.\n"
                 "       Reinstall with `uv tool install` / `pipx install`, or run "
-                "install from a checkout.")
+                "install from a checkout."
+            )
         quoted = shlex.quote(exe)
         return quoted, (lambda slug, _mod: f"{quoted} hook {slug}"), None
     link = os.path.join(cdir or claude_dir(), "statusline")
     python = shlex.quote(sys.executable)
     return (
         f"{python} {shlex.quote(os.path.join(link, 'statusline.py'))}",
-        (
-            lambda _slug, mod: (
-                f"{python} {shlex.quote(os.path.join(link, 'hooks', mod + '.py'))}"
-            )
-        ),
+        (lambda _slug, mod: (f"{python} {shlex.quote(os.path.join(link, 'hooks', mod + '.py'))}")),
         link,
     )
 
@@ -125,6 +125,7 @@ def commands(cdir=None):
 # trailing fragment -- claims commands belonging to other tools, and claiming
 # one means deleting it on uninstall.
 # --------------------------------------------------------------------------
+
 
 def _tokens(command):
     if not isinstance(command, str):
@@ -260,9 +261,13 @@ def _remove_managed_hooks(cfg, cdir=None):
             if not isinstance(group, dict) or not isinstance(group.get("hooks"), list):
                 kept_groups.append(group)
                 continue
-            kept = [hook for hook in group["hooks"]
-                    if not managed_hook_command(
-                        hook.get("command") if isinstance(hook, dict) else None, cdir)]
+            kept = [
+                hook
+                for hook in group["hooks"]
+                if not managed_hook_command(
+                    hook.get("command") if isinstance(hook, dict) else None, cdir
+                )
+            ]
             taken = len(group["hooks"]) - len(kept)
             removed += taken
             if not taken:
@@ -290,6 +295,7 @@ def _remove_managed_hooks(cfg, cdir=None):
 # first mutation. Refusing after a backup or a symlink already exists is not
 # "nothing changed".
 # --------------------------------------------------------------------------
+
 
 def _load_settings(path, cdir=None, cdir_fd=None):
     """Read existing settings. When `cdir_fd` is given -- an already-bound
@@ -366,11 +372,13 @@ def _backup_settings(path, cdir, cdir_fd=None):
     finally:
         os.close(dfd)
 
-    backup_name = (f"{os.path.basename(path)}.bak."
-                   f"{time.strftime('%Y%m%d%H%M%S')}.{time.time_ns()}")
+    backup_name = (
+        f"{os.path.basename(path)}.bak." f"{time.strftime('%Y%m%d%H%M%S')}.{time.time_ns()}"
+    )
     try:
-        bfd = os.open(backup_name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
-                      0o600, dir_fd=cdir_fd)
+        bfd = os.open(
+            backup_name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=cdir_fd
+        )
     except OSError as exc:
         die(f"cannot create a backup of {path}: {exc}")
     published = False
@@ -442,17 +450,21 @@ def _check_install_ownership(cfg, link, cdir, path, cdir_fd=None):
         # well-formed one.
         command = _status_command(cfg)
         shown = command if isinstance(command, str) else json.dumps(status)
-        die(f"{path} already has a status line this package does not own:\n"
+        die(
+            f"{path} already has a status line this package does not own:\n"
             f"       {shown}\n"
             "       Only one status line can be configured. Remove it first if "
-            "you want to switch.")
+            "you want to switch."
+        )
     if not link:
         return
     is_link, target, exists = _link_state(link, cdir_fd)
     if is_link and target != PKG:
-        die(f"{link} is a symlink this package does not own:\n"
+        die(
+            f"{link} is a symlink this package does not own:\n"
             f"       -> {target}\n"
-            "       Move it aside and re-run.")
+            "       Move it aside and re-run."
+        )
     if not is_link and exists:
         die(f"{link} exists and is not a symlink. Move it aside and re-run.")
 
@@ -462,10 +474,12 @@ def _publish_target(path, cdir):
     target = os.path.realpath(path)
     root = os.path.realpath(cdir)
     if target != root and not target.startswith(root + os.sep):
-        die(f"{path} resolves outside {cdir}:\n"
+        die(
+            f"{path} resolves outside {cdir}:\n"
             f"       {target}\n"
             "       Refusing to write there. Point it inside the configuration "
-            "directory, or move the file and remove the link.")
+            "directory, or move the file and remove the link."
+        )
     return target
 
 
@@ -494,9 +508,11 @@ def _bind_directory(abs_path):
             fd = nxt
         bound = True
     except OSError as exc:
-        die(f"cannot safely reach {abs_path}: {exc}\n"
+        die(
+            f"cannot safely reach {abs_path}: {exc}\n"
             "       A directory on the way changed while installing. Nothing "
-            "was written.")
+            "was written."
+        )
     finally:
         if not bound:
             os.close(fd)
@@ -551,9 +567,11 @@ def _open_publish_dir(target, cdir, cdir_fd=None):
         try:
             return _walk_from(cdir_fd, parts)
         except OSError as exc:
-            die(f"cannot safely reach {target}: {exc}\n"
+            die(
+                f"cannot safely reach {target}: {exc}\n"
                 "       A directory on the way changed while installing. "
-                "Nothing was written.")
+                "Nothing was written."
+            )
     if os.open not in os.supports_dir_fd:
         die("this platform cannot publish settings safely: openat is unavailable.")
     fd = _bind_directory(root)
@@ -565,9 +583,11 @@ def _open_publish_dir(target, cdir, cdir_fd=None):
             fd = nxt
         bound = True
     except OSError as exc:
-        die(f"cannot safely reach {target}: {exc}\n"
+        die(
+            f"cannot safely reach {target}: {exc}\n"
             "       A directory on the way changed while installing. Nothing "
-            "was written.")
+            "was written."
+        )
     finally:
         if not bound:
             os.close(fd)
@@ -609,8 +629,9 @@ def _write_json_atomic(path, cfg, cdir, cdir_fd=None):
             die(f"cannot read the permissions of {target}: {exc}")
         tmp = f".{name}.{os.getpid()}.{time.time_ns()}.tmp"
         try:
-            fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
-                         0o600, dir_fd=dfd)
+            fd = os.open(
+                tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=dfd
+            )
         except OSError as exc:
             die(f"cannot create a temporary file beside {target}: {exc}")
         published = False
@@ -632,8 +653,7 @@ def _write_json_atomic(path, cfg, cdir, cdir_fd=None):
             os.replace(tmp, name, src_dir_fd=dfd, dst_dir_fd=dfd)
             published = True
         except NotImplementedError:
-            die("this platform cannot publish settings safely: renameat is "
-                "unavailable.")
+            die("this platform cannot publish settings safely: renameat is " "unavailable.")
         except OSError as exc:
             die(f"cannot write {target}: {exc}")
         finally:
@@ -785,9 +805,8 @@ def write_settings(cdir, dry, remove=False, cfg=None, cdir_fd=None):
         hooks = cfg.setdefault("hooks", {})
         for event, slug, mod, timeout in wanted:
             hooks.setdefault(event, []).append(
-                {"hooks": [{"type": "command",
-                            "command": hook_cmd(slug, mod),
-                            "timeout": timeout}]})
+                {"hooks": [{"type": "command", "command": hook_cmd(slug, mod), "timeout": timeout}]}
+            )
         # Added when absent, never reclaimed on uninstall (ADR 0015/0020): a
         # value already there cannot be told apart from one we set.
         cfg.setdefault("showMessageTimestamps", True)
@@ -813,9 +832,12 @@ def verify(cdir):
             payload = fh.read()
     scratch = tempfile.mkdtemp(prefix="agent-statusline-verify-")
     try:
-        proc = subprocess.run([sys.executable, os.path.join(PKG, "statusline.py")],
-                              input=payload, capture_output=True,
-                              env=dict(os.environ, AGENT_STATUSLINE_STATE=scratch))
+        proc = subprocess.run(
+            [sys.executable, os.path.join(PKG, "statusline.py")],
+            input=payload,
+            capture_output=True,
+            env=dict(os.environ, AGENT_STATUSLINE_STATE=scratch),
+        )
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
     if proc.returncode != 0:
@@ -834,9 +856,11 @@ def _report_rollback_failure(guard, link):
     original error already reported the primary failure and must not be
     replaced by this one.
     """
-    print(f"error: rollback also failed -- {guard.error}\n"
-          f"       {link} may not match settings.json; check it by hand.",
-          file=sys.stderr)
+    print(
+        f"error: rollback also failed -- {guard.error}\n"
+        f"       {link} may not match settings.json; check it by hand.",
+        file=sys.stderr,
+    )
 
 
 def run(dry_run=False, uninstall=False):
@@ -911,8 +935,10 @@ def run(dry_run=False, uninstall=False):
         return 0
 
     if sys.version_info < MIN_PYTHON:
-        die(f"python {'.'.join(map(str, MIN_PYTHON))}+ required, "
-            f"this is {sys.version.split()[0]}")
+        die(
+            f"python {'.'.join(map(str, MIN_PYTHON))}+ required, "
+            f"this is {sys.version.split()[0]}"
+        )
     say(f"python:   {sys.version.split()[0]} (stdlib only, no dependencies)")
     _, _, link = commands(cdir)
 
@@ -944,7 +970,7 @@ def run(dry_run=False, uninstall=False):
         cfg = _load_settings(path, cdir, cdir_fd)
         _validate_schema(cfg, path)
         _check_install_ownership(cfg, link, cdir, path, cdir_fd)
-        guard = _LinkGuard(link, cdir_fd) if link else None
+        install_guard = _LinkGuard(link, cdir_fd) if link else None
         # The checkout symlink and the settings rewrite are two separate
         # mutations with no shared commit point. If the settings half dies
         # after the link has already been created or replaced, the guard
@@ -955,13 +981,13 @@ def run(dry_run=False, uninstall=False):
         # itself reported rather than swallowed.
         try:
             if link:
-                link_checkout(link, dry_run, guard, cdir_fd)
+                link_checkout(link, dry_run, install_guard, cdir_fd)
             else:
                 say(f"command:  {console_script()}")
             write_settings(cdir, dry_run, cfg=cfg, cdir_fd=cdir_fd)
         except SystemExit:
-            if guard and not guard.rollback():
-                _report_rollback_failure(guard, link)
+            if install_guard and not install_guard.rollback():
+                _report_rollback_failure(install_guard, link)
             raise
         verify(cdir)
     finally:

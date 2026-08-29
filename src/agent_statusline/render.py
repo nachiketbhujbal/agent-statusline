@@ -3,6 +3,7 @@
 Nothing here knows what a Claude payload looks like -- this is the presentation
 layer any host can reuse (see docs/PORTING.md).
 """
+
 import re
 import shutil
 
@@ -63,7 +64,7 @@ def clip(s, budget):
     if budget <= 0 or vis(s) <= budget:
         return s
     out, seen, i = [], 0, 0
-    keep = max(1, budget - 1)                   # leave a column for the ellipsis
+    keep = max(1, budget - 1)  # leave a column for the ellipsis
     while i < len(s) and seen < keep:
         m = ANSI.match(s, i)
         if m:
@@ -83,7 +84,8 @@ def pack(segs, sep, budget, maxlines=MAXLINES):
     so overflow is taken off the end: a narrow terminal loses the last segment
     of a row rather than the row itself.
     """
-    lines, cur = [], []
+    lines: list = []
+    cur: list = []
     for seg in segs:
         if not cur:
             cur = [seg]
@@ -91,10 +93,10 @@ def pack(segs, sep, budget, maxlines=MAXLINES):
         if vis(sep.join(cur + [seg])) <= budget:
             cur.append(seg)
             continue
-        if len(lines) + 1 < maxlines:       # room for another line
+        if len(lines) + 1 < maxlines:  # room for another line
             lines.append(cur)
             cur = [seg]
-        else:                               # out of lines: drop the rest
+        else:  # out of lines: drop the rest
             lines.append(cur)
             return lines, True
     lines.append(cur)
@@ -115,8 +117,10 @@ def row(label, segs, sep=None, maxlines=MAXLINES):
     budget = width() - LABEL - 2
     segs = [clip(s, budget) for s in segs]
     lines, dropped = pack(segs, sep, budget, maxlines)
-    out = [(f"{D}{label:<{LABEL}}{R}" if i == 0 else " " * LABEL) + sep.join(ln)
-           for i, ln in enumerate(lines)]
+    out = [
+        (f"{D}{label:<{LABEL}}{R}" if i == 0 else " " * LABEL) + sep.join(ln)
+        for i, ln in enumerate(lines)
+    ]
     if dropped:
         out[-1] += f" {D}…{R}"
     return "\n".join(out)
@@ -137,7 +141,7 @@ def tok(n):
 
 def gb(n):
     n = float(n or 0)
-    return f"{n / 2 ** 30:.1f}G" if n >= 2 ** 30 else f"{n / 2 ** 20:.0f}M"
+    return f"{n / 2 ** 30:.1f}G" if n >= 2**30 else f"{n / 2 ** 20:.0f}M"
 
 
 def dur(sec):
