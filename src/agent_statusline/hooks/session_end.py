@@ -11,8 +11,9 @@ import os
 import sys
 
 if __package__ in (None, ""):  # running as a plain script
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(
-        os.path.realpath(__file__)))))
+    sys.path.insert(
+        0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+    )
 
 from agent_statusline import ledger
 

@@ -33,6 +33,7 @@ def main(argv=None):
     # Hot path: no arguments means render, and nothing else is imported.
     if not argv:
         from agent_statusline.statusline import main as render
+
         render()
         return 0
 
@@ -44,16 +45,19 @@ def main(argv=None):
 
     if cmd in ("-V", "--version", "version"):
         from agent_statusline import __version__
+
         print(__version__)
         return 0
 
     if cmd == "render":
         from agent_statusline.statusline import main as render
+
         render()
         return 0
 
     if cmd in ("install", "uninstall"):
         from agent_statusline import installer
+
         unknown = [a for a in rest if a != "--dry-run"]
         if unknown:
             print(f"unknown option: {unknown[0]}", file=sys.stderr)
@@ -64,12 +68,12 @@ def main(argv=None):
         if not rest or rest[0] not in HOOKS:
             print(f"usage: agent-statusline hook {{{','.join(HOOKS)}}}", file=sys.stderr)
             return 2
-        mod = __import__(f"agent_statusline.hooks.{HOOKS[rest[0]]}",
-                         fromlist=["main"])
+        mod = __import__(f"agent_statusline.hooks.{HOOKS[rest[0]]}", fromlist=["main"])
         return mod.main()
 
     if cmd == "ledger":
         from agent_statusline import ledger
+
         sys.argv = ["agent-statusline ledger", *rest]
         return ledger._main()
 

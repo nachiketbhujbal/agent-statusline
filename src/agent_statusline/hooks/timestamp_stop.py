@@ -15,8 +15,9 @@ def main():
         sys.stdin.read()
     except Exception:
         pass
-    print(json.dumps({"systemMessage": time.strftime("[%Y-%m-%d %H:%M:%S]"),
-                      "suppressOutput": True}))
+    print(
+        json.dumps({"systemMessage": time.strftime("[%Y-%m-%d %H:%M:%S]"), "suppressOutput": True})
+    )
     return 0
 
 
