@@ -13,6 +13,7 @@ import json
 import os
 import sys
 import time
+from collections.abc import Mapping
 
 if __package__ in (None, ""):  # running as a plain script from a checkout
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
@@ -207,6 +208,9 @@ def main():
     try:
         d = json.loads(raw)
     except Exception:
+        print(f"{D}claude{R}")
+        return
+    if not isinstance(d, Mapping):
         print(f"{D}claude{R}")
         return
     rows = {}

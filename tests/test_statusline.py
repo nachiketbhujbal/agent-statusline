@@ -90,6 +90,10 @@ class TestRobustness:
         statusline.main()
         assert "claude" in ANSI.sub("", capsys.readouterr().out)
 
+    @pytest.mark.parametrize("payload", [[], ["not a payload"], "scalar", 17, None])
+    def test_json_non_object_payload_degrades_to_a_stub(self, payload, monkeypatch, capsys):
+        assert ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys))) == "claude"
+
     def test_missing_rate_limits_are_simply_absent(self, payload, monkeypatch, capsys):
         payload.pop("rate_limits")
         assert "USAGE" not in labels(draw(payload, monkeypatch, capsys))
