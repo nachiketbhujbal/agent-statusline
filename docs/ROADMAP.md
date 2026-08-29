@@ -14,15 +14,17 @@ installed-artifact evidence.
 | Release | Primary purpose | Status |
 | --- | --- | --- |
 | 0.2.1 | Ownership-safe installation and removal | **Active** |
-| 0.2.2 | Private, serialized runtime state | Planned |
-| 0.2.3 | Exact rolling-cost attribution | Planned |
-| 0.2.4 | Session-scoped process evidence | Planned |
-| 0.2.5 | Bounded observation state | Planned |
-| 0.2.6 | Tracked governance and review records | Planned |
-| 0.2.7 | Width-safe, sanitized rendering | Planned |
-| 0.2.8 | Hermetic installed-renderer evidence | Planned |
-| 0.2.9 | Isolated self-test and safe diagnostics | Planned |
-| 0.2.10 | Documentation, workflow, and public-readiness closure | Planned |
+| 0.2.2 | Locked local quality gate | Planned |
+| 0.2.3 | Hostile payload/transcript input safety | Planned |
+| 0.2.4 | Private, serialized runtime state | Planned |
+| 0.2.5 | Exact rolling-cost attribution | Planned |
+| 0.2.6 | Session-scoped process evidence | Planned |
+| 0.2.7 | Bounded observation state | Planned |
+| 0.2.8 | Tracked governance and review records | Planned |
+| 0.2.9 | Width-safe, sanitized rendering | Planned |
+| 0.2.10 | Hermetic installed-renderer evidence | Planned |
+| 0.2.11 | Isolated self-test and safe diagnostics | Planned |
+| 0.2.12 | Documentation, pinned workflow, and public-readiness closure | Planned |
 | 0.3.0 | Production-ready milestone | Planned after the patch train |
 
 Only 0.2.1 is implemented. Nothing in 0.2.2 and later is present in this

@@ -38,6 +38,6 @@ not as a container for unrelated work. `ROADMAP.md` owns future release scope;
 
 ## Evidence
 
-`ROADMAP.md` maps 0.2.1 through 0.2.10 to one primary purpose each and marks
+`ROADMAP.md` maps 0.2.1 through 0.2.12 to one primary purpose each and marks
 only 0.2.1 as implemented. `CHANGELOG.md` contains only the 0.2.1 slice above
 the released 0.2.0 history.
