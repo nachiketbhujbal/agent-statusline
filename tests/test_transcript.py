@@ -156,6 +156,21 @@ class TestToolSignals:
         )
         assert tot["tools"] == {"Bash": 2, "Read": 1}
 
+    def test_non_string_tool_names_use_unknown_key_and_later_tools_count(self):
+        tot = absorb(
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {"type": "tool_use", "name": ["invalid"], "input": {}},
+                        {"type": "tool_use", "name": {"invalid": True}, "input": {}},
+                        {"type": "tool_use", "name": "Read", "input": {}},
+                    ]
+                },
+            }
+        )
+        assert tot["tools"] == {"?": 2, "Read": 1}
+
     def test_edited_and_read_paths_are_kept_apart(self):
         tot = absorb(
             {
@@ -292,5 +307,27 @@ class TestRowShape:
         path = tmp_path / "session.jsonl"
         path.write_text('42\nnull\n{"type":"user","uuid":"root-123"}\n')
         monkeypatch.setattr(transcript, "TSTATE", str(tmp_path / "state.json"))
+
+        assert transcript.conversation_root(str(path)) == "root-123"
+
+    def test_non_string_root_uuid_is_ignored_and_later_valid_root_counts(
+        self, tmp_path, monkeypatch
+    ):
+        path = tmp_path / "session.jsonl"
+        path.write_text(
+            '{"type":"user","uuid":["invalid"]}\n'
+            '{"type":"user","uuid":{"invalid":true}}\n'
+            '{"type":"user","uuid":"root-123"}\n'
+        )
+        monkeypatch.setattr(transcript, "TSTATE", str(tmp_path / "state.json"))
+
+        assert transcript.conversation_root(str(path)) == "root-123"
+
+    def test_cached_non_string_root_is_ignored(self, tmp_path, monkeypatch):
+        path = tmp_path / "session.jsonl"
+        path.write_text('{"type":"user","uuid":"root-123"}\n')
+        state_path = tmp_path / "state.json"
+        state_path.write_text(f'{{"{path}":{{"root":["invalid"]}}}}')
+        monkeypatch.setattr(transcript, "TSTATE", str(state_path))
 
         assert transcript.conversation_root(str(path)) == "root-123"

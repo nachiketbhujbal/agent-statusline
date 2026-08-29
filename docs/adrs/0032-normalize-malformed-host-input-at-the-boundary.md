@@ -27,6 +27,9 @@ Fields passed to path, mapping-key, or sequence operations are also accepted
 only in the narrow shape that operation requires. Unsupported transcript paths,
 workspace paths, permission modes, added-directory lists, and session identifiers
 fall back or are omitted rather than reaching filesystem or container APIs.
+Transcript conversation identifiers and tool names likewise require non-empty
+strings; unsupported values cannot poison incremental or accounting state, and
+previously cached unsupported conversation roots are ignored.
 
 Use a dependency-free `coerce.py` leaf module for bounded finite-number and
 finite-integer conversion. The helpers reject booleans, invalid strings,

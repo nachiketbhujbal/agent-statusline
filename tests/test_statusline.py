@@ -184,6 +184,36 @@ class TestRobustness:
 
         assert seen["cost"] is None
 
+    def test_cached_non_string_ledger_root_does_not_break_other_sessions(self, monkeypatch):
+        monkeypatch.setattr(
+            statusline.ledger,
+            "load",
+            lambda: {
+                "sessions": {
+                    "prior": {
+                        "cost": 1.0,
+                        "updated": statusline.ledger.iso(),
+                        "root": ["invalid"],
+                    }
+                }
+            },
+        )
+
+        aggregate = statusline.ledger_update("current", None, "project", "session")
+
+        assert aggregate["n"] == 1
+        assert aggregate["convos"] == 1
+
+    def test_invalid_transcript_permission_falls_back_to_valid_payload(
+        self, payload, monkeypatch, capsys
+    ):
+        payload["permission_mode"] = "acceptEdits"
+        monkeypatch.setattr(statusline, "transcript_totals", lambda _path: _totals(perm=[]))
+
+        out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
+
+        assert "accept edits" in out
+
     def test_malformed_transcript_numbers_do_not_remove_rows(self, payload, monkeypatch, capsys):
         monkeypatch.setattr(
             statusline,

@@ -113,7 +113,8 @@ def _absorb(tot, e):
             if not isinstance(b, dict):
                 continue
             if b.get("type") == "tool_use":
-                n = b.get("name") or "?"
+                name_value = b.get("name")
+                n = name_value if isinstance(name_value, str) and name_value else "?"
                 tot["tools"][n] = tot["tools"].get(n, 0) + 1
                 inp = b.get("input") or {}
                 if not isinstance(inp, Mapping):
@@ -228,8 +229,9 @@ def conversation_root(path):
     except Exception:
         st = {}
     row = st.get(path) or {}
-    if row.get("root"):
-        return row["root"]
+    cached_root = row.get("root")
+    if isinstance(cached_root, str) and cached_root:
+        return cached_root
     root = None
     try:
         with open(path) as fh:
@@ -242,8 +244,9 @@ def conversation_root(path):
                     continue
                 if not isinstance(e, dict):
                     continue
-                if e.get("type") == "user" and e.get("uuid"):
-                    root = e["uuid"]
+                uuid_value = e.get("uuid")
+                if e.get("type") == "user" and isinstance(uuid_value, str) and uuid_value:
+                    root = uuid_value
                     break
     except Exception:
         return None

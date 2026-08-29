@@ -12,7 +12,9 @@ Non-object payloads use the minimal fallback, non-object transcript rows are
 ignored while later valid rows still count, and bounded finite coercion protects
 payload, transcript, and formatter numeric paths. Invalid path, sequence,
 permission-mode, and session-identifier shapes now fall back safely as well,
-without changing valid output or converting an absent cost into zero.
+and transcript conversation identifiers and tool names can no longer poison
+incremental or accounting state. Valid output is unchanged and an absent cost
+is not converted into zero.
 
 ## 0.2.2
 
