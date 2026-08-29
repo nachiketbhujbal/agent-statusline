@@ -189,3 +189,27 @@ class TestMissingFiles:
 
     def test_absent_transcript_has_no_conversation_root(self):
         assert transcript.conversation_root("/nonexistent/x.jsonl") is None
+
+
+class TestRowShape:
+    def test_non_object_rows_are_ignored_and_later_rows_count(self, tmp_path, monkeypatch):
+        path = tmp_path / "session.jsonl"
+        path.write_text(
+            '["ignored"]\n'
+            '{"type":"assistant","message":{"usage":{"input_tokens":2}}}\n'
+            "null\n"
+            '{"type":"assistant","message":{"usage":{"input_tokens":3}}}\n'
+        )
+        monkeypatch.setattr(transcript, "TSTATE", str(tmp_path / "state.json"))
+
+        totals = transcript.transcript_totals(str(path))
+
+        assert totals["in"] == 5
+        assert totals["turns"] == 2
+
+    def test_non_object_root_rows_are_ignored_and_later_user_counts(self, tmp_path, monkeypatch):
+        path = tmp_path / "session.jsonl"
+        path.write_text('42\nnull\n{"type":"user","uuid":"root-123"}\n')
+        monkeypatch.setattr(transcript, "TSTATE", str(tmp_path / "state.json"))
+
+        assert transcript.conversation_root(str(path)) == "root-123"
