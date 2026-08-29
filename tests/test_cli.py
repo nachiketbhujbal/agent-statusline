@@ -636,6 +636,8 @@ class TestInstallRefusesBeforeMutating:
         pytest.param(["some-other-tool"], id="a-list"),
         pytest.param({"type": "command", "padding": 0}, id="a-dict-with-no-command"),
         pytest.param({"type": "command", "command": 12345}, id="a-non-string-command"),
+        pytest.param({"type": "text", "text": "hello"}, id="a-different-shaped-dict"),
+        pytest.param({"command": None}, id="an-explicit-null-command"),
     ])
     def test_a_status_line_we_cannot_read_is_never_overwritten(
         self, entry, tmp_path, monkeypatch
@@ -996,3 +998,365 @@ class TestPublicationCannotBeRedirected:
     def test_publication_uses_directory_relative_operations(self):
         """The guarantee above rests on openat; say so if it is unavailable."""
         assert os.open in os.supports_dir_fd
+
+
+class TestConfigurationRootCannotBeRedirected:
+    """INSTALL-018: the confinement root itself is bound by descriptor too.
+
+    `_open_publish_dir`'s directory walk only protected components *below* the
+    already-opened root. The root was still reached with a plain, path-named
+    `os.open()` -- no `O_NOFOLLOW`, no walk from `/` -- so swapping the
+    configuration directory itself for a symlink, right before that call,
+    redirected publication exactly as the nested-component race did before
+    INSTALL-017.
+    """
+
+    def _inject_root_swap(self, cdir, elsewhere, monkeypatch):
+        """Land a directory swap deterministically between the two points that
+        matter: after the root is resolved to a path, before it is opened.
+
+        `os.path.realpath(cdir)` is called once inside `_publish_target` (via
+        `write_settings`/`run`) and once more inside `_open_publish_dir`. The
+        swap must land after the *second* call -- the one immediately
+        preceding the vulnerable open -- or it only proves the outer
+        `_publish_target` check works, which INSTALL-017's fix already covers.
+        """
+        real_realpath = os.path.realpath
+        calls = []
+
+        def spy(path, *args, **kwargs):
+            result = real_realpath(path, *args, **kwargs)
+            if path == str(cdir):
+                calls.append(True)
+                if len(calls) == 2:
+                    shutil.rmtree(str(cdir))
+                    os.symlink(str(elsewhere), str(cdir))
+            return result
+
+        monkeypatch.setattr(installer.os.path, "realpath", spy)
+        return calls
+
+    def _victim(self, tmp_path):
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        (cdir / "settings.json").write_text(json.dumps({"theme": "dark"}))
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        victim = elsewhere / "settings.json"
+        victim.write_text(json.dumps({"registry": "https://example.invalid"}))
+        return cdir, elsewhere, victim, victim.read_bytes()
+
+    def test_a_root_swap_before_open_fails_closed(self, tmp_path, monkeypatch):
+        cdir, elsewhere, victim, original = self._victim(tmp_path)
+        calls = self._inject_root_swap(cdir, elsewhere, monkeypatch)
+
+        with pytest.raises(SystemExit):
+            installer._write_json_atomic(
+                str(cdir / "settings.json"), {"ours": True}, str(cdir))
+
+        assert len(calls) >= 2, "the injected swap never ran; the test proves nothing"
+        assert victim.read_bytes() == original, "publication followed the swapped root"
+
+    def test_the_replaced_root_open_is_exploitable_on_its_own(self, tmp_path, monkeypatch):
+        """Restore the exact pre-fix root-open -- a bare, path-named `os.open`
+        with no walk from `/` and no `O_NOFOLLOW` -- and confirm the same
+        injected swap succeeds against it. This is the mutation this
+        regression exists to kill: revert `_bind_directory` to this shape and
+        `test_a_root_swap_before_open_fails_closed` above starts failing.
+        """
+        cdir, elsewhere, victim, original = self._victim(tmp_path)
+
+        def unsafe_bind_directory(root):
+            return os.open(root, os.O_RDONLY | os.O_DIRECTORY)
+
+        monkeypatch.setattr(installer, "_bind_directory", unsafe_bind_directory)
+        calls = self._inject_root_swap(cdir, elsewhere, monkeypatch)
+
+        try:
+            installer._write_json_atomic(
+                str(cdir / "settings.json"), {"ours": True}, str(cdir))
+            outcome = "WRITE_COMPLETED"
+        except SystemExit:
+            outcome = "REFUSED"
+
+        assert len(calls) >= 2, "the injected swap never ran; the test proves nothing"
+        assert outcome == "WRITE_COMPLETED", (
+            "expected the pre-fix root-open to be exploitable; if it refused, "
+            "the injected swap is no longer landing in the vulnerable window"
+        )
+        assert victim.read_bytes() != original, "expected the outside victim to be overwritten"
+        assert json.loads(victim.read_text()) == {"ours": True}
+
+
+class TestSettingsAreNotReadBeforeConfinementIsChecked:
+    """Advisory (v0.2.1 review continued at 7f70a3b): `_load_settings` used to
+    open and parse `settings.json` by plain pathname before `_publish_target`
+    decided whether that path even resolves inside the configuration
+    directory, so an out-of-tree symlink target had its content read into
+    memory before the refusal that follows ever ran.
+    """
+
+    def test_an_out_of_tree_settings_symlink_is_refused_before_it_is_read(
+        self, tmp_path, monkeypatch
+    ):
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        victim = elsewhere / "other.json"
+        victim.write_text(json.dumps({"registry": "https://example.invalid"}))
+        (cdir / "settings.json").symlink_to(victim)
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+
+        real_open = open
+        reads = []
+
+        def spy_open(path, *args, **kwargs):
+            if os.path.realpath(str(path)) == os.path.realpath(str(victim)):
+                reads.append(path)
+            return real_open(path, *args, **kwargs)
+
+        monkeypatch.setattr("builtins.open", spy_open)
+
+        with pytest.raises(SystemExit):
+            installer.run()
+
+        assert not reads, "the out-of-tree target was read before confinement was checked"
+
+
+class TestInstallUninstallAreTransactional:
+    """INSTALL-019: the checkout symlink and the settings rewrite are two
+    separate mutations with no shared commit point. A failure between them
+    used to leave whichever one had already happened, uncorrected.
+    """
+
+    def _fresh(self, tmp_path, monkeypatch):
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+        return cdir
+
+    def test_a_failed_reinstall_restores_the_pre_existing_managed_link(
+        self, tmp_path, monkeypatch
+    ):
+        cdir = self._fresh(tmp_path, monkeypatch)
+        assert installer.run() == 0
+        link = cdir / "statusline"
+        assert link.is_symlink()
+        original_target = os.readlink(str(link))
+        before = _snapshot(cdir)
+
+        real_symlink = os.symlink
+        calls = []
+
+        def flaky_symlink(*args, **kwargs):
+            calls.append(1)
+            if len(calls) == 1:
+                raise OSError("operation not permitted")
+            return real_symlink(*args, **kwargs)
+
+        monkeypatch.setattr(installer.os, "symlink", flaky_symlink)
+
+        with pytest.raises(SystemExit):
+            installer.run()
+
+        assert calls, "the injected failure never ran; the test proves nothing"
+        assert link.is_symlink(), "the pre-existing managed link was not restored"
+        assert os.readlink(str(link)) == original_target
+        assert _snapshot(cdir) == before
+
+    def test_a_failed_backup_on_fresh_install_removes_the_new_link(
+        self, tmp_path, monkeypatch
+    ):
+        cdir = self._fresh(tmp_path, monkeypatch)
+        settings = cdir / "settings.json"
+        settings.write_text(json.dumps({"theme": "dark"}))
+        original = settings.read_bytes()
+        link = cdir / "statusline"
+        assert not link.exists() and not link.is_symlink()
+
+        def explode(*_args, **_kwargs):
+            raise OSError("no space left on device")
+
+        monkeypatch.setattr(installer.shutil, "copy2", explode)
+
+        with pytest.raises(SystemExit):
+            installer.run()
+
+        assert not link.is_symlink(), "a newly created link was left behind"
+        assert not os.path.lexists(str(link))
+        assert settings.read_bytes() == original
+        assert not list(cdir.glob("settings.json.bak.*"))
+        assert not list(cdir.glob(".settings.json.*"))
+
+    def test_a_failed_uninstall_backup_restores_the_removed_link(
+        self, tmp_path, monkeypatch
+    ):
+        cdir = self._fresh(tmp_path, monkeypatch)
+        assert installer.run() == 0
+        link = cdir / "statusline"
+        original_target = os.readlink(str(link))
+        settings = cdir / "settings.json"
+        before = settings.read_bytes()
+
+        def explode(*_args, **_kwargs):
+            raise OSError("no space left on device")
+
+        monkeypatch.setattr(installer.shutil, "copy2", explode)
+
+        with pytest.raises(SystemExit):
+            installer.run(uninstall=True)
+
+        assert link.is_symlink(), "the managed link was removed and never restored"
+        assert os.readlink(str(link)) == original_target
+        assert settings.read_bytes() == before
+
+    def test_a_link_guard_that_never_rolls_back_leaves_the_failures_visible(
+        self, tmp_path, monkeypatch
+    ):
+        """Mutation check: a `_LinkGuard.rollback` that does nothing must make
+        the scenario above observably fail, so this suite is not merely
+        checking that `run()` raises `SystemExit` (which the pre-fix code
+        also did) without checking what it left behind.
+        """
+        cdir = self._fresh(tmp_path, monkeypatch)
+        assert installer.run() == 0
+        link = cdir / "statusline"
+        assert link.is_symlink()
+
+        monkeypatch.setattr(installer._LinkGuard, "rollback", lambda self: None)
+
+        def explode(*_args, **_kwargs):
+            raise OSError("no space left on device")
+
+        monkeypatch.setattr(installer.shutil, "copy2", explode)
+
+        with pytest.raises(SystemExit):
+            installer.run(uninstall=True)
+
+        assert not link.is_symlink(), (
+            "expected the link to stay removed with rollback disabled; if it "
+            "is still present, _LinkGuard is not what is restoring it"
+        )
+
+
+class TestTemporaryDescriptorIsClosed:
+    """INSTALL-021: a failure between `os.open` and `os.fdopen` taking
+    ownership of the descriptor used to leak it -- the temp file's directory
+    entry was removed, but the raw file descriptor stayed open for the life of
+    the process.
+    """
+
+    def test_a_failed_fchmod_closes_the_descriptor_and_removes_the_temp_file(
+        self, tmp_path, monkeypatch
+    ):
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        settings = cdir / "settings.json"
+        settings.write_text(json.dumps({"theme": "dark"}))
+
+        captured = []
+
+        def explode_fchmod(fd, _mode):
+            captured.append(fd)
+            raise OSError("permission denied")
+
+        monkeypatch.setattr(installer.os, "fchmod", explode_fchmod)
+
+        with pytest.raises(SystemExit):
+            installer._write_json_atomic(str(settings), {"ours": True}, str(cdir))
+
+        assert captured, "fchmod was never reached; the test proves nothing"
+        with pytest.raises(OSError):
+            os.fstat(captured[0])
+        assert not list(cdir.glob(".settings.json.*")), "the temp file was not removed"
+
+    def test_an_unclosed_descriptor_is_detectable(self, tmp_path, monkeypatch):
+        """Mutation check: confirm the assertion above actually distinguishes a
+        leak from a clean close, by leaking a descriptor on purpose.
+        """
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        leaked = os.open(str(cdir), os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fstat(leaked)  # still open: proves the assertion style is meaningful
+        finally:
+            os.close(leaked)
+        with pytest.raises(OSError):
+            os.fstat(leaked)  # closed: this is what the real regression checks for
+
+
+class TestHookGroupMetadataSurvivesRemoval:
+    """INSTALL-022: ownership covers the managed hook entry, not fields on its
+    containing group. Removing the last managed hook from a group that also
+    carries a user's `matcher` used to drop the whole group, taking the
+    matcher with it.
+    """
+
+    def _managed_command(self, cdir):
+        exe = installer.console_script()
+        if exe:
+            return f"{shlex.quote(exe)} hook session-end"
+        link = str(cdir / "statusline")
+        return f"{shlex.quote(installer.sys.executable)} " \
+               f"{shlex.quote(os.path.join(link, 'hooks', 'session_end.py'))}"
+
+    def test_uninstall_preserves_a_matcher_on_an_emptied_group(self, tmp_path, monkeypatch):
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+        managed = self._managed_command(cdir)
+        settings = {
+            "hooks": {
+                "SessionEnd": [
+                    {"matcher": "user-kept-matcher",
+                     "hooks": [{"type": "command", "command": managed}]}
+                ]
+            }
+        }
+        (cdir / "settings.json").write_text(json.dumps(settings))
+
+        assert installer.run(uninstall=True) == 0
+
+        after = json.loads((cdir / "settings.json").read_text())
+        groups = after["hooks"]["SessionEnd"]
+        assert groups == [{"matcher": "user-kept-matcher", "hooks": []}]
+
+    def test_a_group_with_no_other_fields_is_still_dropped_when_emptied(
+        self, tmp_path, monkeypatch
+    ):
+        """The existing v0.2.0-migration promise -- a plain managed group
+        leaves nothing behind -- must not regress while fixing the above."""
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+        managed = self._managed_command(cdir)
+        settings = {"hooks": {"SessionEnd": [
+            {"hooks": [{"type": "command", "command": managed}]}
+        ]}}
+        (cdir / "settings.json").write_text(json.dumps(settings))
+
+        assert installer.run(uninstall=True) == 0
+
+        after = json.loads((cdir / "settings.json").read_text())
+        assert "SessionEnd" not in after.get("hooks", {})
+
+    def test_reinstall_then_uninstall_round_trips_a_foreign_matcher(
+        self, tmp_path, monkeypatch
+    ):
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+        settings = {"hooks": {"SessionEnd": [
+            {"matcher": "keep-me", "hooks": [{"type": "command", "command": "third-party"}]}
+        ]}}
+        (cdir / "settings.json").write_text(json.dumps(settings))
+
+        assert installer.run() == 0
+        assert installer.run() == 0
+        assert installer.run(uninstall=True) == 0
+
+        after = json.loads((cdir / "settings.json").read_text())
+        groups = after["hooks"]["SessionEnd"]
+        assert {"matcher": "keep-me", "hooks": [{"type": "command", "command": "third-party"}]} \
+            in groups

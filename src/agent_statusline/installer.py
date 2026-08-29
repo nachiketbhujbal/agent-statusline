@@ -237,7 +237,12 @@ def _remove_managed_hooks(cfg, cdir=None):
             removed += taken
             if not taken:
                 kept_groups.append(group)
-            elif kept:
+            elif kept or set(group) - {"hooks"}:
+                # Ownership covers the hook entry, not fields on its containing
+                # group. A group holding only "hooks" and nothing else is debris
+                # once its hooks are gone; a group carrying other data (a user's
+                # `matcher`, say) is not, and survives with an empty list rather
+                # than being dropped whole along with that data.
                 kept_groups.append({**group, "hooks": kept})
             else:
                 emptied += 1
@@ -321,6 +326,40 @@ def _publish_target(path, cdir):
     return target
 
 
+def _bind_directory(abs_path):
+    """A descriptor for `abs_path`, reached by opening every path component --
+    from the filesystem root down -- with `O_DIRECTORY | O_NOFOLLOW`.
+
+    A resolved absolute path is a confinement *decision*; this walk is what
+    makes it durable. Opening the resolved string directly (even just its final
+    component) still trusts the OS to re-resolve every earlier component from
+    scratch, and a symlink swapped in anywhere on the way -- including the very
+    first component -- is followed silently. Refusing to follow a link at any
+    step, starting at the root, closes that: the only way to redirect this walk
+    is to replace a real directory with another real directory of the same
+    name, not to point a link at one.
+    """
+    if not abs_path.startswith(os.sep):
+        die(f"cannot safely resolve {abs_path}: not an absolute path.")
+    parts = [part for part in abs_path.split(os.sep) if part]
+    fd = os.open(os.sep, os.O_RDONLY | os.O_DIRECTORY)
+    bound = False
+    try:
+        for part in parts:
+            nxt = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+            os.close(fd)
+            fd = nxt
+        bound = True
+    except OSError as exc:
+        die(f"cannot safely reach {abs_path}: {exc}\n"
+            "       A directory on the way changed while installing. Nothing "
+            "was written.")
+    finally:
+        if not bound:
+            os.close(fd)
+    return fd
+
+
 def _open_publish_dir(target, cdir):
     """A descriptor for the directory that will receive settings.
 
@@ -328,8 +367,10 @@ def _open_publish_dir(target, cdir):
     Every later step -- create, chmod, replace -- happens relative to this
     descriptor and never names a directory again, so swapping a checked
     directory for a symlink afterwards cannot redirect publication. The walk
-    refuses to traverse a link at all (`O_NOFOLLOW`), so a swap that lands
-    inside the window fails closed instead of following the attacker's link.
+    refuses to traverse a link at all (`O_NOFOLLOW`), all the way from `/`
+    (`_bind_directory`), so a swap that lands inside the window -- at the
+    configuration root or at any parent, not only below it -- fails closed
+    instead of following the attacker's link.
 
     A second `realpath()` check would not close this: it would re-open the same
     race it is meant to detect.
@@ -341,10 +382,7 @@ def _open_publish_dir(target, cdir):
     parts = [] if rel == os.curdir else rel.split(os.sep)
     if any(part == os.pardir for part in parts):
         die(f"refusing to publish settings outside {cdir}")
-    try:
-        fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY)
-    except OSError as exc:
-        die(f"cannot open the configuration directory {root}: {exc}")
+    fd = _bind_directory(root)
     bound = False
     try:
         for part in parts:
@@ -398,7 +436,15 @@ def _write_json_atomic(path, cfg, cdir):
             die(f"cannot create a temporary file beside {target}: {exc}")
         published = False
         try:
-            os.fchmod(fd, mode)
+            try:
+                os.fchmod(fd, mode)
+            except OSError as exc:
+                # `fd` is still a raw descriptor here -- `os.fdopen` below is
+                # what will make the temp file's lifecycle own and close it.
+                # Failing before that handoff must close it explicitly, or it
+                # leaks past the `SystemExit` this raises.
+                os.close(fd)
+                die(f"cannot set permissions on the temporary file beside {target}: {exc}")
             with os.fdopen(fd, "w", encoding="utf-8") as fh:
                 json.dump(cfg, fh, indent=2)
                 fh.write("\n")
@@ -425,16 +471,66 @@ def _write_json_atomic(path, cfg, cdir):
         os.close(dfd)
 
 
-def link_checkout(link, dry):
+class _LinkGuard:
+    """Snapshots a checkout symlink before it is touched, so a mutation that
+    fails partway through -- the link changed but settings did not, or the
+    other way around -- can be rolled back to exactly what was there before.
+
+    Install and uninstall are not one filesystem transaction; there is no way
+    to make `os.symlink` and a settings write commit or fail together. What
+    this buys instead: capture the prior state up front, mutate, and if
+    anything downstream in the same operation dies, put the link back rather
+    than leaving whatever partial change happened to land.
+    """
+
+    def __init__(self, link):
+        self.link = link
+        self.existed = os.path.islink(link)
+        self.target = os.readlink(link) if self.existed else None
+        self.touched = False
+
+    def note_mutation(self):
+        self.touched = True
+
+    def remove(self):
+        self.touched = True
+        try:
+            os.unlink(self.link)
+        except OSError as exc:
+            die(f"cannot remove {self.link}: {exc}")
+
+    def rollback(self):
+        """Best-effort restoration to the pre-mutation state. Called only after
+        an expected failure has already been reported; a further failure here
+        is recorded but does not replace that original message."""
+        if not self.touched:
+            return
+        try:
+            if os.path.lexists(self.link):
+                os.unlink(self.link)
+        except OSError:
+            pass
+        if self.existed:
+            try:
+                os.symlink(self.target, self.link)
+            except OSError:
+                pass
+
+
+def link_checkout(link, dry, guard=None):
     """Publish the checkout symlink. Ownership is settled before this runs."""
     if os.path.islink(link):
         if not dry:
+            if guard:
+                guard.note_mutation()
             try:
                 os.unlink(link)
             except OSError as exc:
                 die(f"cannot replace {link}: {exc}")
         say(f"symlink:  refreshing {link}")
     if not dry:
+        if guard:
+            guard.note_mutation()
         try:
             os.makedirs(os.path.dirname(link), exist_ok=True)
             os.symlink(PKG, link)
@@ -446,8 +542,11 @@ def link_checkout(link, dry):
 def write_settings(cdir, dry, remove=False, cfg=None):
     path = os.path.join(cdir, "settings.json")
     if cfg is None:
-        cfg = _load_settings(path)
+        # Confinement is decided before anything is read, not only before
+        # anything is written -- an out-of-tree settings.json symlink is
+        # refused here rather than having its content read first.
         _publish_target(path, cdir)
+        cfg = _load_settings(path)
         _validate_schema(cfg, path)
 
     if remove:
@@ -541,20 +640,31 @@ def run(dry_run=False, uninstall=False):
         # Full pre-flight before the first mutation. Removing the symlink and
         # then refusing on malformed settings leaves settings pointing at a link
         # that no longer exists, which is worse than not starting.
-        cfg = _load_settings(path)
         _publish_target(path, cdir)
+        cfg = _load_settings(path)
         _validate_schema(cfg, path)
         link = os.path.join(cdir, "statusline")
-        if os.path.islink(link) and os.path.realpath(link) == PKG:
-            if not dry_run:
-                try:
-                    os.unlink(link)
-                except OSError as exc:
-                    die(f"cannot remove {link}: {exc}")
-            say(f"symlink:  removed {link}")
-        elif os.path.lexists(link):
-            say(f"symlink:  preserved non-managed path {link}")
-        write_settings(cdir, dry_run, remove=True, cfg=cfg)
+        owns_link = os.path.islink(link) and os.path.realpath(link) == PKG
+        guard = _LinkGuard(link) if not dry_run else None
+        # The link removal and the settings rewrite are not one atomic
+        # operation. If the settings half dies -- an expected filesystem
+        # failure, not a bug -- the guard restores exactly the link state that
+        # existed before this uninstall began, rather than leaving a removed
+        # link with settings that still name it.
+        try:
+            if owns_link:
+                if dry_run:
+                    say(f"symlink:  removed {link}")
+                else:
+                    guard.remove()
+                    say(f"symlink:  removed {link}")
+            elif os.path.lexists(link):
+                say(f"symlink:  preserved non-managed path {link}")
+            write_settings(cdir, dry_run, remove=True, cfg=cfg)
+        except SystemExit:
+            if guard:
+                guard.rollback()
+            raise
         print("\nDone. Your ledger and history are untouched.")
         return 0
 
@@ -564,8 +674,8 @@ def run(dry_run=False, uninstall=False):
     say(f"python:   {sys.version.split()[0]} (stdlib only, no dependencies)")
     # Everything that can refuse, refuses here -- before a directory, a backup,
     # a symlink, or a temporary file exists.
-    cfg = _load_settings(path)
     _publish_target(path, cdir)
+    cfg = _load_settings(path)
     _validate_schema(cfg, path)
     _, _, link = commands(cdir)
     _check_install_ownership(cfg, link, cdir, path)
@@ -574,11 +684,23 @@ def run(dry_run=False, uninstall=False):
             os.makedirs(cdir, exist_ok=True)
         except OSError as exc:
             die(f"cannot create {cdir}: {exc}")
-    if link:
-        link_checkout(link, dry_run)
-    else:
-        say(f"command:  {console_script()}")
-    write_settings(cdir, dry_run, cfg=cfg)
+    guard = _LinkGuard(link) if (link and not dry_run) else None
+    # The checkout symlink and the settings rewrite are two separate mutations
+    # with no shared commit point. If the settings half dies after the link
+    # has already been created or replaced, the guard undoes exactly that link
+    # change -- restoring a pre-existing link to its original target, or
+    # removing one this run just created -- rather than leaving a link with no
+    # matching settings, or settings unchanged behind a link that moved.
+    try:
+        if link:
+            link_checkout(link, dry_run, guard)
+        else:
+            say(f"command:  {console_script()}")
+        write_settings(cdir, dry_run, cfg=cfg)
+    except SystemExit:
+        if guard:
+            guard.rollback()
+        raise
     verify(cdir)
     print("\nDone. Restart Claude Code to pick it up.")
     return 0
