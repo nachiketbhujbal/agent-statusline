@@ -36,6 +36,7 @@ once the regression that demonstrates it exists in this repository.
 | HOST-002 | Medium | Successfully decoded non-object transcript rows reached transcript field access instead of being skipped, preventing later valid rows from contributing. | 0.2.3 | Resolved by mapping guards in both incremental-total and conversation-root paths, with later-valid-row regressions |
 | HOST-003 | Medium | Host-derived numeric fields were converted and formatted directly, so invalid, non-finite, oversized, or unusable reset-time values could raise or emit misleading `nan`/`inf` text. | 0.2.3 | Resolved by bounded finite coercion at helper, formatter, transcript, payload, and reset-time boundaries while preserving valid forms |
 | HOST-004 | Medium | Unexpected nested transcript containers such as non-object message, usage, cache, hook-info, tool-input, or command-content values reached container-specific operations and could stop incremental parsing. | 0.2.3 | Resolved by narrow container guards that ignore unsupported nested values without changing valid transcript signals |
+| HOST-005 | Medium | Valid JSON values of the wrong shape in path, sequence, permission-mode, or session-identifier fields reached filesystem/container operations and could remove the complete status line. | 0.2.3 | Resolved by narrow payload-field shape guards and fallback behavior, with end-to-end regressions |
 
 The read-before-confinement advisory recorded in an earlier round of this table
 is substantially closed by INSTALL-023/025: the initial settings read now goes

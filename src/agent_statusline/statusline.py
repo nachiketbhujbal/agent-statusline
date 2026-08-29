@@ -224,7 +224,9 @@ def main():
         print(f"{D}claude{R}")
         return
     rows = {}
-    t = transcript_totals(d.get("transcript_path"))
+    transcript_value = d.get("transcript_path")
+    transcript_path = transcript_value if isinstance(transcript_value, str) else None
+    t = transcript_totals(transcript_path)
 
     # ---------- rows 1-2: project/git, then model + mode flags ----------
     pj = []
@@ -237,7 +239,8 @@ def main():
     )
     # fast mode is shown either way: silence would hide that it is on
     p1.append(f"{RED}{B}FAST ON{R}" if dig(d, "fast_mode") else f"{D}fast off{R}")
-    perm = t.get("perm") or dig(d, "permission_mode")
+    perm_value = t.get("perm") or dig(d, "permission_mode")
+    perm = perm_value if isinstance(perm_value, str) else None
     if perm:
         pc, plab = MODES.get(perm, (D, perm))
         p1.append(f"{pc}{plab}{R}" if perm == "default" else f"{pc}{B}{plab}{R}")
@@ -250,11 +253,15 @@ def main():
     if ver:
         p1.append(f"{D}v{ver}{R}")
 
-    cwd = dig(d, "workspace", "current_dir") or dig(d, "cwd") or os.getcwd()
-    proj = os.path.basename(dig(d, "workspace", "project_dir") or cwd)
+    cwd_value = dig(d, "workspace", "current_dir") or dig(d, "cwd")
+    cwd = cwd_value if isinstance(cwd_value, str) else os.getcwd()
+    project_value = dig(d, "workspace", "project_dir")
+    project_path = project_value if isinstance(project_value, str) else cwd
+    proj = os.path.basename(project_path)
     here = os.path.basename(cwd)
     pj.append(f"{BLU}{B}{proj}{R}" if here == proj else f"{BLU}{B}{proj}{R}{D}/{R}{BLU}{here}{R}")
     extra = dig(d, "workspace", "added_dirs") or []
+    extra = extra if isinstance(extra, list) else []
     if extra:
         pj.append(f"{D}+{len(extra)} dir{'s' if len(extra)!=1 else ''}{R}")
 
@@ -512,12 +519,14 @@ def main():
     # ---------- row 8: money ----------
     usd_value = dig(cost, "total_cost_usd")
     usd = None if usd_value is None else finite_number(usd_value)
+    session_value = d.get("session_id")
+    session_id = session_value if isinstance(session_value, str) else "?"
     agg = ledger_update(
-        d.get("session_id", "?"),
+        session_id,
         usd,
         proj,
         dig(d, "session_name"),
-        conversation_root(d.get("transcript_path")),
+        conversation_root(transcript_path),
         pid=procs.get("mine_pid"),
     )
     p8 = []
