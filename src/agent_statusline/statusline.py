@@ -107,6 +107,8 @@ def ledger_update(sid, cost, project, name, root=None, pid=None):
             "name": name,
             **({"root": root} if root else {}),
         }
+        if not isinstance(row.get("root"), str):
+            row.pop("root", None)
         # Lifetime cost, carried across runs. Resuming a closed row makes it live
         # again; `closed` is left in place as the last close time.
         session_cost = ledger.apply_cost(row, cost, pid)
@@ -124,8 +126,10 @@ def ledger_update(sid, cost, project, name, root=None, pid=None):
 
     # A row counts as a real session only if it produced something: a cost, or a
     # readable transcript (its conversation root).
-    real = [r for r in rows if r.get("cost", 0) > 0 or r.get("root")]
-    convos = {r.get("root") or id(r) for r in real}
+    real = [
+        r for r in rows if r.get("cost", 0) > 0 or (isinstance(r.get("root"), str) and r["root"])
+    ]
+    convos = {r["root"] if isinstance(r.get("root"), str) and r["root"] else id(r) for r in real}
     return {
         "all": sum(r.get("cost", 0) for r in rows),
         "n": len(real),
@@ -239,7 +243,8 @@ def main():
     )
     # fast mode is shown either way: silence would hide that it is on
     p1.append(f"{RED}{B}FAST ON{R}" if dig(d, "fast_mode") else f"{D}fast off{R}")
-    perm_value = t.get("perm") or dig(d, "permission_mode")
+    transcript_perm = t.get("perm")
+    perm_value = transcript_perm if isinstance(transcript_perm, str) else dig(d, "permission_mode")
     perm = perm_value if isinstance(perm_value, str) else None
     if perm:
         pc, plab = MODES.get(perm, (D, perm))
