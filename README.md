@@ -233,11 +233,22 @@ will replace the link with a regular file.
 
 ## Development
 
+Uses [uv](https://docs.astral.sh/uv/) 0.12+ and a committed lockfile
+([ADR 0023](docs/adrs/0023-use-a-locked-local-quality-gate.md)):
+
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
-.venv/bin/python -m pytest        # 213 tests, none of which touch ~/.claude
-.venv/bin/ruff check src tests install.py
+uv sync --locked --all-groups
+uv run --locked pre-commit install    # once, from the primary clone
+uv run --locked pre-commit run --all-files
+uv run --locked pytest --cov=agent_statusline --cov-report=term-missing
+uv build
 ```
+
+`pytest` runs 213 tests, none of which touch `~/.claude`. `pre-commit` runs
+repository hygiene checks, Ruff, Black, and mypy from the locked environment;
+run it directly rather than relying on the installed git hook when working in
+a linked worktree, since the hook itself is shared and installed once from the
+primary clone.
 
 Versioning is [hatch-vcs](https://github.com/ofek/hatch-vcs): there is no version string in
 the source, and `git tag v1.2.3` is what makes a release. Tags are immutable

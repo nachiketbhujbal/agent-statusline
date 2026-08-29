@@ -13,8 +13,8 @@ installed-artifact evidence.
 
 | Release | Primary purpose | Status |
 | --- | --- | --- |
-| 0.2.1 | Ownership-safe installation and removal | **Active** |
-| 0.2.2 | Locked local quality gate | Planned |
+| 0.2.1 | Ownership-safe installation and removal | **Released** |
+| 0.2.2 | Locked local quality gate | **Active** |
 | 0.2.3 | Hostile payload/transcript input safety | Planned |
 | 0.2.4 | Private, serialized runtime state | Planned |
 | 0.2.5 | Exact rolling-cost attribution | Planned |
@@ -27,13 +27,13 @@ installed-artifact evidence.
 | 0.2.12 | Documentation, pinned workflow, and public-readiness closure | Planned |
 | 0.3.0 | Production-ready milestone | Planned after the patch train |
 
-Only 0.2.1 is implemented. Nothing in 0.2.2 and later is present in this
-repository yet, and a later release's evidence can never stand in for an earlier
-tag's.
+0.2.1 is tagged and released. 0.2.2 is active on this branch; nothing in 0.2.3
+and later is present in this repository yet, and a later release's evidence
+can never stand in for an earlier tag's.
 
 ## 0.2.1 — ownership-safe installation
 
-Implemented on this branch:
+Released:
 
 - Preserve unrelated settings, hook events, groups, matchers and their order.
 - Fail closed on unreadable, malformed, non-object, or non-UTF-8 configuration
@@ -46,3 +46,16 @@ Implemented on this branch:
   to the configuration directory, backing up first and leaving no temporary file
   behind on failure.
 - Keep reinstallation idempotent.
+
+## 0.2.2 — locked local quality gate
+
+Implemented on this branch:
+
+- A committed `uv.lock`, a `uv >=0.12` requirement, and dependency-group
+  development tools.
+- Pre-commit hooks for repository hygiene, Ruff, Black, and mypy, run from the
+  locked environment; the external `pre-commit-hooks` repository is pinned to
+  an immutable commit.
+- Subprocess-aware pytest coverage and build configuration.
+- Only the mechanical formatting and typing corrections needed for the exact
+  v0.2.1 source to pass the declared gate; no behavior change.
