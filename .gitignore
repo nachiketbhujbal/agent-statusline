@@ -26,3 +26,8 @@ dist/
 # purpose: it records account details, spend figures and session history that
 # must not enter a repository that may become public.
 .claude/
+
+# Coverage output from a local test run.
+.coverage
+.coverage.*
+htmlcov/

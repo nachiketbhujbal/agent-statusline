@@ -40,10 +40,13 @@ Rows are ordered by how often they answer a question worth asking — `PROJECT` 
 | [docs/adrs/](docs/adrs/README.md) | architecture decision records — one file per durable decision, with an index. **Read 0001, 0014 and 0004 before changing anything that touches money or dependencies** |
 | [docs/DEFERRED.md](docs/DEFERRED.md) | ideas considered and consciously not built |
 | [docs/PORTING.md](docs/PORTING.md) | adapting this to Codex or another agent, and why Codex cannot run it as-is |
+| [docs/CHANGELOG.md](docs/CHANGELOG.md) | what changed in each release, and what is queued for the next one |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | the 0.2.x release sequence and what each one is for |
+| [docs/CODE_REVIEW.md](docs/CODE_REVIEW.md) | review findings, with the release that resolved each |
 
 ## Requirements
 
-- **Python 3.8+**, standard library only. There is nothing to `pip install`.
+- **Python 3.9+**, standard library only. There is nothing to `pip install`.
 - **Claude Code** (developed against v2.1.246).
 - macOS or Linux. The `SYSTEM` row's memory probe is macOS-specific (`vm_stat`, `sysctl`);
   every other row is portable, and the row degrades to disk-only elsewhere rather than failing.
@@ -61,9 +64,49 @@ once the repository is public the `git+ssh://` URL becomes just the package name
 
 `agent-statusline install` writes the `statusLine` entry and the four hook entries
 into `~/.claude/settings.json`, pointing them at the installed executable. It backs the
-file up first, preserves every unrelated setting, and renders your last real payload so
-you can see it working before restarting. Add `--dry-run` to see exactly what it would
-touch, and `agent-statusline uninstall` to reverse it.
+file up first, preserves every unrelated setting and hook, and renders your last real
+payload so you can see it working before restarting. Add `--dry-run` to see exactly what
+it would touch — a dry run creates nothing, not even the configuration directory — and
+`agent-statusline uninstall` to reverse it.
+
+It only ever touches configuration it owns, and ownership means the exact command this
+installation wrote — not a familiar-looking filename or interpreter. Unrelated top-level
+settings, hook events, hook groups and matchers are preserved in place, including their
+order and shape. A status line or hook belonging to another tool is never claimed, even
+when its program happens to be named `agent-statusline` too, or — in a checkout — when
+some other Python interpreter is paired with the script path this installation writes.
+
+Installing refuses rather than overwrites: if a `statusLine` this package does not own is
+already configured, or `~/.claude/statusline` is a symlink pointing at something else, the
+install stops and says so, because the settings format holds only one status line and
+replacing yours would be unrecoverable. Every such refusal happens before the first
+change, so no backup, symlink, or temporary file is left behind. The same applies to a
+`settings.json` that is unreadable, malformed, or not a JSON object: it is left byte for
+byte as it was rather than guessed at.
+
+If your `settings.json` is itself a symlink to another file inside your configuration
+directory, the link is followed and the real file is updated, so the indirection and its
+permissions survive. A link resolving *outside* that directory is refused rather than
+followed — an installer that writes wherever a link points is a write-anywhere primitive.
+Publication is bound to a configuration directory opened once, without following a
+symlink at any step from the filesystem root down, and every read, backup, link change,
+and write in the same install or uninstall reuses that same binding rather than
+re-resolving the configuration directory's location partway through — so redirecting
+publication by changing what occupies that location mid-operation, whether by a symlink
+or an ordinary directory swap, is refused
+([ADR 0020](docs/adrs/0020-own-only-managed-configuration.md)).
+
+An expected failure partway through an install or uninstall — a full disk, a permission
+error — cannot always avoid touching anything (the checkout symlink and the settings file
+are two separate writes), so if one has already changed when the other fails, the change
+is rolled back. That restoration is itself a filesystem operation and can itself fail in
+the same rare conditions; when it does, the failure is reported rather than hidden, so a
+link and settings left disagreeing are never silently mistaken for a clean failure.
+
+One documented exception to "only what it owns": `showMessageTimestamps` is set to `true`
+when absent and is deliberately *not* removed on uninstall, because a value already in
+your settings cannot be told apart from one this installer added
+([ADR 0015](docs/adrs/0015-timestamp-hooks-are-a-stopgap.md)).
 
 Upgrading is `uv tool upgrade agent-statusline` followed by `agent-statusline install`
 (the second step is only needed if the wiring itself changed).
@@ -178,14 +221,21 @@ agent-statusline uninstall        # or: python3 install.py --uninstall
 uv tool uninstall agent-statusline
 ```
 
-That removes the symlink and the settings entries. Your ledger and history in `~/.claude/`
-are untouched — delete them by hand if you want them gone.
+That removes the symlink and the settings entries it can prove it added. A `statusLine`
+command you replaced by hand, and a `~/.claude/statusline` symlink pointing somewhere
+else, are left alone and reported rather than removed. Your ledger and history in
+`~/.claude/` are untouched — delete them by hand if you want them gone.
+
+If an install goes wrong, the timestamped `settings.json.bak.*` in your configuration
+directory is the state from immediately before it ran. If your `settings.json` is a
+symlink, restore by copying that backup over the *link target*, not over the link, or you
+will replace the link with a regular file.
 
 ## Development
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
-.venv/bin/python -m pytest        # 90 tests, none of which touch ~/.claude
+.venv/bin/python -m pytest        # 213 tests, none of which touch ~/.claude
 .venv/bin/ruff check src tests install.py
 ```
 
