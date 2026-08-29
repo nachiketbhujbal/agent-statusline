@@ -139,8 +139,9 @@ def _same_path(candidate, expected):
     return os.path.normpath(candidate) == os.path.normpath(expected)
 
 
-def _checkout_path_matches(candidate, expected):
-    """Whether a checkout-shape script argument is the one written into `cdir`.
+def _checkout_script_match(candidate, expected):
+    """Whether a checkout-shape script argument is the one written into `cdir`,
+    and if so, by which form.
 
     The released v0.2.0 installer wrote a *literal* `~/.claude/statusline/...`
     argument and left the tilde for the shell to expand. Expanding a leading
@@ -148,9 +149,34 @@ def _checkout_path_matches(candidate, expected):
     configuration directory: a legacy entry is claimed only when `~` resolves to
     the very path this installation manages, so a third-party
     `/opt/other/statusline/statusline.py` still does not match.
+
+    Returns `"current"` for the absolute form this installer writes today,
+    `"legacy"` for the v0.2.0 tilde form, or `None` for no match. Which one
+    matched decides which interpreter is acceptable -- see
+    `_checkout_interpreter_matches`.
     """
-    return (_same_path(candidate, expected)
-            or _same_path(os.path.expanduser(candidate), expected))
+    if _same_path(candidate, expected):
+        return "current"
+    if _same_path(os.path.expanduser(candidate), expected):
+        return "legacy"
+    return None
+
+
+def _checkout_interpreter_matches(candidate, shape):
+    """Whether `candidate` is the interpreter this installer would have
+    written for a checkout-shape command matched via `shape`.
+
+    The current form always names the exact `sys.executable` this
+    installation runs under -- not merely a program whose basename starts
+    with "python", which would claim any interpreter on the system paired
+    with the right script path. The one documented exception is the released
+    v0.2.0 form, which wrote the literal bare name `python3` and relied on
+    `PATH`; that exact string is recognized only alongside the matching
+    legacy script-path form, not generalized to other "python*" names.
+    """
+    if shape == "legacy":
+        return candidate == "python3"
+    return candidate == sys.executable
 
 
 def _managed_exe(command_tokens):
@@ -165,12 +191,15 @@ def managed_hook_command(command, cdir=None):
     slugs = {slug for _, slug, _, _ in HOOKS + STOPGAP_HOOKS}
     if len(tokens) == 3:
         return tokens[1] == "hook" and tokens[2] in slugs and _managed_exe(tokens)
-    if len(tokens) != 2 or not os.path.basename(tokens[0]).startswith("python"):
+    if len(tokens) != 2:
         return False
     root = os.path.join(cdir or claude_dir(), "statusline", "hooks")
     modules = {mod for _, _, mod, _ in HOOKS + STOPGAP_HOOKS}
-    return any(_checkout_path_matches(tokens[1], os.path.join(root, f"{mod}.py"))
-               for mod in modules)
+    for mod in modules:
+        shape = _checkout_script_match(tokens[1], os.path.join(root, f"{mod}.py"))
+        if shape and _checkout_interpreter_matches(tokens[0], shape):
+            return True
+    return False
 
 
 def managed_status_command(command, cdir=None):
@@ -178,10 +207,11 @@ def managed_status_command(command, cdir=None):
     tokens = _tokens(command)
     if len(tokens) == 1:
         return _managed_exe(tokens)
-    if len(tokens) != 2 or not os.path.basename(tokens[0]).startswith("python"):
+    if len(tokens) != 2:
         return False
     expected = os.path.join(cdir or claude_dir(), "statusline", "statusline.py")
-    return _checkout_path_matches(tokens[1], expected)
+    shape = _checkout_script_match(tokens[1], expected)
+    return bool(shape) and _checkout_interpreter_matches(tokens[0], shape)
 
 
 def _status_command(cfg):
@@ -261,17 +291,127 @@ def _remove_managed_hooks(cfg, cdir=None):
 # "nothing changed".
 # --------------------------------------------------------------------------
 
-def _load_settings(path):
+def _load_settings(path, cdir=None, cdir_fd=None):
+    """Read existing settings. When `cdir_fd` is given -- an already-bound
+    descriptor for `cdir`, see `_open_publish_dir` -- the read happens
+    relative to it instead of by plain pathname, so it shares the same
+    identity binding a backup or a write in the same operation uses.
+    """
+    if cdir_fd is None:
+        try:
+            with open(path, encoding="utf-8") as fh:
+                cfg = json.load(fh)
+        except FileNotFoundError:
+            return {}
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            die(f"cannot safely read existing settings {path}: {exc}")
+        if not isinstance(cfg, dict):
+            die(f"cannot safely update {path}: top-level JSON value is not an object")
+        return cfg
+
+    target = _publish_target(path, cdir)
+    name = os.path.basename(target)
+    dfd = _open_publish_dir(target, cdir, cdir_fd)
     try:
-        with open(path, encoding="utf-8") as fh:
-            cfg = json.load(fh)
-    except FileNotFoundError:
-        return {}
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-        die(f"cannot safely read existing settings {path}: {exc}")
+        try:
+            fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=dfd)
+        except FileNotFoundError:
+            return {}
+        except OSError as exc:
+            die(f"cannot safely read existing settings {path}: {exc}")
+        try:
+            with os.fdopen(fd, encoding="utf-8") as fh:
+                cfg = json.load(fh)
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            die(f"cannot safely read existing settings {path}: {exc}")
+    finally:
+        os.close(dfd)
     if not isinstance(cfg, dict):
         die(f"cannot safely update {path}: top-level JSON value is not an object")
     return cfg
+
+
+def _backup_settings(path, cdir, cdir_fd=None):
+    """Copy an existing settings file to a timestamped backup beside it.
+
+    When `cdir_fd` is given, both the read of the existing file and the write
+    of the backup happen relative to it, matching the read and the eventual
+    publish in the same operation, instead of re-resolving `cdir` from a path
+    string a second (and third) time. Returns the backup path, or raises via
+    `die()` if there was nothing to back up (callers only reach this when a
+    prior `os.path.exists` / read already found a file).
+    """
+    if cdir_fd is None:
+        backup = f"{path}.bak.{time.strftime('%Y%m%d%H%M%S')}.{time.time_ns()}"
+        try:
+            shutil.copy2(path, backup)
+        except OSError as exc:
+            die(f"cannot back up {path}: {exc}")
+        return backup
+
+    target = _publish_target(path, cdir)
+    name = os.path.basename(target)
+    dfd = _open_publish_dir(target, cdir, cdir_fd)
+    try:
+        try:
+            src_fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=dfd)
+        except OSError as exc:
+            die(f"cannot back up {path}: {exc}")
+        try:
+            mode = stat.S_IMODE(os.fstat(src_fd).st_mode)
+            with os.fdopen(src_fd, "rb") as src:
+                data = src.read()
+        except OSError as exc:
+            die(f"cannot back up {path}: {exc}")
+    finally:
+        os.close(dfd)
+
+    backup_name = (f"{os.path.basename(path)}.bak."
+                   f"{time.strftime('%Y%m%d%H%M%S')}.{time.time_ns()}")
+    try:
+        bfd = os.open(backup_name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                      0o600, dir_fd=cdir_fd)
+    except OSError as exc:
+        die(f"cannot create a backup of {path}: {exc}")
+    published = False
+    try:
+        try:
+            os.fchmod(bfd, mode)
+        except OSError as exc:
+            os.close(bfd)
+            die(f"cannot set permissions on the backup of {path}: {exc}")
+        with os.fdopen(bfd, "wb") as bf:
+            bf.write(data)
+            bf.flush()
+            os.fsync(bf.fileno())
+        published = True
+    except OSError as exc:
+        die(f"cannot create a backup of {path}: {exc}")
+    finally:
+        if not published:
+            try:
+                os.unlink(backup_name, dir_fd=cdir_fd)
+            except OSError:
+                pass
+    return os.path.join(cdir, backup_name)
+
+
+def _link_state(link, cdir_fd=None):
+    """(is_symlink, target_or_None, exists) for `link`, read either by
+    pathname or, when `cdir_fd` is given, relative to that already-bound
+    directory descriptor -- so this check cannot be fooled by a directory
+    swapped in at `cdir`'s pathname after the descriptor was opened.
+    """
+    name = os.path.basename(link)
+    try:
+        st = os.lstat(name, dir_fd=cdir_fd) if cdir_fd is not None else os.lstat(link)
+    except FileNotFoundError:
+        return False, None, False
+    is_link = stat.S_ISLNK(st.st_mode)
+    if not is_link:
+        return False, None, True
+    target = os.readlink(name, dir_fd=cdir_fd) if cdir_fd is not None else os.readlink(link)
+    return True, target, True
 
 
 def _validate_schema(cfg, path):
@@ -287,7 +427,7 @@ def _validate_schema(cfg, path):
             die(f"cannot safely update {path}: hooks.{event} is not a list")
 
 
-def _check_install_ownership(cfg, link, cdir, path):
+def _check_install_ownership(cfg, link, cdir, path, cdir_fd=None):
     """Refuse to install over configuration this package does not own.
 
     The settings format holds exactly one `statusLine`, so installing over a
@@ -306,11 +446,14 @@ def _check_install_ownership(cfg, link, cdir, path):
             f"       {shown}\n"
             "       Only one status line can be configured. Remove it first if "
             "you want to switch.")
-    if link and os.path.islink(link) and os.path.realpath(link) != PKG:
+    if not link:
+        return
+    is_link, target, exists = _link_state(link, cdir_fd)
+    if is_link and target != PKG:
         die(f"{link} is a symlink this package does not own:\n"
-            f"       -> {os.readlink(link)}\n"
+            f"       -> {target}\n"
             "       Move it aside and re-run.")
-    if link and not os.path.islink(link) and os.path.exists(link):
+    if not is_link and exists:
         die(f"{link} exists and is not a symlink. Move it aside and re-run.")
 
 
@@ -360,7 +503,22 @@ def _bind_directory(abs_path):
     return fd
 
 
-def _open_publish_dir(target, cdir):
+def _walk_from(fd, parts):
+    """Descriptor for the directory reached by opening each of `parts`
+    relative to `fd`, refusing to follow a symlink at any step. Always
+    returns a descriptor the caller owns and must close -- even when `parts`
+    is empty, in which case it is a dup of `fd` -- so closing it never closes
+    the caller's own copy of `fd`.
+    """
+    cur = os.dup(fd)
+    for part in parts:
+        nxt = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=cur)
+        os.close(cur)
+        cur = nxt
+    return cur
+
+
+def _open_publish_dir(target, cdir, cdir_fd=None):
     """A descriptor for the directory that will receive settings.
 
     `_publish_target` checks a *path*; this binds that decision to an object.
@@ -372,16 +530,32 @@ def _open_publish_dir(target, cdir):
     configuration root or at any parent, not only below it -- fails closed
     instead of following the attacker's link.
 
-    A second `realpath()` check would not close this: it would re-open the same
-    race it is meant to detect.
+    A second `realpath()` check would not close this: it would re-open the
+    same race it is meant to detect -- and neither does binding the root
+    correctly on *this call alone*, if the directory at that pathname was
+    swapped for an unrelated *ordinary* directory (no symlink at all) between
+    an earlier read of `cdir` and this write. `O_NOFOLLOW` cannot catch a
+    plain rename; only never re-deriving the root from a path string a second
+    time can. Passing an already-bound `cdir_fd` -- opened once at the start
+    of an operation via `_bind_directory` and reused for every read, backup,
+    link mutation, and publication inside it -- is what closes that gap: this
+    call then only walks *below* the already-trusted root, never re-resolving
+    the root itself.
     """
-    if os.open not in os.supports_dir_fd:
-        die("this platform cannot publish settings safely: openat is unavailable.")
     root = os.path.realpath(cdir)
     rel = os.path.relpath(os.path.dirname(target), root)
     parts = [] if rel == os.curdir else rel.split(os.sep)
     if any(part == os.pardir for part in parts):
         die(f"refusing to publish settings outside {cdir}")
+    if cdir_fd is not None:
+        try:
+            return _walk_from(cdir_fd, parts)
+        except OSError as exc:
+            die(f"cannot safely reach {target}: {exc}\n"
+                "       A directory on the way changed while installing. "
+                "Nothing was written.")
+    if os.open not in os.supports_dir_fd:
+        die("this platform cannot publish settings safely: openat is unavailable.")
     fd = _bind_directory(root)
     bound = False
     try:
@@ -400,7 +574,7 @@ def _open_publish_dir(target, cdir):
     return fd
 
 
-def _write_json_atomic(path, cfg, cdir):
+def _write_json_atomic(path, cfg, cdir, cdir_fd=None):
     """Publish settings atomically, through a symlink rather than over it.
 
     A settings path is legitimately a symlink when someone links it within their
@@ -416,10 +590,15 @@ def _write_json_atomic(path, cfg, cdir):
     The mode comes from the resolved file, because a symlink's own bits (measured
     0o755 on macOS, commonly 0o777 elsewhere) would otherwise be copied onto real
     settings and widen them.
+
+    `cdir_fd`, when given, is an already-bound descriptor for `cdir` reused
+    from an earlier read or backup in the same operation -- see
+    `_open_publish_dir` for why reuse is what actually closes INSTALL-023/025
+    rather than merely repeating the same check.
     """
     target = _publish_target(path, cdir)
     name = os.path.basename(target)
-    dfd = _open_publish_dir(target, cdir)
+    dfd = _open_publish_dir(target, cdir, cdir_fd)
     try:
         mode = 0o600
         try:
@@ -481,13 +660,22 @@ class _LinkGuard:
     this buys instead: capture the prior state up front, mutate, and if
     anything downstream in the same operation dies, put the link back rather
     than leaving whatever partial change happened to land.
+
+    Every operation is relative to `cdir_fd` -- the same bound descriptor the
+    settings read, backup, and write in the same operation use -- so this
+    guard cannot be fooled by a directory swapped in at `cdir`'s pathname
+    after that descriptor was opened either.
     """
 
-    def __init__(self, link):
+    def __init__(self, link, cdir_fd):
         self.link = link
-        self.existed = os.path.islink(link)
-        self.target = os.readlink(link) if self.existed else None
+        self.name = os.path.basename(link)
+        self.cdir_fd = cdir_fd
+        is_link, target, _ = _link_state(link, cdir_fd)
+        self.existed = is_link
+        self.target = target
         self.touched = False
+        self.error = None
 
     def note_mutation(self):
         self.touched = True
@@ -495,58 +683,76 @@ class _LinkGuard:
     def remove(self):
         self.touched = True
         try:
-            os.unlink(self.link)
+            os.unlink(self.name, dir_fd=self.cdir_fd)
         except OSError as exc:
             die(f"cannot remove {self.link}: {exc}")
 
     def rollback(self):
-        """Best-effort restoration to the pre-mutation state. Called only after
-        an expected failure has already been reported; a further failure here
-        is recorded but does not replace that original message."""
+        """Best-effort restoration to the pre-mutation state. Returns True if
+        the prior state was restored (or nothing needed restoring), False if
+        restoration itself failed -- `self.error` then names why.
+
+        This never raises and never prints: a secondary failure here must not
+        replace or mask the original error that triggered the rollback. The
+        caller owns surfacing a False result -- silently discarding it is
+        exactly the defect this shape exists to avoid repeating.
+        """
         if not self.touched:
-            return
+            return True
         try:
-            if os.path.lexists(self.link):
-                os.unlink(self.link)
-        except OSError:
-            pass
+            _, _, exists = _link_state(self.link, self.cdir_fd)
+        except OSError as exc:
+            self.error = f"cannot inspect {self.link} while restoring: {exc}"
+            return False
+        if exists:
+            try:
+                os.unlink(self.name, dir_fd=self.cdir_fd)
+            except OSError as exc:
+                self.error = f"cannot remove {self.link} while restoring: {exc}"
+                return False
         if self.existed:
             try:
-                os.symlink(self.target, self.link)
-            except OSError:
-                pass
-
-
-def link_checkout(link, dry, guard=None):
-    """Publish the checkout symlink. Ownership is settled before this runs."""
-    if os.path.islink(link):
-        if not dry:
-            if guard:
-                guard.note_mutation()
-            try:
-                os.unlink(link)
+                os.symlink(self.target, self.name, dir_fd=self.cdir_fd)
             except OSError as exc:
-                die(f"cannot replace {link}: {exc}")
-        say(f"symlink:  refreshing {link}")
-    if not dry:
+                self.error = f"cannot restore {self.link} -> {self.target}: {exc}"
+                return False
+        return True
+
+
+def link_checkout(link, dry, guard=None, cdir_fd=None):
+    """Publish the checkout symlink. Ownership is settled before this runs."""
+    if dry:
+        if os.path.islink(link):
+            say(f"symlink:  refreshing {link}")
+        say(f"symlink:  {link} -> {PKG}")
+        return
+    name = os.path.basename(link)
+    is_link, _, _ = _link_state(link, cdir_fd)
+    if is_link:
         if guard:
             guard.note_mutation()
         try:
-            os.makedirs(os.path.dirname(link), exist_ok=True)
-            os.symlink(PKG, link)
+            os.unlink(name, dir_fd=cdir_fd)
         except OSError as exc:
-            die(f"cannot create {link}: {exc}")
+            die(f"cannot replace {link}: {exc}")
+        say(f"symlink:  refreshing {link}")
+    if guard:
+        guard.note_mutation()
+    try:
+        os.symlink(PKG, name, dir_fd=cdir_fd)
+    except OSError as exc:
+        die(f"cannot create {link}: {exc}")
     say(f"symlink:  {link} -> {PKG}")
 
 
-def write_settings(cdir, dry, remove=False, cfg=None):
+def write_settings(cdir, dry, remove=False, cfg=None, cdir_fd=None):
     path = os.path.join(cdir, "settings.json")
     if cfg is None:
         # Confinement is decided before anything is read, not only before
         # anything is written -- an out-of-tree settings.json symlink is
         # refused here rather than having its content read first.
         _publish_target(path, cdir)
-        cfg = _load_settings(path)
+        cfg = _load_settings(path, cdir, cdir_fd)
         _validate_schema(cfg, path)
 
     if remove:
@@ -556,11 +762,7 @@ def write_settings(cdir, dry, remove=False, cfg=None):
             say("settings: nothing owned by this package; left untouched")
             return
     if not dry and os.path.exists(path):
-        backup = f"{path}.bak.{time.strftime('%Y%m%d%H%M%S')}.{time.time_ns()}"
-        try:
-            shutil.copy2(path, backup)
-        except OSError as exc:
-            die(f"cannot back up {path}: {exc}")
+        backup = _backup_settings(path, cdir, cdir_fd)
         say(f"backup:   {backup}")
 
     removed = _remove_managed_hooks(cfg, cdir)
@@ -593,7 +795,7 @@ def write_settings(cdir, dry, remove=False, cfg=None):
 
     if dry:
         return
-    _write_json_atomic(path, cfg, cdir)
+    _write_json_atomic(path, cfg, cdir, cdir_fd)
 
 
 def verify(cdir):
@@ -626,6 +828,17 @@ def verify(cdir):
         say("verify:   runs clean (full output appears once Claude Code starts)")
 
 
+def _report_rollback_failure(guard, link):
+    """Surface a failed restoration rather than let a caught `SystemExit`
+    stand in as false proof the link was put back. Printed, not raised: the
+    original error already reported the primary failure and must not be
+    replaced by this one.
+    """
+    print(f"error: rollback also failed -- {guard.error}\n"
+          f"       {link} may not match settings.json; check it by hand.",
+          file=sys.stderr)
+
+
 def run(dry_run=False, uninstall=False):
     cdir = claude_dir()
     root = checkout_root()
@@ -637,34 +850,63 @@ def run(dry_run=False, uninstall=False):
         say("MODE:     dry run, nothing will be written")
 
     if uninstall:
-        # Full pre-flight before the first mutation. Removing the symlink and
-        # then refusing on malformed settings leaves settings pointing at a link
-        # that no longer exists, which is worse than not starting.
-        _publish_target(path, cdir)
-        cfg = _load_settings(path)
-        _validate_schema(cfg, path)
         link = os.path.join(cdir, "statusline")
-        owns_link = os.path.islink(link) and os.path.realpath(link) == PKG
-        guard = _LinkGuard(link) if not dry_run else None
-        # The link removal and the settings rewrite are not one atomic
-        # operation. If the settings half dies -- an expected filesystem
-        # failure, not a bug -- the guard restores exactly the link state that
-        # existed before this uninstall began, rather than leaving a removed
-        # link with settings that still name it.
-        try:
-            if owns_link:
-                if dry_run:
-                    say(f"symlink:  removed {link}")
-                else:
-                    guard.remove()
-                    say(f"symlink:  removed {link}")
-            elif os.path.lexists(link):
+        if dry_run:
+            # Full pre-flight before the first mutation. Removing the symlink
+            # and then refusing on malformed settings leaves settings
+            # pointing at a link that no longer exists, which is worse than
+            # not starting.
+            _publish_target(path, cdir)
+            cfg = _load_settings(path)
+            _validate_schema(cfg, path)
+            is_link, target, exists = _link_state(link)
+            if is_link and target == PKG:
+                say(f"symlink:  removed {link}")
+            elif exists:
                 say(f"symlink:  preserved non-managed path {link}")
             write_settings(cdir, dry_run, remove=True, cfg=cfg)
-        except SystemExit:
-            if guard:
-                guard.rollback()
-            raise
+            print("\nDone. Your ledger and history are untouched.")
+            return 0
+        if not os.path.isdir(cdir):
+            # Nothing was ever installed into a configuration directory that
+            # does not exist yet; there is nothing to bind or protect.
+            say("settings: nothing owned by this package; left untouched")
+            print("\nDone. Your ledger and history are untouched.")
+            return 0
+        # Bound once, here, and reused for every read, backup, link removal,
+        # and settings write below -- the identity binding INSTALL-023/025
+        # require. Re-deriving the root from `cdir` a second time anywhere
+        # after this would reopen exactly the gap it closes: `O_NOFOLLOW`
+        # stops a symlink swap, but not `cdir`'s pathname being handed to an
+        # unrelated ordinary directory between an earlier check and a later
+        # mutation.
+        cdir_fd = _bind_directory(os.path.realpath(cdir))
+        try:
+            _publish_target(path, cdir)
+            cfg = _load_settings(path, cdir, cdir_fd)
+            _validate_schema(cfg, path)
+            is_link, target, exists = _link_state(link, cdir_fd)
+            owns_link = is_link and target == PKG
+            guard = _LinkGuard(link, cdir_fd)
+            # The link removal and the settings rewrite are not one atomic
+            # operation. If the settings half dies -- an expected filesystem
+            # failure, not a bug -- the guard restores exactly the link state
+            # that existed before this uninstall began, rather than leaving a
+            # removed link with settings that still name it. A failure while
+            # restoring is itself reported rather than swallowed.
+            try:
+                if owns_link:
+                    guard.remove()
+                    say(f"symlink:  removed {link}")
+                elif exists:
+                    say(f"symlink:  preserved non-managed path {link}")
+                write_settings(cdir, dry_run, remove=True, cfg=cfg, cdir_fd=cdir_fd)
+            except SystemExit:
+                if not guard.rollback():
+                    _report_rollback_failure(guard, link)
+                raise
+        finally:
+            os.close(cdir_fd)
         print("\nDone. Your ledger and history are untouched.")
         return 0
 
@@ -672,35 +914,57 @@ def run(dry_run=False, uninstall=False):
         die(f"python {'.'.join(map(str, MIN_PYTHON))}+ required, "
             f"this is {sys.version.split()[0]}")
     say(f"python:   {sys.version.split()[0]} (stdlib only, no dependencies)")
-    # Everything that can refuse, refuses here -- before a directory, a backup,
-    # a symlink, or a temporary file exists.
-    _publish_target(path, cdir)
-    cfg = _load_settings(path)
-    _validate_schema(cfg, path)
     _, _, link = commands(cdir)
-    _check_install_ownership(cfg, link, cdir, path)
-    if not dry_run:
-        try:
-            os.makedirs(cdir, exist_ok=True)
-        except OSError as exc:
-            die(f"cannot create {cdir}: {exc}")
-    guard = _LinkGuard(link) if (link and not dry_run) else None
-    # The checkout symlink and the settings rewrite are two separate mutations
-    # with no shared commit point. If the settings half dies after the link
-    # has already been created or replaced, the guard undoes exactly that link
-    # change -- restoring a pre-existing link to its original target, or
-    # removing one this run just created -- rather than leaving a link with no
-    # matching settings, or settings unchanged behind a link that moved.
-    try:
+
+    if dry_run:
+        # Everything that can refuse, refuses here -- before a directory, a
+        # backup, a symlink, or a temporary file exists.
+        _publish_target(path, cdir)
+        cfg = _load_settings(path)
+        _validate_schema(cfg, path)
+        _check_install_ownership(cfg, link, cdir, path)
         if link:
-            link_checkout(link, dry_run, guard)
+            link_checkout(link, dry_run)
         else:
             say(f"command:  {console_script()}")
         write_settings(cdir, dry_run, cfg=cfg)
-    except SystemExit:
-        if guard:
-            guard.rollback()
-        raise
-    verify(cdir)
+        verify(cdir)
+        print("\nDone. Restart Claude Code to pick it up.")
+        return 0
+
+    try:
+        os.makedirs(cdir, exist_ok=True)
+    except OSError as exc:
+        die(f"cannot create {cdir}: {exc}")
+    # See the uninstall branch above for why this is bound once and reused
+    # rather than re-derived from `cdir` at each step.
+    cdir_fd = _bind_directory(os.path.realpath(cdir))
+    try:
+        _publish_target(path, cdir)
+        cfg = _load_settings(path, cdir, cdir_fd)
+        _validate_schema(cfg, path)
+        _check_install_ownership(cfg, link, cdir, path, cdir_fd)
+        guard = _LinkGuard(link, cdir_fd) if link else None
+        # The checkout symlink and the settings rewrite are two separate
+        # mutations with no shared commit point. If the settings half dies
+        # after the link has already been created or replaced, the guard
+        # undoes exactly that link change -- restoring a pre-existing link to
+        # its original target, or removing one this run just created --
+        # rather than leaving a link with no matching settings, or settings
+        # unchanged behind a link that moved. A failure while restoring is
+        # itself reported rather than swallowed.
+        try:
+            if link:
+                link_checkout(link, dry_run, guard, cdir_fd)
+            else:
+                say(f"command:  {console_script()}")
+            write_settings(cdir, dry_run, cfg=cfg, cdir_fd=cdir_fd)
+        except SystemExit:
+            if guard and not guard.rollback():
+                _report_rollback_failure(guard, link)
+            raise
+        verify(cdir)
+    finally:
+        os.close(cdir_fd)
     print("\nDone. Restart Claude Code to pick it up.")
     return 0

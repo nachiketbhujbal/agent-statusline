@@ -614,6 +614,75 @@ class TestLegacyReleaseCompatibility:
         assert cfg["keepMe"] is True
 
 
+class TestCheckoutInterpreterIsAnchoredToAnExactCommand:
+    """INSTALL-026: a checkout-shape command was claimed by matching the
+    script-path argument alone, accepting *any* interpreter whose basename
+    started with "python" alongside it. The interpreter actually written is
+    exact -- `sys.executable` for the current form, the literal `python3` for
+    the documented v0.2.0 exception -- and ownership must require that exact
+    string, or a foreign interpreter paired with the right script path is
+    claimed as ours.
+    """
+
+    @pytest.fixture
+    def cdir(self, tmp_path, monkeypatch):
+        cdir = tmp_path / "claude"
+        cdir.mkdir()
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+        return cdir
+
+    def test_a_foreign_interpreter_with_the_current_script_path_is_not_owned(self, cdir):
+        script = os.path.join(str(cdir), "statusline", "statusline.py")
+        cmd = f"/opt/rogue/bin/python3.9 {script}"
+        assert not installer.managed_status_command(cmd, str(cdir))
+
+    @pytest.mark.parametrize(
+        "mod", sorted({m for _, _, m, _ in installer.HOOKS + installer.STOPGAP_HOOKS})
+    )
+    def test_a_foreign_interpreter_with_the_current_hook_path_is_not_owned(self, mod, cdir):
+        script = os.path.join(str(cdir), "statusline", "hooks", f"{mod}.py")
+        cmd = f"/opt/rogue/bin/python3.9 {script}"
+        assert not installer.managed_hook_command(cmd, str(cdir))
+
+    def test_the_exact_sys_executable_with_the_current_script_path_is_owned(self, cdir):
+        script = os.path.join(str(cdir), "statusline", "statusline.py")
+        cmd = f"{installer.sys.executable} {script}"
+        assert installer.managed_status_command(cmd, str(cdir))
+
+    def test_a_foreign_interpreter_paired_with_the_legacy_tilde_path_is_not_owned(
+        self, tmp_path, monkeypatch
+    ):
+        """The legacy exception is the literal string `python3`, not any
+        interpreter that happens to also start with "python"."""
+        monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
+        monkeypatch.setenv("HOME", str(tmp_path))
+        cdir = tmp_path / ".claude"
+        cdir.mkdir()
+        cmd = "/opt/rogue/bin/python3.9 ~/.claude/statusline/statusline.py"
+        assert not installer.managed_status_command(cmd, str(cdir))
+
+    def test_a_foreign_interpreter_survives_a_full_uninstall(self, cdir):
+        """The whole point, proven through `run()` rather than the predicate."""
+        script = os.path.join(str(cdir), "statusline", "statusline.py")
+        hook_script = os.path.join(str(cdir), "statusline", "hooks", "session_end.py")
+        original = {
+            "statusLine": {"type": "command",
+                           "command": f"/opt/rogue/bin/python3.9 {script}", "padding": 0},
+            "hooks": {"SessionEnd": [{"hooks": [
+                {"type": "command",
+                 "command": f"/opt/rogue/bin/python3.9 {hook_script}"}]}]},
+            "keepMe": True,
+        }
+        settings = cdir / "settings.json"
+        settings.write_text(json.dumps(original, indent=2))
+        before = settings.read_bytes()
+
+        assert installer.run(uninstall=True) == 0
+
+        assert json.loads(settings.read_text()) == original
+        assert settings.read_bytes() == before, "a pure no-op rewrites nothing"
+
+
 class TestInstallRefusesBeforeMutating:
     """INSTALL-011/012: nothing is created before every refusal has had its say."""
 
@@ -1001,7 +1070,7 @@ class TestPublicationCannotBeRedirected:
 
 
 class TestConfigurationRootCannotBeRedirected:
-    """INSTALL-018: the confinement root itself is bound by descriptor too.
+    """INSTALL-019: the confinement root itself is bound by descriptor too.
 
     `_open_publish_dir`'s directory walk only protected components *below* the
     already-opened root. The root was still reached with a plain, path-named
@@ -1088,6 +1157,153 @@ class TestConfigurationRootCannotBeRedirected:
         assert json.loads(victim.read_text()) == {"ours": True}
 
 
+class TestConfigurationIdentityIsRetainedAcrossTheOperation:
+    """INSTALL-023/025: binding the root correctly at any *one* point does not
+    protect the rest of the operation if each step re-derives the root from
+    `cdir`'s pathname again. `O_NOFOLLOW` refuses a symlink, but an *ordinary*
+    directory -- no symlink anywhere -- swapped into `cdir`'s pathname between
+    an earlier read and a later write is followed by any check that re-opens
+    the path fresh. The fix is to bind the configuration directory once, at
+    the start of `run()`, and route the read, the backup, the link mutation,
+    and the publish through that same descriptor for the rest of the call.
+    """
+
+    def _ordinary_directory_swap(self, cdir, other, monkeypatch):
+        """Land a plain rename-swap -- not a symlink -- after the root has
+        first been resolved (by `run()`'s own initial `_bind_directory` call)
+        but is later re-resolved by pathname somewhere downstream. If nothing
+        downstream re-resolves the root, the swap should have no effect at
+        all: everything from here on should still act on the object that was
+        actually bound, wherever its pathname now points.
+        """
+        real_realpath = os.path.realpath
+        calls = []
+
+        def spy(path, *args, **kwargs):
+            result = real_realpath(path, *args, **kwargs)
+            if path == str(cdir):
+                calls.append(True)
+                if len(calls) == 2:
+                    aside = str(cdir) + ".aside"
+                    os.rename(str(cdir), aside)
+                    os.rename(str(other), str(cdir))
+            return result
+
+        monkeypatch.setattr(installer.os.path, "realpath", spy)
+        return calls
+
+    def test_a_directory_swap_after_binding_does_not_redirect_the_install(
+        self, tmp_path, monkeypatch
+    ):
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        (cdir / "settings.json").write_text(json.dumps({"theme": "dark"}))
+
+        other = tmp_path / "other"
+        other.mkdir()
+        (other / "settings.json").write_text(json.dumps({"registry": "https://x.invalid"}))
+        victim_original = (other / "settings.json").read_bytes()
+
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+        calls = self._ordinary_directory_swap(cdir, other, monkeypatch)
+
+        assert installer.run() == 0
+
+        assert len(calls) >= 2, "the injected swap never ran; the test proves nothing"
+        # Whatever now sits at the *pathname* `cdir` (the swapped-in "other"
+        # directory) must be untouched -- our write followed the descriptor
+        # bound at the start of `run()`, not the pathname.
+        at_cdir_pathname = (cdir / "settings.json").read_bytes()
+        assert at_cdir_pathname == victim_original, (
+            "the swapped-in ordinary directory was overwritten -- the "
+            "operation re-derived the root from a path string mid-run"
+        )
+        # The object actually bound at the start -- now sitting at the
+        # ".aside" pathname after the swap -- must hold our managed write.
+        displaced = json.loads((tmp_path / "config.aside" / "settings.json").read_text())
+        assert displaced.get("statusLine"), (
+            "the originally-bound configuration directory never received "
+            "the install -- the operation followed the swap instead"
+        )
+
+    def test_a_directory_swap_after_binding_does_not_redirect_uninstall(
+        self, tmp_path, monkeypatch
+    ):
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+        assert installer.run() == 0  # install first, so there is something to remove
+
+        other = tmp_path / "other"
+        other.mkdir()
+        (other / "settings.json").write_text(json.dumps({"registry": "https://x.invalid"}))
+        victim_original = (other / "settings.json").read_bytes()
+
+        calls = self._ordinary_directory_swap(cdir, other, monkeypatch)
+
+        assert installer.run(uninstall=True) == 0
+
+        assert len(calls) >= 2, "the injected swap never ran; the test proves nothing"
+        at_cdir_pathname = (cdir / "settings.json").read_bytes()
+        assert at_cdir_pathname == victim_original, (
+            "the swapped-in ordinary directory was mutated by an uninstall "
+            "that was never installed into it"
+        )
+        displaced = json.loads((tmp_path / "config.aside" / "settings.json").read_text())
+        assert "statusLine" not in displaced, (
+            "the originally-bound (and actually installed) configuration "
+            "directory was not the one uninstall acted on"
+        )
+
+    def test_rebinding_the_root_on_every_call_is_exploitable_on_its_own(
+        self, tmp_path, monkeypatch
+    ):
+        """Mutation check: replace the bound-once design with the shape it
+        replaced -- opening a fresh descriptor from `cdir`'s pathname at every
+        read, backup, and write, exactly as `_open_publish_dir` did before
+        `cdir_fd` was threaded through -- and confirm the same injected swap
+        *does* redirect the operation. This is what proves the fix is the
+        binding-once design, not merely that `_bind_directory` uses
+        `O_NOFOLLOW` (it still does here, and still fails to help).
+        """
+        cdir = tmp_path / "config"
+        cdir.mkdir()
+        (cdir / "settings.json").write_text(json.dumps({"theme": "dark"}))
+        other = tmp_path / "other"
+        other.mkdir()
+        (other / "settings.json").write_text(json.dumps({"registry": "https://x.invalid"}))
+        victim_original = (other / "settings.json").read_bytes()
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+
+        real_bind_directory = installer._bind_directory
+
+        def rebind_every_time(abs_path):
+            # Stands in for the pre-fix shape: every caller that wants a
+            # directory descriptor re-resolves and re-opens the root fresh,
+            # rather than reusing one bound at the start of the operation.
+            return real_bind_directory(os.path.realpath(str(cdir)))
+
+        monkeypatch.setattr(installer, "_bind_directory", rebind_every_time)
+        calls = self._ordinary_directory_swap(cdir, other, monkeypatch)
+
+        try:
+            installer.run()
+            outcome = "COMPLETED"
+        except SystemExit:
+            outcome = "REFUSED"
+
+        assert len(calls) >= 2, "the injected swap never ran; the test proves nothing"
+        assert outcome == "COMPLETED", (
+            "expected the always-rebind shape to complete despite the swap; "
+            "if it refused, the injected swap is no longer landing correctly"
+        )
+        at_cdir_pathname = (cdir / "settings.json").read_bytes()
+        assert at_cdir_pathname != victim_original, (
+            "expected the swapped-in ordinary directory to be overwritten "
+            "when every step re-derives the root from a path string"
+        )
+
+
 class TestSettingsAreNotReadBeforeConfinementIsChecked:
     """Advisory (v0.2.1 review continued at 7f70a3b): `_load_settings` used to
     open and parse `settings.json` by plain pathname before `_publish_target`
@@ -1125,7 +1341,7 @@ class TestSettingsAreNotReadBeforeConfinementIsChecked:
 
 
 class TestInstallUninstallAreTransactional:
-    """INSTALL-019: the checkout symlink and the settings rewrite are two
+    """INSTALL-020: the checkout symlink and the settings rewrite are two
     separate mutations with no shared commit point. A failure between them
     used to leave whichever one had already happened, uncorrected.
     """
@@ -1165,6 +1381,20 @@ class TestInstallUninstallAreTransactional:
         assert os.readlink(str(link)) == original_target
         assert _snapshot(cdir) == before
 
+    @staticmethod
+    def _explode_backup(monkeypatch):
+        """Fail settings backup creation, whichever mechanism it currently
+        uses. `_backup_settings` is the single choke point both the plain
+        (`cdir_fd=None`) and descriptor-bound paths go through, so patching it
+        directly -- rather than an internal it happens to call, like
+        `shutil.copy2` -- survives that implementation switching underneath
+        the test.
+        """
+        def explode(*_args, **_kwargs):
+            installer.die("no space left on device")
+
+        monkeypatch.setattr(installer, "_backup_settings", explode)
+
     def test_a_failed_backup_on_fresh_install_removes_the_new_link(
         self, tmp_path, monkeypatch
     ):
@@ -1175,10 +1405,7 @@ class TestInstallUninstallAreTransactional:
         link = cdir / "statusline"
         assert not link.exists() and not link.is_symlink()
 
-        def explode(*_args, **_kwargs):
-            raise OSError("no space left on device")
-
-        monkeypatch.setattr(installer.shutil, "copy2", explode)
+        self._explode_backup(monkeypatch)
 
         with pytest.raises(SystemExit):
             installer.run()
@@ -1199,10 +1426,7 @@ class TestInstallUninstallAreTransactional:
         settings = cdir / "settings.json"
         before = settings.read_bytes()
 
-        def explode(*_args, **_kwargs):
-            raise OSError("no space left on device")
-
-        monkeypatch.setattr(installer.shutil, "copy2", explode)
+        self._explode_backup(monkeypatch)
 
         with pytest.raises(SystemExit):
             installer.run(uninstall=True)
@@ -1224,12 +1448,8 @@ class TestInstallUninstallAreTransactional:
         link = cdir / "statusline"
         assert link.is_symlink()
 
-        monkeypatch.setattr(installer._LinkGuard, "rollback", lambda self: None)
-
-        def explode(*_args, **_kwargs):
-            raise OSError("no space left on device")
-
-        monkeypatch.setattr(installer.shutil, "copy2", explode)
+        monkeypatch.setattr(installer._LinkGuard, "rollback", lambda self: True)
+        self._explode_backup(monkeypatch)
 
         with pytest.raises(SystemExit):
             installer.run(uninstall=True)
@@ -1237,6 +1457,73 @@ class TestInstallUninstallAreTransactional:
         assert not link.is_symlink(), (
             "expected the link to stay removed with rollback disabled; if it "
             "is still present, _LinkGuard is not what is restoring it"
+        )
+
+    def test_a_paired_uninstall_failure_surfaces_both_errors(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """INSTALL-024: fail the backup *and* the restoration `os.symlink` in
+        the same run, and require both the original error and the rollback
+        failure to reach the user rather than the second one being silently
+        discarded. A single-failure regression proves nothing about
+        restoration; this is the paired case Codex's audit found missing.
+
+        Uninstall's rollback path removes the link (succeeds, since that is
+        the intentional first mutation) and then recreates it via
+        `os.symlink` -- that recreation is what this fails.
+        """
+        cdir = self._fresh(tmp_path, monkeypatch)
+        assert installer.run() == 0
+        link = cdir / "statusline"
+
+        self._explode_backup(monkeypatch)
+
+        def explode_symlink(*_args, **_kwargs):
+            raise OSError("operation not permitted")
+
+        monkeypatch.setattr(installer.os, "symlink", explode_symlink)
+
+        with pytest.raises(SystemExit):
+            installer.run(uninstall=True)
+
+        err = capsys.readouterr().err
+        assert "no space left on device" in err, "the original failure must still be reported"
+        assert "rollback also failed" in err, "a failed restoration must not be swallowed"
+        assert str(link) in err
+        assert not link.is_symlink(), (
+            "the link was correctly removed but could not be restored -- "
+            "this is the double-failure state the error must name"
+        )
+
+    def test_a_paired_install_failure_surfaces_both_errors(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """INSTALL-024, the install direction: fail the backup on a fresh
+        install (after the new link is created) *and* fail removing that link
+        during rollback, and require both errors to reach the user.
+        """
+        cdir = self._fresh(tmp_path, monkeypatch)
+        (cdir / "settings.json").write_text(json.dumps({"theme": "dark"}))
+        link = cdir / "statusline"
+        assert not link.exists()
+
+        self._explode_backup(monkeypatch)
+
+        def explode_unlink(*_args, **_kwargs):
+            raise OSError("operation not permitted")
+
+        monkeypatch.setattr(installer.os, "unlink", explode_unlink)
+
+        with pytest.raises(SystemExit):
+            installer.run()
+
+        err = capsys.readouterr().err
+        assert "no space left on device" in err, "the original failure must still be reported"
+        assert "rollback also failed" in err, "a failed restoration must not be swallowed"
+        assert str(link) in err
+        assert link.is_symlink(), (
+            "the newly created link could not be removed during rollback -- "
+            "this is the double-failure state the error must name"
         )
 
 
