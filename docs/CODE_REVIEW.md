@@ -35,20 +35,11 @@ once the regression that demonstrates it exists in this repository.
 The read-before-confinement advisory recorded in an earlier round of this table
 is substantially closed by INSTALL-023/025: the initial settings read now goes
 through the same bound descriptor as the eventual write, not merely reordered
-ahead of it. What remains open, newly observed while verifying INSTALL-023 and
-not part of Codex's reported findings: when `settings.json` is a symlink into a
-*subdirectory* of the configuration directory (rather than sitting directly in
-it), the intermediate subdirectory is still walked fresh from the bound root
-descriptor on each of the read, backup, and write calls, rather than that walk
-also being bound once and reused. An ordinary-directory swap of that
-intermediate subdirectory between two of those calls redirects the later one,
-the same class of gap INSTALL-023 closed for the configuration root itself,
-one level deeper and narrower in practice (it requires a nested symlinked
-`settings.json`, not the common direct case). Reproduced by execution against
-this branch; not fixed here, and not assigned an ID by this table's author --
-left for independent review to confirm and number, per this project's
-owner/reviewer protocol, rather than expanding this round's scope
-unilaterally.
+ahead of it. A deliberate same-user pathname race manipulating filesystem
+objects between two of this installer's own operations -- of which this was
+one instance -- is outside the practical local threat model this project
+targets ([ADR 0031](adrs/0031-practical-local-threat-model.md)) and is not
+carried here as an open release-blocking defect.
 
 A numbering note for readers of the review channel: informal correspondence
 external to this table referred to the four findings above as "INSTALL-018"

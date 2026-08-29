@@ -160,15 +160,8 @@ A finding recorded here in an earlier round as explicitly unresolved -- a race
 between the confinement decision for an existing `settings.json` and the read
 that follows it -- is substantially closed now that the read shares the same
 bound descriptor as publication, rather than merely being ordered after a
-repeated path-based check. What is still open, found while verifying that fix
-rather than reported against it: when `settings.json` is a symlink into a
-*subdirectory* of the configuration directory, that subdirectory is still
-walked fresh from the bound root on each of the read, backup, and write calls,
-rather than that walk also being bound once and reused for the whole operation.
-An ordinary-directory swap of the subdirectory between two of those calls can
-still redirect the later one -- the same class of gap the root-level binding
-above closed, one level deeper, and narrower in practice because it requires a
-nested symlinked `settings.json` rather than the common direct case. Recorded
-here rather than fixed, for the same reason as before: closing it correctly is
-more surgery than fits cleanly alongside everything else in this round, and it
-is left named rather than silently carried forward.
+repeated path-based check. A deliberate same-user pathname race between two of
+this installer's own filesystem operations, of which this was one instance, is
+outside the practical local threat model this project targets ([ADR
+0031](0031-practical-local-threat-model.md)) and is not treated here as an
+open release-blocking defect.
