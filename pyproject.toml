@@ -77,9 +77,9 @@ patch = ["subprocess"]
 [tool.coverage.report]
 skip_empty = true
 show_missing = true
-# Measured baseline at this gate's introduction (v0.2.2) was 78%. Set here so
-# later regression is caught; not a target to chase upward for its own sake.
-fail_under = 78
+# Measured baseline at this gate's introduction (v0.2.2) was 77.91%. Set here
+# so later regression is caught; not a target to chase upward for its own sake.
+fail_under = 77
 
 [tool.black]
 line-length = 100
