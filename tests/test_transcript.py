@@ -67,6 +67,63 @@ class TestUsage:
         )
         assert tot["synth"] == 1
 
+    def test_numeric_strings_retain_transcript_count_semantics(self):
+        tot = absorb(
+            assistant(
+                {
+                    "input_tokens": "1",
+                    "output_tokens": "2",
+                    "cache_creation_input_tokens": "3",
+                    "cache_read_input_tokens": "4",
+                    "output_tokens_details": {"thinking_tokens": "5"},
+                    "cache_creation": {
+                        "ephemeral_1h_input_tokens": "6",
+                        "ephemeral_5m_input_tokens": "7",
+                    },
+                }
+            )
+        )
+        assert (tot["in"], tot["out"], tot["cw"], tot["cr"], tot["think"]) == (1, 2, 3, 4, 5)
+        assert (tot["b1h"], tot["b5m"]) == (6, 7)
+
+    def test_invalid_numeric_values_default_and_later_valid_values_count(self):
+        tot = absorb(
+            assistant(
+                {
+                    "input_tokens": "not-a-number",
+                    "output_tokens": float("nan"),
+                    "cache_creation_input_tokens": float("inf"),
+                    "cache_read_input_tokens": True,
+                    "output_tokens_details": {"thinking_tokens": float("-inf")},
+                    "cache_creation": {
+                        "ephemeral_1h_input_tokens": "invalid",
+                        "ephemeral_5m_input_tokens": float("nan"),
+                    },
+                }
+            ),
+            assistant(
+                {
+                    "input_tokens": 11,
+                    "output_tokens": 12,
+                    "cache_creation_input_tokens": 13,
+                    "cache_read_input_tokens": 14,
+                    "output_tokens_details": {"thinking_tokens": 15},
+                    "cache_creation": {
+                        "ephemeral_1h_input_tokens": 16,
+                        "ephemeral_5m_input_tokens": 17,
+                    },
+                }
+            ),
+        )
+        assert (tot["in"], tot["out"], tot["cw"], tot["cr"], tot["think"]) == (11, 12, 13, 14, 15)
+        assert (tot["b1h"], tot["b5m"], tot["last_bucket"]) == (16, 17, "5m")
+
+    def test_non_mapping_message_usage_and_cache_creation_are_ignored(self):
+        assert absorb({"type": "assistant", "message": []})["turns"] == 0
+        assert absorb({"type": "assistant", "message": {"usage": "bad"}})["turns"] == 0
+        tot = absorb(assistant({"input_tokens": 2, "cache_creation": "bad"}))
+        assert (tot["in"], tot["b1h"], tot["b5m"]) == (2, 0, 0)
+
 
 class TestCacheTtlBucket:
     def test_newest_write_decides_the_live_ttl(self):
@@ -160,6 +217,30 @@ class TestSystemEntries:
         assert tot["hook_runs"] == 2
         assert tot["hook_ms"] == [10, 20]
         assert tot["hook_errs"] == 1
+
+    def test_invalid_durations_default_without_blocking_later_valid_durations(self):
+        tot = absorb(
+            {"type": "system", "subtype": "turn_duration", "durationMs": float("nan")},
+            {
+                "type": "system",
+                "subtype": "stop_hook_summary",
+                "hookInfos": [{"durationMs": float("inf")}, "invalid"],
+                "hookErrors": "invalid",
+            },
+            {"type": "system", "subtype": "turn_duration", "durationMs": 1234},
+            {
+                "type": "system",
+                "subtype": "stop_hook_summary",
+                "hookInfos": [{"durationMs": "56"}],
+            },
+        )
+        assert tot["durs"] == [1234]
+        assert tot["hook_runs"] == 2
+        assert tot["hook_ms"] == [0, 56]
+        assert tot["hook_errs"] == 0
+
+    def test_non_string_local_command_content_is_ignored(self):
+        assert absorb({"type": "system", "subtype": "local_command", "content": []})["cmds"] == {}
 
     def test_slash_commands_are_parsed_out_of_the_content(self):
         tot = absorb(

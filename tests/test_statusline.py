@@ -98,6 +98,90 @@ class TestRobustness:
         payload.pop("rate_limits")
         assert "USAGE" not in labels(draw(payload, monkeypatch, capsys))
 
+    def test_malformed_numeric_payload_values_use_safe_defaults(self, payload, monkeypatch, capsys):
+        payload["context_window"]["context_window_size"] = float("inf")
+        payload["context_window"]["used_percentage"] = "not-a-number"
+        payload["context_window"]["current_usage"]["input_tokens"] = float("nan")
+        payload["rate_limits"]["five_hour"]["used_percentage"] = float("-inf")
+        payload["rate_limits"]["five_hour"]["resets_at"] = 10**15
+        payload["cost"].update(
+            {
+                "total_cost_usd": float("nan"),
+                "total_duration_ms": float("inf"),
+                "total_api_duration_ms": "invalid",
+                "total_lines_added": float("-inf"),
+                "total_lines_removed": "invalid",
+            }
+        )
+
+        out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys))).lower()
+
+        assert "nan" not in out
+        assert "inf" not in out
+        assert "context" in out
+        assert "timing" in out
+        assert "cost" in out
+
+    def test_non_mapping_current_usage_is_treated_as_empty(self, payload, monkeypatch, capsys):
+        payload["context_window"]["current_usage"] = ["invalid"]
+
+        assert "CONTEXT" in labels(draw(payload, monkeypatch, capsys))
+
+    def test_fractional_rate_limit_percentage_is_preserved(self, payload, monkeypatch, capsys):
+        payload["rate_limits"]["five_hour"]["used_percentage"] = 14.5
+
+        out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
+
+        assert "14.5%" in out
+
+    def test_absent_cost_remains_distinct_from_zero(self, payload, monkeypatch, capsys):
+        payload["cost"].pop("total_cost_usd")
+        seen = {}
+
+        def fake_ledger_update(_sid, cost, *_args, **_kwargs):
+            seen["cost"] = cost
+            return {
+                "session": 0.0,
+                "base": 0.0,
+                "runs": 1,
+                "d1": 0.0,
+                "d7": 0.0,
+                "d30": 0.0,
+                "last5": 0.0,
+                "all": 0.0,
+                "convos": 0,
+                "n": 0,
+                "forks": 0,
+            }
+
+        monkeypatch.setattr(statusline, "ledger_update", fake_ledger_update)
+        draw(payload, monkeypatch, capsys)
+
+        assert seen["cost"] is None
+
+    def test_malformed_transcript_numbers_do_not_remove_rows(self, payload, monkeypatch, capsys):
+        monkeypatch.setattr(
+            statusline,
+            "transcript_totals",
+            lambda _path: _totals(
+                cr=float("nan"),
+                cw=float("inf"),
+                out="invalid",
+                think=True,
+                turns="invalid",
+                b1h=float("inf"),
+                b5m="invalid",
+                durs=[float("nan"), 1200],
+            ),
+        )
+
+        out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys))).lower()
+
+        assert "nan" not in out
+        assert "inf" not in out
+        assert "context" in out
+        assert "timing" in out
+
 
 def _totals(**over):
     from agent_statusline.transcript import _blank
