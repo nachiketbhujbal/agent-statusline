@@ -204,11 +204,31 @@ class TestRobustness:
         assert aggregate["n"] == 1
         assert aggregate["convos"] == 1
 
+    def test_cached_non_string_ledger_root_is_removed_when_session_updates(self, monkeypatch):
+        data = {
+            "sessions": {
+                "prior": {
+                    "cost": 1.0,
+                    "updated": statusline.ledger.iso(),
+                    "root": ["invalid"],
+                }
+            }
+        }
+        saved = {}
+        monkeypatch.setattr(statusline.ledger, "load", lambda: data)
+        monkeypatch.setattr(
+            statusline.ledger, "save", lambda value: saved.setdefault("data", value)
+        )
+
+        statusline.ledger_update("prior", 2.0, "project", "session")
+
+        assert "root" not in saved["data"]["sessions"]["prior"]
+
     def test_invalid_transcript_permission_falls_back_to_valid_payload(
         self, payload, monkeypatch, capsys
     ):
         payload["permission_mode"] = "acceptEdits"
-        monkeypatch.setattr(statusline, "transcript_totals", lambda _path: _totals(perm=[]))
+        monkeypatch.setattr(statusline, "transcript_totals", lambda _path: _totals(perm=["plan"]))
 
         out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
 
