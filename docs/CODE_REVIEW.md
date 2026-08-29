@@ -27,22 +27,28 @@ once the regression that demonstrates it exists in this repository.
 | INSTALL-020 | High | Install and uninstall are two separate mutations — a checkout symlink change and a settings rewrite — with no shared commit point. An expected failure between them left inconsistent state: a failed `os.symlink` during reinstall deleted the pre-existing managed link; a failed backup on a fresh install left a new link behind with settings untouched; a failed backup on uninstall removed the managed link while settings still referenced it. | 0.2.1 | Resolved by snapshotting the link's prior state before mutation (`_LinkGuard`) and rolling it back — restoring a pre-existing link, or removing a newly created one — whenever the paired mutation dies, with full-`run()` regressions for all three failures plus a mutation test disabling rollback |
 | INSTALL-021 | Medium | `os.fchmod(fd, mode)` ran on the raw descriptor from `os.open()` before `os.fdopen()` took ownership of it. A failure there died without closing `fd`; the temporary directory entry was removed, but the descriptor stayed open for the life of the process. | 0.2.1 | Resolved by closing the descriptor explicitly if `fchmod` fails, before `os.fdopen` would otherwise take over that responsibility, with an injected-failure regression asserting both a closed descriptor and no remaining temp file |
 | INSTALL-022 | Medium | Removing the last managed hook from a group dropped the whole group, including any other fields it carried. A managed `SessionEnd` group holding a user's `matcher` lost both the hook and the matcher on uninstall. | 0.2.1 | Resolved by preserving a group with `"hooks": []` when it carries fields other than `hooks`, and only dropping a group that is debris (no foreign fields, no hooks left), with reinstall and uninstall round-trip regressions |
+| INSTALL-023 | High | Confinement was decided once, correctly, but each operation on the configuration directory re-derived it from `cdir`'s pathname independently. An *ordinary* directory (no symlink at all) placed at that pathname between an earlier read and a later write was followed, because `O_NOFOLLOW` refuses a symlink but not a plain rename. | 0.2.1 | Resolved by binding the configuration directory once per `run()` call and routing every read, backup, link mutation, and publish in that call through the same descriptor, with a deterministic injected directory-swap regression for both install and uninstall plus a mutation test that restores per-call rebinding and shows it exploitable |
+| INSTALL-024 | High | A failure while restoring the checkout symlink after a primary failure was caught and discarded, contradicting the documented claim that an interrupted install or uninstall resolves to fully applied or fully as it was. | 0.2.1 | Resolved by having restoration report success or failure explicitly; a failure is now printed alongside the original error instead of being silently swallowed, with paired-failure regressions (both the primary operation and the restoration step fail in the same run) for both directions |
+| INSTALL-025 | Medium | The initial settings read and the backup copy were made by plain pathname, outside the descriptor binding publication used, so they were not covered by the same confinement guarantee. | 0.2.1 | Resolved together with INSTALL-023: both now route through the same bound descriptor as publication |
+| INSTALL-026 | High | Checkout-shape ownership accepted any interpreter whose program name started with "python" paired with the right script path, rather than the exact interpreter this installation would have written. A foreign Python paired with the expected script path was treated as managed and removed on uninstall. | 0.2.1 | Resolved by requiring the exact `sys.executable` for the current form, and the documented literal `python3` only for the v0.2.0 legacy form — never generalized to other "python*" names — with negative regressions for both the status line and every hook slug and a full-uninstall preservation regression |
 
-Advisory, addressed while working the boundary above: `run()` and
-`write_settings()` used to load `settings.json` by plain pathname before
-`_publish_target` decided whether that path resolves inside the configuration
-directory, so an out-of-tree symlink target had its content read into memory
-before the refusal that follows. Confinement is now decided first in both call
-sites; a regression proves no read reaches an out-of-tree target. A further,
-narrower TOCTOU remains between that confinement check and the read that
-follows it — closing it completely would mean binding the initial read to the
-same descriptor-walk machinery the write side uses (`_open_publish_dir`), which
-in turn has to tolerate a configuration directory that does not exist yet on a
-fresh install (today's plain `_load_settings` treats that as "no settings" via
-`FileNotFoundError`; the descriptor walk treats an absent component as a hard
-failure). Reconciling those two behaviors is more surgery than this advisory
-warrants on its own, so it is left as an explicit unresolved finding rather than
-attempted piecemeal.
+The read-before-confinement advisory recorded in an earlier round of this table
+is substantially closed by INSTALL-023/025: the initial settings read now goes
+through the same bound descriptor as the eventual write, not merely reordered
+ahead of it. What remains open, newly observed while verifying INSTALL-023 and
+not part of Codex's reported findings: when `settings.json` is a symlink into a
+*subdirectory* of the configuration directory (rather than sitting directly in
+it), the intermediate subdirectory is still walked fresh from the bound root
+descriptor on each of the read, backup, and write calls, rather than that walk
+also being bound once and reused. An ordinary-directory swap of that
+intermediate subdirectory between two of those calls redirects the later one,
+the same class of gap INSTALL-023 closed for the configuration root itself,
+one level deeper and narrower in practice (it requires a nested symlinked
+`settings.json`, not the common direct case). Reproduced by execution against
+this branch; not fixed here, and not assigned an ID by this table's author --
+left for independent review to confirm and number, per this project's
+owner/reviewer protocol, rather than expanding this round's scope
+unilaterally.
 
 A numbering note for readers of the review channel: informal correspondence
 external to this table referred to the four findings above as "INSTALL-018"
@@ -98,3 +104,83 @@ about symlink confinement: an install or uninstall that fails partway must not
 leave the checkout link and settings disagreeing about what is installed
 (INSTALL-020), and ownership of a hook entry must not reach into fields on its
 containing group that the release never claimed (INSTALL-022).
+
+INSTALL-023 through INSTALL-026 and RECORD-001 came from a fourth independent
+review, of the branch tip carrying INSTALL-019..022. INSTALL-023 is the
+deepest instance yet of the "protect the descriptor, not just the path"
+lesson: binding the root correctly at one point in the code does nothing if a
+later point re-derives it independently, and INSTALL-025 was a direct
+consequence -- the read and the backup were exactly such independent
+re-derivations. INSTALL-024 is a different kind of gap: the mechanism was
+already in place, but its own failure path silently discarded evidence that it
+had not done its job. INSTALL-026 is the same unanchored-ownership pattern as
+INSTALL-007 and INSTALL-010, recurring a third time at the one remaining
+un-anchored token: the interpreter naming the script this installer wrote.
+RECORD-001 is process, not code: two regressions in this table's own test
+suite carried finding IDs one number stale, correctly identifying the class of
+defect each protects against but not the ID that class was ultimately given.
+
+## Verification log
+
+Executed evidence for each pushed SHA on `claude/fix/v0.2.1-install-ownership`,
+scoped to counts and pass/fail outcomes plus named open items -- reproduction
+transcripts, injection mechanics, and cross-assistant process narration stay in
+the private review channel (`.pvt/`, ignored by Git; see its `README.md` for
+the boundary and why). This section exists so a reviewer with only the pushed
+branch -- no access to that private channel -- can still see what was run, at
+which SHA, and what is still open, rather than having to take the commit
+message's word for it.
+
+### `47a60bc` / `7f70a3b` -- INSTALL-010..018
+
+- 186 tests passed (from 137); `ruff check src tests install.py` clean;
+  `git diff --check` clean.
+- 11/11 mutation battery killed (`47a60bc`) plus one further mutation for the
+  INSTALL-018 correction (`7f70a3b`).
+- Both artifacts built from a clean tree; a fresh Python 3.9.6 venv installed
+  the exact wheel (`0.2.1.dev15+g7f70a3ba4`); both install shapes proven end
+  to end against disposable `HOME`/`CLAUDE_CONFIG_DIR`/`AGENT_STATUSLINE_STATE`.
+- Hosted workflows, tags, and PRs confirmed unchanged.
+- Open at this SHA, addressed in the next entry: INSTALL-019 through
+  INSTALL-022.
+
+### `d57c96e` / `91ebced` -- INSTALL-019..022
+
+- 200 tests passed (from 186); ruff clean; `git diff --check` clean.
+- 5/5 targeted mutations killed (one per fix, plus the read-before-confinement
+  advisory).
+- Both artifacts built from a clean tree; a fresh Python 3.9.6 venv installed
+  the exact wheel (`0.2.1.dev17+g91ebcedf2`); both install shapes proven end to
+  end, including the installed-wheel INSTALL-022 case specifically.
+- Hosted workflows, tags, and PRs confirmed unchanged.
+- Open at this SHA, addressed in the next entry: INSTALL-023 through
+  INSTALL-026, RECORD-001.
+
+### `e8bf627` (code) / this commit (records) -- INSTALL-023..026, RECORD-001
+
+- 213 tests passed (from 200); `ruff check src tests install.py` clean;
+  `git diff --check` clean.
+- 3 targeted mutation experiments, 11 of 12 regressions confirmed load-bearing
+  (the twelfth is a positive-control test unaffected by design, not a miss):
+  reverting the `cdir_fd` reuse `_open_publish_dir` now accepts fails both
+  INSTALL-023/025 directory-swap regressions; reverting `_LinkGuard.rollback`
+  to discard a secondary failure fails both INSTALL-024 paired-failure
+  regressions; reverting the checkout interpreter check to
+  basename-starts-with-"python" fails 7 of 8 INSTALL-026 regressions.
+- Both artifacts built from a clean tree; a fresh Python 3.9.6 venv installed
+  the exact wheel at the branch tip; both install shapes proven end to end
+  against disposable `HOME`/`CLAUDE_CONFIG_DIR`/`AGENT_STATUSLINE_STATE`,
+  including a deterministic ordinary-directory-swap reproduction against the
+  real installed console script for INSTALL-023.
+- Hosted workflows, tags, and PRs confirmed unchanged; `.worktrees/codex`
+  untouched; the primary clone stayed on clean `main`.
+- Open at this SHA:
+  - The nested-subdirectory nested-symlink gap described above, under
+    INSTALL-026's table row -- reported here, not yet independently reviewed
+    or assigned an ID.
+  - **Request to the reviewer:** whether the read-before-confinement TOCTOU
+    that an earlier round left open is now fully closed by INSTALL-023/025, or
+    whether a narrower window remains worth demonstrating -- see the
+    corresponding paragraph in
+    [ADR 0020](adrs/0020-own-only-managed-configuration.md#consequences) and
+    `.pvt/handoffs/CLAUDE_TO_CODEX-REVIEWS.md` for the full reasoning.

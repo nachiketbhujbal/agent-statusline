@@ -23,11 +23,14 @@ Installation and removal now mutate only configuration this package owns
   symlink's own permissions. A link resolving outside the configuration
   directory is refused, with the resolved path named, rather than followed.
 - Decide ownership by the exact commands this installer writes: the checkout
-  form is anchored to the selected configuration directory, and the installed
-  form to the absolute path of this installation's console script. A third-party
-  status line or hook is no longer claimed — neither one whose files live in a
+  form is anchored to the selected configuration directory *and* the exact
+  interpreter this installation would use, and the installed form to the
+  absolute path of this installation's console script. A third-party status
+  line or hook is no longer claimed — neither one whose files live in a
   directory named `statusline`, nor one whose program is also named
-  `agent-statusline` — and so is no longer removed on uninstall.
+  `agent-statusline`, nor a checkout-shape command naming some other Python
+  interpreter paired with the expected script path — and so is no longer
+  removed on uninstall.
 - Recognize the `~/.claude/statusline/...` commands written by the released
   v0.2.0 installer, so upgrading from it replaces those entries instead of
   stacking a second set of hooks beside them, and uninstalling removes them.
@@ -71,9 +74,17 @@ Installation and removal now mutate only configuration this package owns
   an unrelated file outside the configuration directory; the same window existed
   at the configuration root itself, one level up from where the first fix for
   this reached.
-- Decide confinement before reading, not only before writing: an out-of-tree
-  `settings.json` symlink is refused before its content is read, rather than
-  being read into memory ahead of the refusal that follows.
+- Bind that same descriptor once per install or uninstall and reuse it for
+  every read, backup, link change, and write in the same run, rather than each
+  one independently re-deriving the configuration directory's location from a
+  path string. Binding correctly at one point did not protect a later point
+  that re-derived the location itself: an *ordinary* directory placed at the
+  configuration directory's location between two of those steps was followed,
+  because refusing to follow a symlink does not refuse a plain rename.
+- Decide confinement before reading, not only before writing, using that same
+  binding: an out-of-tree `settings.json` symlink is refused before its
+  content is read, rather than being read into memory ahead of the refusal
+  that follows.
 - Close the temporary settings file's descriptor on every path, including a
   permission failure between creating it and handing it to Python's file
   object. That descriptor previously leaked past the resulting error, even
@@ -87,7 +98,11 @@ Installation and removal now mutate only configuration this package owns
   been mutated, the other's failure rolls the link back to what it was before
   that operation began — restoring a pre-existing link to its original target,
   or removing one this run just created — instead of leaving a link and
-  settings that disagree about what is installed.
+  settings that disagree about what is installed. Restoration is itself a
+  filesystem operation and can itself fail in the same rare conditions; when it
+  does, that failure is now printed alongside the original error rather than
+  discarded, so a link and settings left disagreeing are reported rather than
+  mistaken for a clean recovery.
 - Preserve fields other than `hooks` on a managed hook's containing group when
   its last managed hook is removed. Ownership covers the hook entry, not a
   user's `matcher` or other metadata beside it; a group carrying only `hooks`
