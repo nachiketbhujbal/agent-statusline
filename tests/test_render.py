@@ -1,5 +1,7 @@
 """The width-fitting behaviour: fit on one line, else wrap, else truncate."""
 
+import math
+
 import pytest
 
 from agent_statusline import render
@@ -114,6 +116,23 @@ class TestUnits:
     def test_gb(self):
         assert render.gb(2**30) == "1.0G"
         assert render.gb(5 * 2**20) == "5M"
+
+    def test_formatters_keep_existing_numeric_string_forms(self):
+        assert render.tok("1000") == "1k"
+        assert render.gb("1073741824") == "1.0G"
+        assert render.dur("90") == "1m"
+        assert render.vis(render.bar("50", 10)) == 12
+
+    @pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf, "nan", "Infinity", 10**400])
+    def test_formatters_degrade_nonfinite_and_oversized_values(self, value):
+        outputs = [render.tok(value), render.gb(value), render.dur(value), render.bar(value)]
+        assert all(
+            "nan" not in output.lower() and "inf" not in output.lower() for output in outputs
+        )
+
+    @pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf, "not-a-number", 10**400])
+    def test_grade_degrades_invalid_values(self, value):
+        assert render.grade(value) == render.GRN
 
 
 class TestGrade:

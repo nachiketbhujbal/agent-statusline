@@ -20,6 +20,7 @@ if __package__ in (None, ""):  # running as a plain script from a checkout
 
 from agent_statusline import ledger
 from agent_statusline import probes as pr
+from agent_statusline.coerce import finite_integer, finite_number
 from agent_statusline.paths import state
 from agent_statusline.render import (
     BLU,
@@ -149,17 +150,21 @@ def rl_log(node5, node7):
     change, nothing on an unchanged render.
     """
     try:
+
+        def optional_number(value):
+            return None if value is None else finite_number(value)
+
         cur = {
-            "5h": dig(node5, "used_percentage"),
-            "5h_reset": dig(node5, "resets_at"),
-            "7d": dig(node7, "used_percentage"),
-            "7d_reset": dig(node7, "resets_at"),
+            "5h": optional_number(dig(node5, "used_percentage")),
+            "5h_reset": optional_number(dig(node5, "resets_at")),
+            "7d": optional_number(dig(node7, "used_percentage")),
+            "7d_reset": optional_number(dig(node7, "resets_at")),
         }
         last = None
         if os.path.exists(RLHIST):
-            with open(RLHIST, "rb") as fh:
-                fh.seek(max(0, os.path.getsize(RLHIST) - 4096))
-                tailed = fh.read().decode("utf-8", "replace").strip().splitlines()
+            with open(RLHIST, "rb") as binary_fh:
+                binary_fh.seek(max(0, os.path.getsize(RLHIST) - 4096))
+                tailed = binary_fh.read().decode("utf-8", "replace").strip().splitlines()
             if tailed:
                 try:
                     last = json.loads(tailed[-1])
@@ -168,19 +173,24 @@ def rl_log(node5, node7):
         if last and all(last.get(k) == v for k, v in cur.items()):
             return
         cur["at"] = ledger.iso()
-        with open(RLHIST, "a") as fh:
-            fh.write(json.dumps(cur) + "\n")
+        with open(RLHIST, "a") as text_fh:
+            text_fh.write(json.dumps(cur) + "\n")
     except Exception:
         pass
 
 
 def limit_seg(label, node, window_h):
-    pct = float(dig(node, "used_percentage", default=0) or 0)
-    resets = dig(node, "resets_at")
+    pct = finite_number(dig(node, "used_percentage", default=0) or 0)
+    reset_value = dig(node, "resets_at")
+    resets = None if reset_value is None else finite_number(reset_value)
     s = f"{D}{label:<3}{R}{bar(pct)} {grade(pct)}{pct:4.1f}%{R}"
     if resets:
+        try:
+            clock = time.strftime("%a %H:%M", time.localtime(resets))
+        except (OverflowError, OSError, ValueError):
+            resets = None
+    if resets:
         left = resets - time.time()
-        clock = time.strftime("%a %H:%M", time.localtime(resets))
         if pct < 100:
             elapsed = max(0.05, window_h - left / 3600)
             burn = pct / elapsed
@@ -298,14 +308,21 @@ def main():
 
     # ---------- row 2: context + both rate-limit windows ----------
     cw = dig(d, "context_window", default={})
-    size = int(dig(cw, "context_window_size", default=0) or 0)
-    upct = float(dig(cw, "used_percentage", default=0) or 0)
+    size = finite_integer(dig(cw, "context_window_size", default=0) or 0)
+    upct = finite_number(dig(cw, "used_percentage", default=0) or 0)
     cur = dig(cw, "current_usage", default={})
+    cur = cur if isinstance(cur, Mapping) else {}
     live = sum(
-        int(cur.get(k) or 0)
+        finite_integer(cur.get(k) or 0)
         for k in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
     )
-    served = t["cr"] + t["cw"] + t["in"]
+    t_cr = finite_integer(t.get("cr"))
+    t_cw = finite_integer(t.get("cw"))
+    t_in = finite_integer(t.get("in"))
+    t_out = finite_integer(t.get("out"))
+    t_think = finite_integer(t.get("think"))
+    t_turns = finite_integer(t.get("turns"))
+    served = t_cr + t_cw + t_in
 
     # Context and this session's own token throughput belong together; the rate-limit
     # windows are account-wide and get their own row so both stay easy to scan.
@@ -315,14 +332,13 @@ def main():
         if upct >= 80:
             c += f" {RED}{B}⚠{R}"
         segs.append(c)
-    sess = [f"{D}session{R} {CYN}{tok(served)}{R}{D} in{R}", f"{CYN}{tok(t['out'])}{R}{D} out{R}"]
-    if t["think"]:
-        sess.append(f"{MAG}{tok(t['think'])}{R}{D} thinking{R}")
-    sess.append(f"{t['turns']}{D} api turns{R}")
-    if t["turns"]:
+    sess = [f"{D}session{R} {CYN}{tok(served)}{R}{D} in{R}", f"{CYN}{tok(t_out)}{R}{D} out{R}"]
+    if t_think:
+        sess.append(f"{MAG}{tok(t_think)}{R}{D} thinking{R}")
+    sess.append(f"{t_turns}{D} api turns{R}")
+    if t_turns:
         sess.append(
-            f"{D}avg{R} {tok(served//t['turns'])}{D}/{R}{tok(t['out']//t['turns'])}"
-            f"{D} per turn{R}"
+            f"{D}avg{R} {tok(served//t_turns)}{D}/{R}{tok(t_out//t_turns)}" f"{D} per turn{R}"
         )
     segs.append(f" {D}·{R} ".join(sess))
     if segs:
@@ -331,7 +347,7 @@ def main():
     rl = dig(d, "rate_limits", default={})
     lim = []
     fh_ = dig(rl, "five_hour")
-    over_pct = float(dig(fh_, "used_percentage", default=0) or 0) if fh_ else 0.0
+    over_pct = finite_number(dig(fh_, "used_percentage", default=0) or 0) if fh_ else 0.0
     over_active = over_pct >= 100
     if fh_:
         seg = limit_seg("5h", fh_, 5)
@@ -346,7 +362,7 @@ def main():
 
     # ---------- row 3: cache economics ----------
     if served:
-        hit = t["cr"] / served * 100
+        hit = t_cr / served * 100
         hc = GRN if hit >= 80 else YEL if hit >= 50 else RED
         r3 = [f"{hc}{B}{hit:.1f}%{R}{D} hit{R}"]
         # TTL is detected from which ephemeral bucket the writes landed in, so this
@@ -373,24 +389,29 @@ def main():
                     f"{D} ▸ expires {R}{time.strftime('%H:%M',time.localtime(time.time()-age+ttl))}"
                 )
         r3.append(w)
-        eff = (t["cr"] * W_READ + t["cw"] * W_WRITE + t["in"] * W_FRESH) / served
+        eff = (t_cr * W_READ + t_cw * W_WRITE + t_in * W_FRESH) / served
         ec = GRN if eff <= 0.4 else YEL if eff <= 0.8 else RED
         r3.append(f"{ec}{eff:.2f}x{R}{D} vs all-uncached{R}")
-        if t["b1h"] or t["b5m"]:
-            r3.append(f"{D}writes{R} {tok(t['b1h'])}{D} 1h ·{R} {tok(t['b5m'])}{D} 5m{R}")
+        t_b1h = finite_integer(t.get("b1h"))
+        t_b5m = finite_integer(t.get("b5m"))
+        if t_b1h or t_b5m:
+            r3.append(f"{D}writes{R} {tok(t_b1h)}{D} 1h ·{R} {tok(t_b5m)}{D} 5m{R}")
         rows["CACHE"] = row("CACHE", r3)
 
         # ---------- row 4: token flow ----------
+        cur_cr = finite_integer(cur.get("cache_read_input_tokens"))
+        cur_cw = finite_integer(cur.get("cache_creation_input_tokens"))
+        cur_in = finite_integer(cur.get("input_tokens"))
         rows["TOKENS"] = row(
             "TOKENS",
             [
-                f"{D}total{R} {GRN}{tok(t['cr'])}{R}{D} reused{R} {D}·{R} "
-                f"{YEL}{tok(t['cw'])}{R}{D} written{R} {D}·{R} "
-                f"{RED}{tok(t['in'])}{R}{D} uncached{R}",
-                f"{D}turn{R} {GRN}{tok(cur.get('cache_read_input_tokens'))}{R}{D} reused{R} "
+                f"{D}total{R} {GRN}{tok(t_cr)}{R}{D} reused{R} {D}·{R} "
+                f"{YEL}{tok(t_cw)}{R}{D} written{R} {D}·{R} "
+                f"{RED}{tok(t_in)}{R}{D} uncached{R}",
+                f"{D}turn{R} {GRN}{tok(cur_cr)}{R}{D} reused{R} "
                 f"{D}·{R} "
-                f"{YEL}{tok(cur.get('cache_creation_input_tokens'))}{R}{D} written{R} {D}·{R} "
-                f"{RED}{tok(cur.get('input_tokens'))}{R}{D} uncached{R}",
+                f"{YEL}{tok(cur_cw)}{R}{D} written{R} {D}·{R} "
+                f"{RED}{tok(cur_in)}{R}{D} uncached{R}",
             ],
         )
 
@@ -426,14 +447,14 @@ def main():
 
     # ---------- row 6: timing ----------
     cost = dig(d, "cost", default={})
-    wall = dig(cost, "total_duration_ms", default=0) / 1000
-    api = dig(cost, "total_api_duration_ms", default=0) / 1000
+    wall = max(0.0, finite_number(dig(cost, "total_duration_ms", default=0) or 0) / 1000)
+    api = max(0.0, finite_number(dig(cost, "total_api_duration_ms", default=0) or 0) / 1000)
     r6 = []
     if t["durs"]:
-        s = sorted(t["durs"])
+        s = sorted(finite_integer(value) for value in t["durs"])
         med = s[len(s) // 2] / 1000
-        last = t["durs"][-1] / 1000
-        mx = max(t["durs"]) / 1000
+        last = finite_integer(t["durs"][-1]) / 1000
+        mx = max(s) / 1000
         r6.append(
             f"{D}turn{R} {dur(last)}{D} last · {dur(med)} median · {dur(mx)} max"
             f" ({len(t['durs'])} timed){R}"
@@ -489,7 +510,8 @@ def main():
         rows["SYSTEM"] = row("SYSTEM", r7)
 
     # ---------- row 8: money ----------
-    usd = dig(cost, "total_cost_usd")
+    usd_value = dig(cost, "total_cost_usd")
+    usd = None if usd_value is None else finite_number(usd_value)
     agg = ledger_update(
         d.get("session_id", "?"),
         usd,
@@ -520,7 +542,8 @@ def main():
         + (f" · {agg['forks']} fork{'s' if agg['forks']!=1 else ''}" if agg["forks"] else "")
         + f"){R}"
     )
-    la, lr = dig(cost, "total_lines_added", default=0), dig(cost, "total_lines_removed", default=0)
+    la = finite_integer(dig(cost, "total_lines_added", default=0) or 0)
+    lr = finite_integer(dig(cost, "total_lines_removed", default=0) or 0)
     p8.append(f"{GRN}+{la}{R}{D}/{R}{RED}-{lr}{R}{D} lines{R}")
 
     # Credits. The balance is NOT obtainable locally (see statusline_probes.account),
