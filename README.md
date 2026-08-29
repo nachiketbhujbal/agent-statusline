@@ -244,7 +244,7 @@ uv run --locked pytest --cov=agent_statusline --cov-report=term-missing
 uv build
 ```
 
-`pytest` runs 213 tests, none of which touch `~/.claude`. `pre-commit` runs
+`pytest` runs the suite, none of which touches `~/.claude`. `pre-commit` runs
 repository hygiene checks, Ruff, Black, and mypy from the locked environment;
 run it directly rather than relying on the installed git hook when working in
 a linked worktree, since the hook itself is shared and installed once from the
