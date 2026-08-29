@@ -1,4 +1,5 @@
 """The width-fitting behaviour: fit on one line, else wrap, else truncate."""
+
 import pytest
 
 from agent_statusline import render
@@ -80,16 +81,30 @@ class TestPack:
 
 
 class TestUnits:
-    @pytest.mark.parametrize("n,expected", [
-        (0, "0"), (999, "999"), (1000, "1k"), (1420, "1.42k"),
-        (515000, "515k"), (1000000, "1M"), (71900000, "71.9M"),
-    ])
+    @pytest.mark.parametrize(
+        "n,expected",
+        [
+            (0, "0"),
+            (999, "999"),
+            (1000, "1k"),
+            (1420, "1.42k"),
+            (515000, "515k"),
+            (1000000, "1M"),
+            (71900000, "71.9M"),
+        ],
+    )
     def test_tok(self, n, expected):
         assert render.tok(n) == expected
 
-    @pytest.mark.parametrize("sec,expected", [
-        (5, "5s"), (90, "1m"), (3660, "1h01m"), (90000, "1d1h"),
-    ])
+    @pytest.mark.parametrize(
+        "sec,expected",
+        [
+            (5, "5s"),
+            (90, "1m"),
+            (3660, "1h01m"),
+            (90000, "1d1h"),
+        ],
+    )
     def test_dur(self, sec, expected):
         assert render.dur(sec) == expected
 
@@ -97,8 +112,8 @@ class TestUnits:
         assert render.dur(-10) == "0s"
 
     def test_gb(self):
-        assert render.gb(2 ** 30) == "1.0G"
-        assert render.gb(5 * 2 ** 20) == "5M"
+        assert render.gb(2**30) == "1.0G"
+        assert render.gb(5 * 2**20) == "5M"
 
 
 class TestGrade:
@@ -110,7 +125,7 @@ class TestGrade:
 
 class TestBar:
     def test_is_exactly_width_cells_wide(self):
-        assert render.vis(render.bar(50, 10)) == 12   # 10 cells plus [ and ]
+        assert render.vis(render.bar(50, 10)) == 12  # 10 cells plus [ and ]
 
     def test_clamps_out_of_range_values(self):
         assert render.vis(render.bar(999, 10)) == 12

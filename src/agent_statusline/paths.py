@@ -8,8 +8,9 @@ to run a second instance, or to point a test at a throwaway directory.
 """
 import os
 
-STATE_DIR = os.path.abspath(os.path.expanduser(
-    os.environ.get("AGENT_STATUSLINE_STATE") or "~/.claude"))
+STATE_DIR = os.path.abspath(
+    os.path.expanduser(os.environ.get("AGENT_STATUSLINE_STATE") or "~/.claude")
+)
 
 
 def state(name):
