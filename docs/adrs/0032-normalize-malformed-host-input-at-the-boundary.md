@@ -23,6 +23,11 @@ mapping before field access. Unsupported top-level payload shapes use the
 existing minimal fallback; unsupported transcript rows are ignored without
 preventing later valid rows from contributing.
 
+Fields passed to path, mapping-key, or sequence operations are also accepted
+only in the narrow shape that operation requires. Unsupported transcript paths,
+workspace paths, permission modes, added-directory lists, and session identifiers
+fall back or are omitted rather than reaching filesystem or container APIs.
+
 Use a dependency-free `coerce.py` leaf module for bounded finite-number and
 finite-integer conversion. The helpers reject booleans, invalid strings,
 non-finite values, and values beyond the practical display bound while

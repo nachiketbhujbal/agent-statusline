@@ -66,6 +66,8 @@ Implemented on this branch:
 
 - Require decoded payload and transcript rows to have mapping shape before
   field access; use the established fallback or skip unsupported rows.
+- Validate path, sequence, permission-mode, and session-identifier shapes before
+  passing them to filesystem, mapping-key, or sequence operations.
 - Normalize host-derived numbers through bounded finite integer/fractional
   helpers while preserving accepted numeric strings and exact integers.
 - Protect payload, transcript, reset-time, and formatter boundaries from

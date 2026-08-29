@@ -10,8 +10,9 @@ Malformed but valid JSON from the host now degrades safely instead of removing
 the status line ([ADR 0032](adrs/0032-normalize-malformed-host-input-at-the-boundary.md)).
 Non-object payloads use the minimal fallback, non-object transcript rows are
 ignored while later valid rows still count, and bounded finite coercion protects
-payload, transcript, and formatter numeric paths without changing valid output
-or converting an absent cost into zero.
+payload, transcript, and formatter numeric paths. Invalid path, sequence,
+permission-mode, and session-identifier shapes now fall back safely as well,
+without changing valid output or converting an absent cost into zero.
 
 ## 0.2.2
 

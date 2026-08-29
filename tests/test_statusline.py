@@ -127,6 +127,31 @@ class TestRobustness:
 
         assert "CONTEXT" in labels(draw(payload, monkeypatch, capsys))
 
+    @pytest.mark.parametrize("value", [True, 17, 1.5, ["invalid"], {"invalid": True}])
+    @pytest.mark.parametrize(
+        "path",
+        [
+            ("session_id",),
+            ("transcript_path",),
+            ("permission_mode",),
+            ("workspace", "current_dir"),
+            ("workspace", "project_dir"),
+            ("workspace", "added_dirs"),
+        ],
+    )
+    def test_malformed_scalar_and_container_fields_degrade(
+        self, payload, monkeypatch, capsys, path, value
+    ):
+        target = payload
+        for key in path[:-1]:
+            target = target[key]
+        target[path[-1]] = value
+
+        out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
+
+        assert "PROJECT" in out
+        assert "MODEL" in out
+
     def test_fractional_rate_limit_percentage_is_preserved(self, payload, monkeypatch, capsys):
         payload["rate_limits"]["five_hour"]["used_percentage"] = 14.5
 
