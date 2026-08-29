@@ -15,7 +15,7 @@ installed-artifact evidence.
 | --- | --- | --- |
 | 0.2.1 | Ownership-safe installation and removal | **Released** |
 | 0.2.2 | Locked local quality gate | **Active** |
-| 0.2.3 | Hostile payload/transcript input safety | Planned |
+| 0.2.3 | Malformed host-input resilience | Planned |
 | 0.2.4 | Private, serialized runtime state | Planned |
 | 0.2.5 | Exact rolling-cost attribution | Planned |
 | 0.2.6 | Session-scoped process evidence | Planned |
