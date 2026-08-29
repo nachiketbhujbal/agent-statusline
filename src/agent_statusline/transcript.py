@@ -186,6 +186,8 @@ def transcript_totals(path):
             e = json.loads(line)
         except Exception:
             continue
+        if not isinstance(e, dict):
+            continue
         _absorb(tot, e)
     prev = state.get(path) or {}
     state[path] = {"offset": newoff, "totals": tot, "schema": SCHEMA, "root": prev.get("root")}
@@ -220,6 +222,8 @@ def conversation_root(path):
                 try:
                     e = json.loads(line)
                 except Exception:
+                    continue
+                if not isinstance(e, dict):
                     continue
                 if e.get("type") == "user" and e.get("uuid"):
                     root = e["uuid"]
