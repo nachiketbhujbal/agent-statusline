@@ -1,4 +1,5 @@
 """The `agent-statusline` entry point and the two install shapes."""
+
 import io
 import json
 import os
@@ -27,6 +28,7 @@ class TestDispatch:
 
     def test_version(self, monkeypatch, capsys):
         from agent_statusline import __version__
+
         assert run(["version"], monkeypatch) == 0
         assert capsys.readouterr().out.strip() == __version__
 
@@ -77,8 +79,7 @@ class TestInstallShape:
         assert str(tmp_path) in hook_cmd("session-end", "session_end")
         assert link == str(tmp_path / "statusline")
 
-    def test_an_installed_package_wires_through_the_console_script(self, monkeypatch,
-                                                                   tmp_path):
+    def test_an_installed_package_wires_through_the_console_script(self, monkeypatch, tmp_path):
         exe = tmp_path / "agent-statusline"
         exe.write_text("#!/bin/sh\n")
         exe.chmod(0o755)
@@ -118,16 +119,23 @@ class TestSettings:
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
         monkeypatch.setattr(installer, "native_timestamps", lambda: False)
         cfg = tmp_path / "settings.json"
-        cfg.write_text(json.dumps({
-            "hooks": {
-                "SessionEnd": [{"hooks": [{"type": "command", "command": "keep-end"}]}],
-                "UserPromptSubmit": [
-                    {"matcher": "x", "hooks": [{"type": "command", "command": "keep-submit"}]}
-                ],
-                "Stop": [{"hooks": [{"type": "command", "command": "keep-stop"}]}],
-                "PreToolUse": [{"hooks": [{"type": "command", "command": "keep-pre"}]}],
-            }
-        }))
+        cfg.write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "SessionEnd": [{"hooks": [{"type": "command", "command": "keep-end"}]}],
+                        "UserPromptSubmit": [
+                            {
+                                "matcher": "x",
+                                "hooks": [{"type": "command", "command": "keep-submit"}],
+                            }
+                        ],
+                        "Stop": [{"hooks": [{"type": "command", "command": "keep-stop"}]}],
+                        "PreToolUse": [{"hooks": [{"type": "command", "command": "keep-pre"}]}],
+                    }
+                }
+            )
+        )
         installer.write_settings(str(tmp_path), dry=False)
         out = json.loads(cfg.read_text())
         commands = {
@@ -159,13 +167,17 @@ class TestSettings:
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
         monkeypatch.setattr(installer, "native_timestamps", lambda: False)
         cfg = tmp_path / "settings.json"
-        cfg.write_text(json.dumps({
-            "theme": "dark",
-            "hooks": {
-                "SessionEnd": [{"hooks": [{"type": "command", "command": "keep-end"}]}],
-                "Stop": [{"hooks": [{"type": "command", "command": "keep-stop"}]}],
-            },
-        }))
+        cfg.write_text(
+            json.dumps(
+                {
+                    "theme": "dark",
+                    "hooks": {
+                        "SessionEnd": [{"hooks": [{"type": "command", "command": "keep-end"}]}],
+                        "Stop": [{"hooks": [{"type": "command", "command": "keep-stop"}]}],
+                    },
+                }
+            )
+        )
         installer.write_settings(str(tmp_path), dry=False)
         installer.write_settings(str(tmp_path), dry=False, remove=True)
         out = json.loads(cfg.read_text())
@@ -180,9 +192,9 @@ class TestSettings:
     def test_uninstall_preserves_a_replaced_status_line(self, tmp_path, monkeypatch):
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
         cfg = tmp_path / "settings.json"
-        cfg.write_text(json.dumps({
-            "statusLine": {"type": "command", "command": "some-other-statusline"}
-        }))
+        cfg.write_text(
+            json.dumps({"statusLine": {"type": "command", "command": "some-other-statusline"}})
+        )
         installer.write_settings(str(tmp_path), dry=False, remove=True)
         assert json.loads(cfg.read_text())["statusLine"]["command"] == "some-other-statusline"
 
@@ -239,9 +251,7 @@ class TestSettings:
         installer.write_settings(str(tmp_path), dry=False)
         assert stat.S_IMODE(created.stat().st_mode) == 0o640
 
-    def test_a_failed_publish_leaves_no_temp_file_and_preserves_bytes(
-        self, tmp_path, monkeypatch
-    ):
+    def test_a_failed_publish_leaves_no_temp_file_and_preserves_bytes(self, tmp_path, monkeypatch):
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
         cfg = tmp_path / "settings.json"
         cfg.write_text(json.dumps({"theme": "dark"}))
@@ -293,9 +303,11 @@ class TestSettings:
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
         keep = '"/opt/my tools/notify" --event session-end'
         cfg = tmp_path / "settings.json"
-        cfg.write_text(json.dumps({
-            "hooks": {"SessionEnd": [{"hooks": [{"type": "command", "command": keep}]}]}
-        }))
+        cfg.write_text(
+            json.dumps(
+                {"hooks": {"SessionEnd": [{"hooks": [{"type": "command", "command": keep}]}]}}
+            )
+        )
         installer.write_settings(str(tmp_path), dry=False)
         installer.write_settings(str(tmp_path), dry=False, remove=True)
         out = json.loads(cfg.read_text())
@@ -305,11 +317,18 @@ class TestSettings:
     def test_malformed_hook_containers_are_preserved(self, tmp_path, monkeypatch):
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
         cfg = tmp_path / "settings.json"
-        cfg.write_text(json.dumps({
-            "hooks": {
-                "SessionEnd": ["a valuable string a schema change introduced", {"hooks": "later"}],
-            }
-        }))
+        cfg.write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "SessionEnd": [
+                            "a valuable string a schema change introduced",
+                            {"hooks": "later"},
+                        ],
+                    }
+                }
+            )
+        )
         installer.write_settings(str(tmp_path), dry=False, remove=True)
         out = json.loads(cfg.read_text())
         assert out["hooks"]["SessionEnd"][0] == "a valuable string a schema change introduced"
@@ -358,10 +377,16 @@ class TestSettings:
         stranger_status = "python3 /home/me/my-own-tool/statusline/statusline.py"
         stranger_hook = "python3 /home/me/my-own-tool/statusline/hooks/session_end.py"
         cfg = tmp_path / "settings.json"
-        cfg.write_text(json.dumps({
-            "statusLine": {"type": "command", "command": stranger_status},
-            "hooks": {"SessionEnd": [{"hooks": [{"type": "command", "command": stranger_hook}]}]},
-        }))
+        cfg.write_text(
+            json.dumps(
+                {
+                    "statusLine": {"type": "command", "command": stranger_status},
+                    "hooks": {
+                        "SessionEnd": [{"hooks": [{"type": "command", "command": stranger_hook}]}]
+                    },
+                }
+            )
+        )
 
         installer.write_settings(str(tmp_path), dry=False, remove=True)
 
@@ -462,8 +487,11 @@ def _snapshot(cdir):
     settings = cdir / "settings.json"
     return {
         "bytes": settings.read_bytes() if settings.exists() else None,
-        "link": os.readlink(str(cdir / "statusline"))
-        if os.path.islink(str(cdir / "statusline")) else None,
+        "link": (
+            os.readlink(str(cdir / "statusline"))
+            if os.path.islink(str(cdir / "statusline"))
+            else None
+        ),
         "link_exists": os.path.lexists(str(cdir / "statusline")),
         "backups": sorted(p.name for p in cdir.glob("settings.json.bak.*")),
         "temps": sorted(p.name for p in cdir.glob(".settings.json.*")),
@@ -497,18 +525,14 @@ class TestOwnershipIsAnchoredToAnExactCommand:
         exe = self._installed(monkeypatch, tmp_path)
         assert installer.managed_hook_command(f"{shlex.quote(str(exe))} hook {slug}")
 
-    def test_a_same_basename_different_path_status_line_is_not_owned(
-        self, monkeypatch, tmp_path
-    ):
+    def test_a_same_basename_different_path_status_line_is_not_owned(self, monkeypatch, tmp_path):
         self._installed(monkeypatch, tmp_path)
         assert not installer.managed_status_command("/opt/foreign/agent-statusline")
 
     @pytest.mark.parametrize(
         "slug", sorted({s for _, s, _, _ in installer.HOOKS + installer.STOPGAP_HOOKS})
     )
-    def test_a_same_basename_different_path_hook_is_not_owned(
-        self, slug, monkeypatch, tmp_path
-    ):
+    def test_a_same_basename_different_path_hook_is_not_owned(self, slug, monkeypatch, tmp_path):
         self._installed(monkeypatch, tmp_path)
         assert not installer.managed_hook_command(f"/opt/foreign/agent-statusline hook {slug}")
 
@@ -518,11 +542,23 @@ class TestOwnershipIsAnchoredToAnExactCommand:
         cdir.mkdir()
         self._installed(monkeypatch, tmp_path)
         original = {
-            "statusLine": {"type": "command",
-                           "command": "/opt/foreign/agent-statusline", "padding": 0},
-            "hooks": {"SessionEnd": [{"hooks": [
-                {"type": "command",
-                 "command": "/opt/foreign/agent-statusline hook session-end"}]}]},
+            "statusLine": {
+                "type": "command",
+                "command": "/opt/foreign/agent-statusline",
+                "padding": 0,
+            },
+            "hooks": {
+                "SessionEnd": [
+                    {
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": "/opt/foreign/agent-statusline hook session-end",
+                            }
+                        ]
+                    }
+                ]
+            },
             "keepMe": True,
         }
         settings = cdir / "settings.json"
@@ -563,11 +599,14 @@ class TestLegacyReleaseCompatibility:
         cmd = f"python3 ~/.claude/statusline/hooks/{mod}.py"
         assert installer.managed_hook_command(cmd, str(home_config))
 
-    @pytest.mark.parametrize("cmd", [
-        "python3 /opt/other/statusline/statusline.py",
-        "python3 ~/.config/statusline/statusline.py",
-        "python3 ~/elsewhere/statusline/statusline.py",
-    ])
+    @pytest.mark.parametrize(
+        "cmd",
+        [
+            "python3 /opt/other/statusline/statusline.py",
+            "python3 ~/.config/statusline/statusline.py",
+            "python3 ~/elsewhere/statusline/statusline.py",
+        ],
+    )
     def test_a_lookalike_path_is_not_claimed(self, cmd, home_config):
         """The tilde is expanded, not treated as a wildcard suffix."""
         assert not installer.managed_status_command(cmd, str(home_config))
@@ -578,9 +617,16 @@ class TestLegacyReleaseCompatibility:
 
     def _legacy_settings(self):
         def hook(mod, timeout):
-            return {"hooks": [{"type": "command",
-                               "command": f"python3 ~/.claude/statusline/hooks/{mod}.py",
-                               "timeout": timeout}]}
+            return {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": f"python3 ~/.claude/statusline/hooks/{mod}.py",
+                        "timeout": timeout,
+                    }
+                ]
+            }
+
         return {
             "statusLine": {"type": "command", "command": self.LEGACY_STATUS, "padding": 0},
             "hooks": {
@@ -666,11 +712,23 @@ class TestCheckoutInterpreterIsAnchoredToAnExactCommand:
         script = os.path.join(str(cdir), "statusline", "statusline.py")
         hook_script = os.path.join(str(cdir), "statusline", "hooks", "session_end.py")
         original = {
-            "statusLine": {"type": "command",
-                           "command": f"/opt/rogue/bin/python3.9 {script}", "padding": 0},
-            "hooks": {"SessionEnd": [{"hooks": [
-                {"type": "command",
-                 "command": f"/opt/rogue/bin/python3.9 {hook_script}"}]}]},
+            "statusLine": {
+                "type": "command",
+                "command": f"/opt/rogue/bin/python3.9 {script}",
+                "padding": 0,
+            },
+            "hooks": {
+                "SessionEnd": [
+                    {
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": f"/opt/rogue/bin/python3.9 {hook_script}",
+                            }
+                        ]
+                    }
+                ]
+            },
             "keepMe": True,
         }
         settings = cdir / "settings.json"
@@ -690,8 +748,9 @@ class TestInstallRefusesBeforeMutating:
         cdir = tmp_path / "config"
         cdir.mkdir()
         settings = cdir / "settings.json"
-        settings.write_text(json.dumps(
-            {"statusLine": {"type": "command", "command": "some-other-statusline"}}))
+        settings.write_text(
+            json.dumps({"statusLine": {"type": "command", "command": "some-other-statusline"}})
+        )
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
         before = _snapshot(cdir)
 
@@ -700,17 +759,18 @@ class TestInstallRefusesBeforeMutating:
 
         assert _snapshot(cdir) == before
 
-    @pytest.mark.parametrize("entry", [
-        pytest.param("some-other-tool", id="a-bare-string"),
-        pytest.param(["some-other-tool"], id="a-list"),
-        pytest.param({"type": "command", "padding": 0}, id="a-dict-with-no-command"),
-        pytest.param({"type": "command", "command": 12345}, id="a-non-string-command"),
-        pytest.param({"type": "text", "text": "hello"}, id="a-different-shaped-dict"),
-        pytest.param({"command": None}, id="an-explicit-null-command"),
-    ])
-    def test_a_status_line_we_cannot_read_is_never_overwritten(
-        self, entry, tmp_path, monkeypatch
-    ):
+    @pytest.mark.parametrize(
+        "entry",
+        [
+            pytest.param("some-other-tool", id="a-bare-string"),
+            pytest.param(["some-other-tool"], id="a-list"),
+            pytest.param({"type": "command", "padding": 0}, id="a-dict-with-no-command"),
+            pytest.param({"type": "command", "command": 12345}, id="a-non-string-command"),
+            pytest.param({"type": "text", "text": "hello"}, id="a-different-shaped-dict"),
+            pytest.param({"command": None}, id="an-explicit-null-command"),
+        ],
+    )
+    def test_a_status_line_we_cannot_read_is_never_overwritten(self, entry, tmp_path, monkeypatch):
         """Unprovable is not unowned.
 
         Refusing only when a command string can be parsed out left every other
@@ -742,9 +802,7 @@ class TestInstallRefusesBeforeMutating:
         cfg = json.loads((cdir / "settings.json").read_text())
         assert installer.managed_status_command(cfg["statusLine"]["command"], str(cdir))
 
-    def test_an_unreadable_status_line_is_preserved_by_uninstall_too(
-        self, tmp_path, monkeypatch
-    ):
+    def test_an_unreadable_status_line_is_preserved_by_uninstall_too(self, tmp_path, monkeypatch):
         """Install and uninstall must agree about what they cannot prove."""
         cdir = tmp_path / "config"
         cdir.mkdir()
@@ -772,9 +830,7 @@ class TestInstallRefusesBeforeMutating:
         assert _snapshot(cdir) == before
         assert os.path.realpath(str(cdir / "statusline")) == str(other)
 
-    def test_reinstalling_over_our_own_configuration_is_idempotent(
-        self, tmp_path, monkeypatch
-    ):
+    def test_reinstalling_over_our_own_configuration_is_idempotent(self, tmp_path, monkeypatch):
         cdir = tmp_path / "config"
         cdir.mkdir()
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
@@ -785,9 +841,7 @@ class TestInstallRefusesBeforeMutating:
 
         assert json.loads((cdir / "settings.json").read_text()) == first
 
-    def test_a_non_object_hooks_container_stops_before_the_symlink(
-        self, tmp_path, monkeypatch
-    ):
+    def test_a_non_object_hooks_container_stops_before_the_symlink(self, tmp_path, monkeypatch):
         cdir = tmp_path / "config"
         cdir.mkdir()
         (cdir / "settings.json").write_text(json.dumps({"hooks": ["valuable"]}))
@@ -800,9 +854,7 @@ class TestInstallRefusesBeforeMutating:
         assert _snapshot(cdir) == before
         assert not before["link_exists"] and not before["backups"]
 
-    def test_a_non_object_hooks_container_also_fails_uninstall_closed(
-        self, tmp_path, monkeypatch
-    ):
+    def test_a_non_object_hooks_container_also_fails_uninstall_closed(self, tmp_path, monkeypatch):
         cdir = tmp_path / "config"
         cdir.mkdir()
         (cdir / "settings.json").write_text(json.dumps({"hooks": ["valuable"]}))
@@ -930,9 +982,7 @@ class TestVerificationIsolation:
 
         assert precious.read_bytes() == original, "verification deleted user data"
 
-    def test_a_dry_run_against_an_absent_directory_creates_nothing(
-        self, tmp_path, monkeypatch
-    ):
+    def test_a_dry_run_against_an_absent_directory_creates_nothing(self, tmp_path, monkeypatch):
         cdir = tmp_path / "absent"
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
 
@@ -940,9 +990,7 @@ class TestVerificationIsolation:
 
         assert not cdir.exists(), "dry run promised to write nothing"
 
-    def test_verification_scratch_state_never_lands_in_the_config_dir(
-        self, tmp_path, monkeypatch
-    ):
+    def test_verification_scratch_state_never_lands_in_the_config_dir(self, tmp_path, monkeypatch):
         cdir = tmp_path / "config"
         cdir.mkdir()
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
@@ -1056,8 +1104,7 @@ class TestPublicationCannotBeRedirected:
         # through it would let the second resolution catch the swap and prove
         # nothing about the descriptor.
         with pytest.raises(SystemExit):
-            installer._write_json_atomic(
-                str(cdir / "settings.json"), {"ours": True}, str(cdir))
+            installer._write_json_atomic(str(cdir / "settings.json"), {"ours": True}, str(cdir))
 
         assert swapped, "the injected swap never ran; the test proves nothing"
 
@@ -1120,8 +1167,7 @@ class TestConfigurationRootCannotBeRedirected:
         calls = self._inject_root_swap(cdir, elsewhere, monkeypatch)
 
         with pytest.raises(SystemExit):
-            installer._write_json_atomic(
-                str(cdir / "settings.json"), {"ours": True}, str(cdir))
+            installer._write_json_atomic(str(cdir / "settings.json"), {"ours": True}, str(cdir))
 
         assert len(calls) >= 2, "the injected swap never ran; the test proves nothing"
         assert victim.read_bytes() == original, "publication followed the swapped root"
@@ -1142,8 +1188,7 @@ class TestConfigurationRootCannotBeRedirected:
         calls = self._inject_root_swap(cdir, elsewhere, monkeypatch)
 
         try:
-            installer._write_json_atomic(
-                str(cdir / "settings.json"), {"ours": True}, str(cdir))
+            installer._write_json_atomic(str(cdir / "settings.json"), {"ours": True}, str(cdir))
             outcome = "WRITE_COMPLETED"
         except SystemExit:
             outcome = "REFUSED"
@@ -1352,9 +1397,7 @@ class TestInstallUninstallAreTransactional:
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
         return cdir
 
-    def test_a_failed_reinstall_restores_the_pre_existing_managed_link(
-        self, tmp_path, monkeypatch
-    ):
+    def test_a_failed_reinstall_restores_the_pre_existing_managed_link(self, tmp_path, monkeypatch):
         cdir = self._fresh(tmp_path, monkeypatch)
         assert installer.run() == 0
         link = cdir / "statusline"
@@ -1390,14 +1433,13 @@ class TestInstallUninstallAreTransactional:
         `shutil.copy2` -- survives that implementation switching underneath
         the test.
         """
+
         def explode(*_args, **_kwargs):
             installer.die("no space left on device")
 
         monkeypatch.setattr(installer, "_backup_settings", explode)
 
-    def test_a_failed_backup_on_fresh_install_removes_the_new_link(
-        self, tmp_path, monkeypatch
-    ):
+    def test_a_failed_backup_on_fresh_install_removes_the_new_link(self, tmp_path, monkeypatch):
         cdir = self._fresh(tmp_path, monkeypatch)
         settings = cdir / "settings.json"
         settings.write_text(json.dumps({"theme": "dark"}))
@@ -1416,9 +1458,7 @@ class TestInstallUninstallAreTransactional:
         assert not list(cdir.glob("settings.json.bak.*"))
         assert not list(cdir.glob(".settings.json.*"))
 
-    def test_a_failed_uninstall_backup_restores_the_removed_link(
-        self, tmp_path, monkeypatch
-    ):
+    def test_a_failed_uninstall_backup_restores_the_removed_link(self, tmp_path, monkeypatch):
         cdir = self._fresh(tmp_path, monkeypatch)
         assert installer.run() == 0
         link = cdir / "statusline"
@@ -1459,9 +1499,7 @@ class TestInstallUninstallAreTransactional:
             "is still present, _LinkGuard is not what is restoring it"
         )
 
-    def test_a_paired_uninstall_failure_surfaces_both_errors(
-        self, tmp_path, monkeypatch, capsys
-    ):
+    def test_a_paired_uninstall_failure_surfaces_both_errors(self, tmp_path, monkeypatch, capsys):
         """INSTALL-024: fail the backup *and* the restoration `os.symlink` in
         the same run, and require both the original error and the rollback
         failure to reach the user rather than the second one being silently
@@ -1495,9 +1533,7 @@ class TestInstallUninstallAreTransactional:
             "this is the double-failure state the error must name"
         )
 
-    def test_a_paired_install_failure_surfaces_both_errors(
-        self, tmp_path, monkeypatch, capsys
-    ):
+    def test_a_paired_install_failure_surfaces_both_errors(self, tmp_path, monkeypatch, capsys):
         """INSTALL-024, the install direction: fail the backup on a fresh
         install (after the new link is created) *and* fail removing that link
         during rollback, and require both errors to reach the user.
@@ -1585,8 +1621,10 @@ class TestHookGroupMetadataSurvivesRemoval:
         if exe:
             return f"{shlex.quote(exe)} hook session-end"
         link = str(cdir / "statusline")
-        return f"{shlex.quote(installer.sys.executable)} " \
-               f"{shlex.quote(os.path.join(link, 'hooks', 'session_end.py'))}"
+        return (
+            f"{shlex.quote(installer.sys.executable)} "
+            f"{shlex.quote(os.path.join(link, 'hooks', 'session_end.py'))}"
+        )
 
     def test_uninstall_preserves_a_matcher_on_an_emptied_group(self, tmp_path, monkeypatch):
         cdir = tmp_path / "config"
@@ -1596,8 +1634,10 @@ class TestHookGroupMetadataSurvivesRemoval:
         settings = {
             "hooks": {
                 "SessionEnd": [
-                    {"matcher": "user-kept-matcher",
-                     "hooks": [{"type": "command", "command": managed}]}
+                    {
+                        "matcher": "user-kept-matcher",
+                        "hooks": [{"type": "command", "command": managed}],
+                    }
                 ]
             }
         }
@@ -1618,9 +1658,7 @@ class TestHookGroupMetadataSurvivesRemoval:
         cdir.mkdir()
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
         managed = self._managed_command(cdir)
-        settings = {"hooks": {"SessionEnd": [
-            {"hooks": [{"type": "command", "command": managed}]}
-        ]}}
+        settings = {"hooks": {"SessionEnd": [{"hooks": [{"type": "command", "command": managed}]}]}}
         (cdir / "settings.json").write_text(json.dumps(settings))
 
         assert installer.run(uninstall=True) == 0
@@ -1628,15 +1666,17 @@ class TestHookGroupMetadataSurvivesRemoval:
         after = json.loads((cdir / "settings.json").read_text())
         assert "SessionEnd" not in after.get("hooks", {})
 
-    def test_reinstall_then_uninstall_round_trips_a_foreign_matcher(
-        self, tmp_path, monkeypatch
-    ):
+    def test_reinstall_then_uninstall_round_trips_a_foreign_matcher(self, tmp_path, monkeypatch):
         cdir = tmp_path / "config"
         cdir.mkdir()
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
-        settings = {"hooks": {"SessionEnd": [
-            {"matcher": "keep-me", "hooks": [{"type": "command", "command": "third-party"}]}
-        ]}}
+        settings = {
+            "hooks": {
+                "SessionEnd": [
+                    {"matcher": "keep-me", "hooks": [{"type": "command", "command": "third-party"}]}
+                ]
+            }
+        }
         (cdir / "settings.json").write_text(json.dumps(settings))
 
         assert installer.run() == 0
@@ -1645,5 +1685,7 @@ class TestHookGroupMetadataSurvivesRemoval:
 
         after = json.loads((cdir / "settings.json").read_text())
         groups = after["hooks"]["SessionEnd"]
-        assert {"matcher": "keep-me", "hooks": [{"type": "command", "command": "third-party"}]} \
-            in groups
+        assert {
+            "matcher": "keep-me",
+            "hooks": [{"type": "command", "command": "third-party"}],
+        } in groups

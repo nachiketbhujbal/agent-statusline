@@ -5,6 +5,7 @@ The state directory is redirected BEFORE any package import, because
 real `~/.claude` -- exercising cost paths against a live ledger has corrupted
 real spend figures before (docs/adrs/0014).
 """
+
 import os
 import tempfile
 
@@ -30,19 +31,30 @@ def payload():
         "version": "2.1.246",
         "effort": {"level": "high"},
         "model": {"id": "claude-opus-5", "display_name": "Opus 5"},
-        "workspace": {"current_dir": "/tmp/project",
-                      "project_dir": "/tmp/project", "added_dirs": []},
+        "workspace": {
+            "current_dir": "/tmp/project",
+            "project_dir": "/tmp/project",
+            "added_dirs": [],
+        },
         "output_style": {"name": "default"},
         "thinking": {"enabled": True},
         "fast_mode": False,
-        "cost": {"total_cost_usd": 1.25, "total_duration_ms": 600000,
-                 "total_api_duration_ms": 120000,
-                 "total_lines_added": 10, "total_lines_removed": 2},
+        "cost": {
+            "total_cost_usd": 1.25,
+            "total_duration_ms": 600000,
+            "total_api_duration_ms": 120000,
+            "total_lines_added": 10,
+            "total_lines_removed": 2,
+        },
         "context_window": {
-            "context_window_size": 1000000, "used_percentage": 14,
-            "current_usage": {"input_tokens": 2, "output_tokens": 800,
-                              "cache_creation_input_tokens": 700,
-                              "cache_read_input_tokens": 70000},
+            "context_window_size": 1000000,
+            "used_percentage": 14,
+            "current_usage": {
+                "input_tokens": 2,
+                "output_tokens": 800,
+                "cache_creation_input_tokens": 700,
+                "cache_read_input_tokens": 70000,
+            },
         },
         "rate_limits": {
             "five_hour": {"used_percentage": 15, "resets_at": 4102444800},
