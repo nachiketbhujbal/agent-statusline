@@ -25,14 +25,24 @@ path fragment is not sufficient evidence of ownership: `statusline` is the most
 natural directory name another status line would choose, and claiming it means
 deleting it. Neither is a bare program name: the installed shape is matched
 against the absolute path of *this* installation's console script, so a
-`/opt/foreign/agent-statusline` belonging to someone else is never claimed.
+`/opt/foreign/agent-statusline` belonging to someone else is never claimed. The
+checkout shape names two things, and both must match exactly: the script path
+under the selected configuration directory, and the interpreter running it.
+Accepting any program whose name merely started with "python" alongside the
+right script path claimed a foreign interpreter's command as ours; the
+interpreter must be the exact `sys.executable` this installation runs under,
+with the one documented exception below.
 
 The one command shape not written by the current installer that is still claimed
 is the released v0.2.0 form, which embedded a literal `~/.claude/statusline/...`
-argument. A leading `~` is expanded before the comparison, so those entries are
+argument and a literal bare `python3` interpreter, relying on `PATH`. A leading
+`~` is expanded before the script-path comparison, so those entries are
 recognized only when they resolve to the very directory this installation
-manages. Without that, upgrading a v0.2.0 installation would stack a second set
-of hooks beside the first and uninstalling would leave the originals behind.
+manages, and the literal string `python3` -- not any interpreter whose name
+starts with "python" -- is the one interpreter exception, recognized only
+alongside that legacy script-path form. Without either half, upgrading a
+v0.2.0 installation would stack a second set of hooks beside the first and
+uninstalling would leave the originals behind.
 
 Installation refuses rather than overwrites. Because `settings.json` holds
 exactly one `statusLine`, installing over one this package does not own destroys
@@ -80,16 +90,31 @@ Python's buffered file object -- that handoff is what gives the descriptor an
 owner that closes it automatically -- so a failure in between closes it
 explicitly rather than leaving it open past the error that reports the failure.
 
+Binding the configuration directory correctly at one point in an install or
+uninstall does not protect a later point that independently re-derives it from
+`cdir`'s pathname -- refusing to follow a symlink there does nothing against an
+*ordinary* directory placed at that pathname between the two. So the directory
+is bound exactly once per install or uninstall, immediately after it is
+confirmed (or created) to exist, and every read, backup, link mutation, and
+publication for the rest of that call reuses the same descriptor rather than
+re-opening the location by name again. What this closes is broader than
+publication alone: the initial settings read and the backup copy, which used
+to be made by plain pathname outside the binding publication used, now share
+it too, so they carry the same guarantee rather than a narrower one.
+
 Install and uninstall each perform two mutations with no shared commit point:
 the checkout symlink, and the settings rewrite. Neither can be made to succeed
 or fail together with the other, so instead the link's state is captured before
 either mutation begins, and an expected failure in the mutation that runs
 second rolls the link back to what it was -- a pre-existing link restored to its
 original target, or a link this run just created removed. This does not make
-the pair atomic; it makes the two outcomes that were possible before this
-(effectively confirmed) -- link changed, settings unchanged, or the reverse --
-into two that resolve back to a single consistent state on failure: fully
-applied, or fully as it was.
+the pair atomic; it makes the two outcomes that were possible before this --
+link changed, settings unchanged, or the reverse -- resolve back to a single
+consistent state on failure, in the common case. Restoration is itself a
+filesystem operation, so it is not guaranteed: if it fails too, that failure is
+reported alongside the original one rather than silently discarded, naming the
+link that may no longer match settings, so a double failure is reported rather
+than mistaken for the single-failure case that does resolve cleanly.
 
 Ownership of a hook applies to the hook entry, not to other fields on the group
 that contains it. A group carrying a user's `matcher` alongside a managed hook
@@ -125,16 +150,25 @@ destroying it. The installer needs focused regression tests for mixed hook
 ownership, changed status lines, malformed JSON, custom configuration
 directories, symlinks it does not own, v0.2.0 upgrade paths, publication that is
 redirected after confinement is checked (at the configuration root as well as
-below it), an interrupted install or uninstall that must roll a partial link
-change back, and a hook group carrying fields this package never claimed.
+below it, by an ordinary directory swap as well as by a symlink), a foreign
+interpreter paired with the expected checkout script path, an interrupted
+install or uninstall that must roll a partial link change back (including the
+case where that rollback itself fails), and a hook group carrying fields this
+package never claimed.
 
-One finding is recorded here as explicitly unresolved rather than fixed: a
-narrow race remains between the confinement decision for an existing
-`settings.json` and the plain, path-named read that follows it (ordering the two
-so confinement is decided first closes the non-racing case, and is done, but
-does not close the race itself). Closing it fully would mean reading through the
-same descriptor-bound directory walk publication uses, and that walk treats a
-configuration directory that does not yet exist as a hard failure, while a fresh
-install's read must tolerate exactly that case and treat it as "no settings
-yet." Reconciling those two behaviors is a larger change than this release's
-scope, so the race is left open and named rather than papered over.
+A finding recorded here in an earlier round as explicitly unresolved -- a race
+between the confinement decision for an existing `settings.json` and the read
+that follows it -- is substantially closed now that the read shares the same
+bound descriptor as publication, rather than merely being ordered after a
+repeated path-based check. What is still open, found while verifying that fix
+rather than reported against it: when `settings.json` is a symlink into a
+*subdirectory* of the configuration directory, that subdirectory is still
+walked fresh from the bound root on each of the read, backup, and write calls,
+rather than that walk also being bound once and reused for the whole operation.
+An ordinary-directory swap of the subdirectory between two of those calls can
+still redirect the later one -- the same class of gap the root-level binding
+above closed, one level deeper, and narrower in practice because it requires a
+nested symlinked `settings.json` rather than the common direct case. Recorded
+here rather than fixed, for the same reason as before: closing it correctly is
+more surgery than fits cleanly alongside everything else in this round, and it
+is left named rather than silently carried forward.
