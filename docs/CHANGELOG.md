@@ -63,15 +63,37 @@ Installation and removal now mutate only configuration this package owns
   name and its contents. As a result `--dry-run` now genuinely writes nothing:
   it no longer creates the configuration directory.
 - Bind settings publication to an opened directory descriptor, reached without
-  following a symlink at any step below the configuration directory, and create,
-  permission, and rename the temporary file relative to it. Confining a path and
-  then writing through that same path left a window in which swapping a checked
-  directory for a symlink redirected publication onto an unrelated file outside
-  the configuration directory.
+  following a symlink at any step from the filesystem root down to the
+  configuration directory and beyond it — not only below the configuration
+  directory — and create, permission, and rename the temporary file relative to
+  it. Confining a path and then writing through that same path left a window in
+  which swapping a checked directory for a symlink redirected publication onto
+  an unrelated file outside the configuration directory; the same window existed
+  at the configuration root itself, one level up from where the first fix for
+  this reached.
+- Decide confinement before reading, not only before writing: an out-of-tree
+  `settings.json` symlink is refused before its content is read, rather than
+  being read into memory ahead of the refusal that follows.
+- Close the temporary settings file's descriptor on every path, including a
+  permission failure between creating it and handing it to Python's file
+  object. That descriptor previously leaked past the resulting error, even
+  though the temporary file's directory entry was correctly removed.
 - Back a valid existing settings file up before any applied mutation, publish
   atomically, and leave no temporary file behind if publication fails.
 - Keep reinstallation idempotent: repeated installs never accumulate duplicate
   managed hooks.
+- Make the checkout symlink and the settings rewrite recoverable as a pair: if
+  an expected failure interrupts an install or uninstall after one has already
+  been mutated, the other's failure rolls the link back to what it was before
+  that operation began — restoring a pre-existing link to its original target,
+  or removing one this run just created — instead of leaving a link and
+  settings that disagree about what is installed.
+- Preserve fields other than `hooks` on a managed hook's containing group when
+  its last managed hook is removed. Ownership covers the hook entry, not a
+  user's `matcher` or other metadata beside it; a group carrying only `hooks`
+  is still dropped once it is empty, and this is not the already-recorded
+  choice to normalize away an empty *foreign* group, which was never claimed
+  in the first place.
 
 One deliberate exception to the ownership rule: `showMessageTimestamps` is set
 to `true` when absent ([ADR 0015](adrs/0015-timestamp-hooks-are-a-stopgap.md))

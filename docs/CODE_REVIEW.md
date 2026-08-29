@@ -23,6 +23,40 @@ once the regression that demonstrates it exists in this repository.
 | INSTALL-016 | High | Verification used the fixed path `<config>/.verify-state` and always removed it recursively, so a normal install deleted a pre-existing directory of that name and its contents. | 0.2.1 | Resolved by creating a unique system temporary directory and removing only what was created, with a regression proving pre-existing contents survive |
 | INSTALL-017 | High | Confinement was checked against path strings and then acted on through those same strings. Swapping a checked directory for a symlink in that window redirected publication, overwriting an unrelated file outside the configuration directory. | 0.2.1 | Resolved by binding publication to an opened directory descriptor reached without following any symlink, with a deterministic injected-race regression |
 | INSTALL-018 | High | Installation refused over a foreign `statusLine` only when a command string could be parsed out of it. A `statusLine` that was a bare string, a list, or an object without a `command` key was silently overwritten, while uninstall preserved all three — the same install/uninstall asymmetry INSTALL-011 existed to remove. | 0.2.1 | Resolved by keying the refusal on the presence of the entry rather than on a readable command, with regressions for each unreadable shape and a matching uninstall-preservation case |
+| INSTALL-019 | High | `_open_publish_dir` bound every path component *below* the configuration root to a descriptor, but opened the root itself with a plain, path-named `os.open()` — no `O_NOFOLLOW`, no walk from `/`. Swapping the configuration directory for a symlink in the window between resolving it and opening it redirected publication to an outside file, exactly as INSTALL-017 did for nested components. | 0.2.1 | Resolved by walking every component of the resolved root, starting at `/`, with `O_DIRECTORY` and `O_NOFOLLOW` (`_bind_directory`), with a deterministic injected root-swap regression and a companion mutation test that restores the pre-fix root-open and shows it exploitable |
+| INSTALL-020 | High | Install and uninstall are two separate mutations — a checkout symlink change and a settings rewrite — with no shared commit point. An expected failure between them left inconsistent state: a failed `os.symlink` during reinstall deleted the pre-existing managed link; a failed backup on a fresh install left a new link behind with settings untouched; a failed backup on uninstall removed the managed link while settings still referenced it. | 0.2.1 | Resolved by snapshotting the link's prior state before mutation (`_LinkGuard`) and rolling it back — restoring a pre-existing link, or removing a newly created one — whenever the paired mutation dies, with full-`run()` regressions for all three failures plus a mutation test disabling rollback |
+| INSTALL-021 | Medium | `os.fchmod(fd, mode)` ran on the raw descriptor from `os.open()` before `os.fdopen()` took ownership of it. A failure there died without closing `fd`; the temporary directory entry was removed, but the descriptor stayed open for the life of the process. | 0.2.1 | Resolved by closing the descriptor explicitly if `fchmod` fails, before `os.fdopen` would otherwise take over that responsibility, with an injected-failure regression asserting both a closed descriptor and no remaining temp file |
+| INSTALL-022 | Medium | Removing the last managed hook from a group dropped the whole group, including any other fields it carried. A managed `SessionEnd` group holding a user's `matcher` lost both the hook and the matcher on uninstall. | 0.2.1 | Resolved by preserving a group with `"hooks": []` when it carries fields other than `hooks`, and only dropping a group that is debris (no foreign fields, no hooks left), with reinstall and uninstall round-trip regressions |
+
+Advisory, addressed while working the boundary above: `run()` and
+`write_settings()` used to load `settings.json` by plain pathname before
+`_publish_target` decided whether that path resolves inside the configuration
+directory, so an out-of-tree symlink target had its content read into memory
+before the refusal that follows. Confinement is now decided first in both call
+sites; a regression proves no read reaches an out-of-tree target. A further,
+narrower TOCTOU remains between that confinement check and the read that
+follows it — closing it completely would mean binding the initial read to the
+same descriptor-walk machinery the write side uses (`_open_publish_dir`), which
+in turn has to tolerate a configuration directory that does not exist yet on a
+fresh install (today's plain `_load_settings` treats that as "no settings" via
+`FileNotFoundError`; the descriptor walk treats an absent component as a hard
+failure). Reconciling those two behaviors is more surgery than this advisory
+warrants on its own, so it is left as an explicit unresolved finding rather than
+attempted piecemeal.
+
+A numbering note for readers of the review channel: informal correspondence
+external to this table referred to the four findings above as "INSTALL-018"
+through "INSTALL-022," reusing IDs already assigned in this table to the
+resolved `statusLine`-shape finding. That external "INSTALL-020" (malformed or
+unknown `statusLine` values being overwritten) describes exactly the defect this
+table already records as INSTALL-018, resolved before this round began;
+reproduction against the current branch tip confirmed all five named shapes
+(`"foreign-string"`, `[]`, `{"type": "command"}`, `{"type": "text", "text":
+"hello"}`, `{"command": null}`) are already refused, and two of those exact
+shapes were added to the existing regression as additional coverage. It is not
+a new row. The four genuinely new findings keep the next sequential IDs in this
+table, INSTALL-019 through INSTALL-022, matching the identifiers already used
+for them in the tracked review channel before this session started.
 
 INSTALL-005 through INSTALL-009 were found while reviewing and adversarially
 testing the extracted commits, not in the original implementation. Each is fixed
@@ -54,3 +88,13 @@ claimed without asking what else the installer touches. Ownership matching,
 refusal ordering, verification state, and publication mechanics are four separate
 surfaces, and fixing one repeatedly left the others stating guarantees the code
 did not keep.
+
+INSTALL-019 through INSTALL-022 came from a third independent review, of the
+branch tip carrying INSTALL-018. Two are the same "protect the descriptor, not
+just the path" lesson as INSTALL-017 applied one level up (INSTALL-019, the
+confinement root) and applied to the write path's own descriptor lifecycle
+(INSTALL-021). The other two are about the release's actual promise rather than
+about symlink confinement: an install or uninstall that fails partway must not
+leave the checkout link and settings disagreeing about what is installed
+(INSTALL-020), and ownership of a hook entry must not reach into fields on its
+containing group that the release never claimed (INSTALL-022).
