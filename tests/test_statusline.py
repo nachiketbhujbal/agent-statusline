@@ -90,9 +90,172 @@ class TestRobustness:
         statusline.main()
         assert "claude" in ANSI.sub("", capsys.readouterr().out)
 
+    @pytest.mark.parametrize("payload", [[], ["not a payload"], "scalar", 17, None])
+    def test_json_non_object_payload_degrades_to_a_stub(self, payload, monkeypatch, capsys):
+        assert ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys))) == "claude"
+
     def test_missing_rate_limits_are_simply_absent(self, payload, monkeypatch, capsys):
         payload.pop("rate_limits")
         assert "USAGE" not in labels(draw(payload, monkeypatch, capsys))
+
+    def test_malformed_numeric_payload_values_use_safe_defaults(self, payload, monkeypatch, capsys):
+        payload["context_window"]["context_window_size"] = float("inf")
+        payload["context_window"]["used_percentage"] = "not-a-number"
+        payload["context_window"]["current_usage"]["input_tokens"] = float("nan")
+        payload["rate_limits"]["five_hour"]["used_percentage"] = float("-inf")
+        payload["rate_limits"]["five_hour"]["resets_at"] = 10**15
+        payload["cost"].update(
+            {
+                "total_cost_usd": float("nan"),
+                "total_duration_ms": float("inf"),
+                "total_api_duration_ms": "invalid",
+                "total_lines_added": float("-inf"),
+                "total_lines_removed": "invalid",
+            }
+        )
+
+        out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys))).lower()
+
+        assert "nan" not in out
+        assert "inf" not in out
+        assert "context" in out
+        assert "timing" in out
+        assert "cost" in out
+
+    def test_non_mapping_current_usage_is_treated_as_empty(self, payload, monkeypatch, capsys):
+        payload["context_window"]["current_usage"] = ["invalid"]
+
+        assert "CONTEXT" in labels(draw(payload, monkeypatch, capsys))
+
+    @pytest.mark.parametrize("value", [True, 17, 1.5, ["invalid"], {"invalid": True}])
+    @pytest.mark.parametrize(
+        "path",
+        [
+            ("session_id",),
+            ("transcript_path",),
+            ("permission_mode",),
+            ("workspace", "current_dir"),
+            ("workspace", "project_dir"),
+            ("workspace", "added_dirs"),
+        ],
+    )
+    def test_malformed_scalar_and_container_fields_degrade(
+        self, payload, monkeypatch, capsys, path, value
+    ):
+        target = payload
+        for key in path[:-1]:
+            target = target[key]
+        target[path[-1]] = value
+
+        out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
+
+        assert "PROJECT" in out
+        assert "MODEL" in out
+
+    def test_fractional_rate_limit_percentage_is_preserved(self, payload, monkeypatch, capsys):
+        payload["rate_limits"]["five_hour"]["used_percentage"] = 14.5
+
+        out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
+
+        assert "14.5%" in out
+
+    def test_absent_cost_remains_distinct_from_zero(self, payload, monkeypatch, capsys):
+        payload["cost"].pop("total_cost_usd")
+        seen = {}
+
+        def fake_ledger_update(_sid, cost, *_args, **_kwargs):
+            seen["cost"] = cost
+            return {
+                "session": 0.0,
+                "base": 0.0,
+                "runs": 1,
+                "d1": 0.0,
+                "d7": 0.0,
+                "d30": 0.0,
+                "last5": 0.0,
+                "all": 0.0,
+                "convos": 0,
+                "n": 0,
+                "forks": 0,
+            }
+
+        monkeypatch.setattr(statusline, "ledger_update", fake_ledger_update)
+        draw(payload, monkeypatch, capsys)
+
+        assert seen["cost"] is None
+
+    def test_cached_non_string_ledger_root_does_not_break_other_sessions(self, monkeypatch):
+        monkeypatch.setattr(
+            statusline.ledger,
+            "load",
+            lambda: {
+                "sessions": {
+                    "prior": {
+                        "cost": 1.0,
+                        "updated": statusline.ledger.iso(),
+                        "root": ["invalid"],
+                    }
+                }
+            },
+        )
+
+        aggregate = statusline.ledger_update("current", None, "project", "session")
+
+        assert aggregate["n"] == 1
+        assert aggregate["convos"] == 1
+
+    def test_cached_non_string_ledger_root_is_removed_when_session_updates(self, monkeypatch):
+        data = {
+            "sessions": {
+                "prior": {
+                    "cost": 1.0,
+                    "updated": statusline.ledger.iso(),
+                    "root": ["invalid"],
+                }
+            }
+        }
+        saved = {}
+        monkeypatch.setattr(statusline.ledger, "load", lambda: data)
+        monkeypatch.setattr(
+            statusline.ledger, "save", lambda value: saved.setdefault("data", value)
+        )
+
+        statusline.ledger_update("prior", 2.0, "project", "session")
+
+        assert "root" not in saved["data"]["sessions"]["prior"]
+
+    def test_invalid_transcript_permission_falls_back_to_valid_payload(
+        self, payload, monkeypatch, capsys
+    ):
+        payload["permission_mode"] = "acceptEdits"
+        monkeypatch.setattr(statusline, "transcript_totals", lambda _path: _totals(perm=["plan"]))
+
+        out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
+
+        assert "accept edits" in out
+
+    def test_malformed_transcript_numbers_do_not_remove_rows(self, payload, monkeypatch, capsys):
+        monkeypatch.setattr(
+            statusline,
+            "transcript_totals",
+            lambda _path: _totals(
+                cr=float("nan"),
+                cw=float("inf"),
+                out="invalid",
+                think=True,
+                turns="invalid",
+                b1h=float("inf"),
+                b5m="invalid",
+                durs=[float("nan"), 1200],
+            ),
+        )
+
+        out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys))).lower()
+
+        assert "nan" not in out
+        assert "inf" not in out
+        assert "context" in out
+        assert "timing" in out
 
 
 def _totals(**over):

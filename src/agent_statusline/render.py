@@ -7,6 +7,8 @@ layer any host can reuse (see docs/PORTING.md).
 import re
 import shutil
 
+from agent_statusline.coerce import finite_integer, finite_number
+
 R = "\033[0m"
 D = "\033[2m"
 B = "\033[1m"
@@ -128,7 +130,7 @@ def row(label, segs, sep=None, maxlines=MAXLINES):
 
 def tok(n):
     """3 significant figures, trailing zeros stripped: 515k, 1M, 71.9M, 1.42M."""
-    n = int(n or 0)
+    n = finite_integer(n)
     for div, suf in ((1_000_000, "M"), (1_000, "k")):
         if n >= div:
             v = n / div
@@ -140,12 +142,12 @@ def tok(n):
 
 
 def gb(n):
-    n = float(n or 0)
+    n = finite_number(n)
     return f"{n / 2 ** 30:.1f}G" if n >= 2**30 else f"{n / 2 ** 20:.0f}M"
 
 
 def dur(sec):
-    sec = int(max(0, sec))
+    sec = max(0, finite_integer(sec))
     d, h, m = sec // 86400, (sec % 86400) // 3600, (sec % 3600) // 60
     if d:
         return f"{d}d{h}h"
@@ -157,10 +159,11 @@ def dur(sec):
 
 
 def grade(p, warn=50, crit=80):
+    p = finite_number(p)
     return RED if p >= crit else YEL if p >= warn else GRN
 
 
 def bar(pct, width_=10, warn=50, crit=80):
-    pct = max(0.0, min(100.0, float(pct)))
+    pct = max(0.0, min(100.0, finite_number(pct)))
     f = int(round(pct / 100 * width_))
     return f"{D}[{R}{grade(pct, warn, crit)}{'█' * f}{GRY}{'░' * (width_ - f)}{R}{D}]{R}"

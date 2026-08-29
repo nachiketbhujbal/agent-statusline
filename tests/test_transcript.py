@@ -67,6 +67,63 @@ class TestUsage:
         )
         assert tot["synth"] == 1
 
+    def test_numeric_strings_retain_transcript_count_semantics(self):
+        tot = absorb(
+            assistant(
+                {
+                    "input_tokens": "1",
+                    "output_tokens": "2",
+                    "cache_creation_input_tokens": "3",
+                    "cache_read_input_tokens": "4",
+                    "output_tokens_details": {"thinking_tokens": "5"},
+                    "cache_creation": {
+                        "ephemeral_1h_input_tokens": "6",
+                        "ephemeral_5m_input_tokens": "7",
+                    },
+                }
+            )
+        )
+        assert (tot["in"], tot["out"], tot["cw"], tot["cr"], tot["think"]) == (1, 2, 3, 4, 5)
+        assert (tot["b1h"], tot["b5m"]) == (6, 7)
+
+    def test_invalid_numeric_values_default_and_later_valid_values_count(self):
+        tot = absorb(
+            assistant(
+                {
+                    "input_tokens": "not-a-number",
+                    "output_tokens": float("nan"),
+                    "cache_creation_input_tokens": float("inf"),
+                    "cache_read_input_tokens": True,
+                    "output_tokens_details": {"thinking_tokens": float("-inf")},
+                    "cache_creation": {
+                        "ephemeral_1h_input_tokens": "invalid",
+                        "ephemeral_5m_input_tokens": float("nan"),
+                    },
+                }
+            ),
+            assistant(
+                {
+                    "input_tokens": 11,
+                    "output_tokens": 12,
+                    "cache_creation_input_tokens": 13,
+                    "cache_read_input_tokens": 14,
+                    "output_tokens_details": {"thinking_tokens": 15},
+                    "cache_creation": {
+                        "ephemeral_1h_input_tokens": 16,
+                        "ephemeral_5m_input_tokens": 17,
+                    },
+                }
+            ),
+        )
+        assert (tot["in"], tot["out"], tot["cw"], tot["cr"], tot["think"]) == (11, 12, 13, 14, 15)
+        assert (tot["b1h"], tot["b5m"], tot["last_bucket"]) == (16, 17, "5m")
+
+    def test_non_mapping_message_usage_and_cache_creation_are_ignored(self):
+        assert absorb({"type": "assistant", "message": []})["turns"] == 0
+        assert absorb({"type": "assistant", "message": {"usage": "bad"}})["turns"] == 0
+        tot = absorb(assistant({"input_tokens": 2, "cache_creation": "bad"}))
+        assert (tot["in"], tot["b1h"], tot["b5m"]) == (2, 0, 0)
+
 
 class TestCacheTtlBucket:
     def test_newest_write_decides_the_live_ttl(self):
@@ -98,6 +155,21 @@ class TestToolSignals:
             }
         )
         assert tot["tools"] == {"Bash": 2, "Read": 1}
+
+    def test_non_string_tool_names_use_unknown_key_and_later_tools_count(self):
+        tot = absorb(
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {"type": "tool_use", "name": ["invalid"], "input": {}},
+                        {"type": "tool_use", "name": {"invalid": True}, "input": {}},
+                        {"type": "tool_use", "name": "Read", "input": {}},
+                    ]
+                },
+            }
+        )
+        assert tot["tools"] == {"?": 2, "Read": 1}
 
     def test_edited_and_read_paths_are_kept_apart(self):
         tot = absorb(
@@ -161,6 +233,30 @@ class TestSystemEntries:
         assert tot["hook_ms"] == [10, 20]
         assert tot["hook_errs"] == 1
 
+    def test_invalid_durations_default_without_blocking_later_valid_durations(self):
+        tot = absorb(
+            {"type": "system", "subtype": "turn_duration", "durationMs": float("nan")},
+            {
+                "type": "system",
+                "subtype": "stop_hook_summary",
+                "hookInfos": [{"durationMs": float("inf")}, "invalid"],
+                "hookErrors": "invalid",
+            },
+            {"type": "system", "subtype": "turn_duration", "durationMs": 1234},
+            {
+                "type": "system",
+                "subtype": "stop_hook_summary",
+                "hookInfos": [{"durationMs": "56"}],
+            },
+        )
+        assert tot["durs"] == [1234]
+        assert tot["hook_runs"] == 2
+        assert tot["hook_ms"] == [0, 56]
+        assert tot["hook_errs"] == 0
+
+    def test_non_string_local_command_content_is_ignored(self):
+        assert absorb({"type": "system", "subtype": "local_command", "content": []})["cmds"] == {}
+
     def test_slash_commands_are_parsed_out_of_the_content(self):
         tot = absorb(
             {
@@ -189,3 +285,49 @@ class TestMissingFiles:
 
     def test_absent_transcript_has_no_conversation_root(self):
         assert transcript.conversation_root("/nonexistent/x.jsonl") is None
+
+
+class TestRowShape:
+    def test_non_object_rows_are_ignored_and_later_rows_count(self, tmp_path, monkeypatch):
+        path = tmp_path / "session.jsonl"
+        path.write_text(
+            '["ignored"]\n'
+            '{"type":"assistant","message":{"usage":{"input_tokens":2}}}\n'
+            "null\n"
+            '{"type":"assistant","message":{"usage":{"input_tokens":3}}}\n'
+        )
+        monkeypatch.setattr(transcript, "TSTATE", str(tmp_path / "state.json"))
+
+        totals = transcript.transcript_totals(str(path))
+
+        assert totals["in"] == 5
+        assert totals["turns"] == 2
+
+    def test_non_object_root_rows_are_ignored_and_later_user_counts(self, tmp_path, monkeypatch):
+        path = tmp_path / "session.jsonl"
+        path.write_text('42\nnull\n{"type":"user","uuid":"root-123"}\n')
+        monkeypatch.setattr(transcript, "TSTATE", str(tmp_path / "state.json"))
+
+        assert transcript.conversation_root(str(path)) == "root-123"
+
+    def test_non_string_root_uuid_is_ignored_and_later_valid_root_counts(
+        self, tmp_path, monkeypatch
+    ):
+        path = tmp_path / "session.jsonl"
+        path.write_text(
+            '{"type":"user","uuid":["invalid"]}\n'
+            '{"type":"user","uuid":{"invalid":true}}\n'
+            '{"type":"user","uuid":"root-123"}\n'
+        )
+        monkeypatch.setattr(transcript, "TSTATE", str(tmp_path / "state.json"))
+
+        assert transcript.conversation_root(str(path)) == "root-123"
+
+    def test_cached_non_string_root_is_ignored(self, tmp_path, monkeypatch):
+        path = tmp_path / "session.jsonl"
+        path.write_text('{"type":"user","uuid":"root-123"}\n')
+        state_path = tmp_path / "state.json"
+        state_path.write_text(f'{{"{path}":{{"root":["invalid"]}}}}')
+        monkeypatch.setattr(transcript, "TSTATE", str(state_path))
+
+        assert transcript.conversation_root(str(path)) == "root-123"

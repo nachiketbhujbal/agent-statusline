@@ -14,8 +14,8 @@ installed-artifact evidence.
 | Release | Primary purpose | Status |
 | --- | --- | --- |
 | 0.2.1 | Ownership-safe installation and removal | **Released** |
-| 0.2.2 | Locked local quality gate | **Active** |
-| 0.2.3 | Malformed host-input resilience | Planned |
+| 0.2.2 | Locked local quality gate | **Released** |
+| 0.2.3 | Malformed host-input resilience | **Active** |
 | 0.2.4 | Private, serialized runtime state | Planned |
 | 0.2.5 | Exact rolling-cost attribution | Planned |
 | 0.2.6 | Session-scoped process evidence | Planned |
@@ -27,9 +27,9 @@ installed-artifact evidence.
 | 0.2.12 | Documentation, pinned workflow, and public-readiness closure | Planned |
 | 0.3.0 | Production-ready milestone | Planned after the patch train |
 
-0.2.1 is tagged and released. 0.2.2 is active on this branch; nothing in 0.2.3
-and later is present in this repository yet, and a later release's evidence
-can never stand in for an earlier tag's.
+0.2.1 and 0.2.2 are tagged and released. 0.2.3 is active on this branch;
+nothing in 0.2.4 and later is present in this repository yet, and a later
+release's evidence can never stand in for an earlier tag's.
 
 ## 0.2.1 — ownership-safe installation
 
@@ -49,7 +49,7 @@ Released:
 
 ## 0.2.2 — locked local quality gate
 
-Implemented on this branch:
+Released:
 
 - A committed `uv.lock`, a `uv >=0.12` requirement, and dependency-group
   development tools.
@@ -59,3 +59,21 @@ Implemented on this branch:
 - Subprocess-aware pytest coverage and build configuration.
 - Only the mechanical formatting and typing corrections needed for the exact
   v0.2.1 source to pass the declared gate; no behavior change.
+
+## 0.2.3 — malformed host-input resilience
+
+Implemented on this branch:
+
+- Require decoded payload and transcript rows to have mapping shape before
+  field access; use the established fallback or skip unsupported rows.
+- Validate path, sequence, permission-mode, and session-identifier shapes before
+  passing them to filesystem, mapping-key, or sequence operations.
+- Reject unsupported transcript conversation identifiers and tool names before
+  they can poison incremental or accounting state, including cached roots from
+  an earlier run.
+- Normalize host-derived numbers through bounded finite integer/fractional
+  helpers while preserving accepted numeric strings and exact integers.
+- Protect payload, transcript, reset-time, and formatter boundaries from
+  invalid, non-finite, and oversized values without emitting `nan` or `inf`.
+- Keep absence distinct from zero where it carries meaning, especially payload
+  cost, and preserve all ten labels, their order, and valid display output.

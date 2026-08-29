@@ -13,7 +13,9 @@ nowhere else; do not guess at them (see docs/INTERNALS.md).
 import datetime
 import json
 import os
+from collections.abc import Mapping
 
+from agent_statusline.coerce import finite_integer
 from agent_statusline.paths import state
 
 TSTATE = state("statusline-transcript.json")
@@ -78,15 +80,24 @@ def _absorb(tot, e):
     if t == "system":
         st = e.get("subtype")
         if st == "turn_duration" and e.get("durationMs"):
-            tot["durs"].append(int(e["durationMs"]))
+            duration = finite_integer(e["durationMs"])
+            if duration:
+                tot["durs"].append(duration)
             tot["durs"] = tot["durs"][-60:]
         elif st == "stop_hook_summary":
             infos = e.get("hookInfos") or []
+            infos = [h for h in infos if isinstance(h, Mapping)] if isinstance(infos, list) else []
+            errors = e.get("hookErrors") or []
+            errors = errors if isinstance(errors, list) else []
             tot["hook_runs"] += len(infos)
-            tot["hook_ms"] = (tot["hook_ms"] + [int(h.get("durationMs") or 0) for h in infos])[-60:]
-            tot["hook_errs"] += len(e.get("hookErrors") or [])
+            tot["hook_ms"] = (
+                tot["hook_ms"] + [finite_integer(h.get("durationMs")) for h in infos]
+            )[-60:]
+            tot["hook_errs"] += len(errors)
         elif st == "local_command":
             c = e.get("content") or ""
+            if not isinstance(c, str):
+                return
             i, j = c.find("<command-name>"), c.find("</command-name>")
             if 0 <= i < j:
                 name = c[i + 14 : j].strip()
@@ -94,15 +105,20 @@ def _absorb(tot, e):
         return
 
     m = e.get("message") or {}
+    if not isinstance(m, Mapping):
+        m = {}
     body = m.get("content")
     if isinstance(body, list):
         for b in body:
             if not isinstance(b, dict):
                 continue
             if b.get("type") == "tool_use":
-                n = b.get("name") or "?"
+                name_value = b.get("name")
+                n = name_value if isinstance(name_value, str) and name_value else "?"
                 tot["tools"][n] = tot["tools"].get(n, 0) + 1
                 inp = b.get("input") or {}
+                if not isinstance(inp, Mapping):
+                    inp = {}
                 fp = inp.get("file_path") or inp.get("notebook_path")
                 if fp:
                     key = "f_edit" if n in ("Edit", "Write", "NotebookEdit") else "f_read"
@@ -116,17 +132,19 @@ def _absorb(tot, e):
     if m.get("model") == "<synthetic>":
         tot["synth"] += 1
     u = m.get("usage") or {}
-    if not u:
+    if not isinstance(u, Mapping) or not u:
         return
-    tot["in"] += int(u.get("input_tokens") or 0)
-    tot["cw"] += int(u.get("cache_creation_input_tokens") or 0)
-    tot["cr"] += int(u.get("cache_read_input_tokens") or 0)
-    tot["out"] += int(u.get("output_tokens") or 0)
+    tot["in"] += finite_integer(u.get("input_tokens"))
+    tot["cw"] += finite_integer(u.get("cache_creation_input_tokens"))
+    tot["cr"] += finite_integer(u.get("cache_read_input_tokens"))
+    tot["out"] += finite_integer(u.get("output_tokens"))
     tot["turns"] += 1
-    tot["think"] += int(dig(u, "output_tokens_details", "thinking_tokens", default=0) or 0)
+    tot["think"] += finite_integer(dig(u, "output_tokens_details", "thinking_tokens"))
     cc = u.get("cache_creation") or {}
-    h1 = int(cc.get("ephemeral_1h_input_tokens") or 0)
-    m5 = int(cc.get("ephemeral_5m_input_tokens") or 0)
+    if not isinstance(cc, Mapping):
+        cc = {}
+    h1 = finite_integer(cc.get("ephemeral_1h_input_tokens"))
+    m5 = finite_integer(cc.get("ephemeral_5m_input_tokens"))
     tot["b1h"] += h1
     tot["b5m"] += m5
     # Which bucket the newest write landed in is the live TTL. Cumulative sums lag:
@@ -186,6 +204,8 @@ def transcript_totals(path):
             e = json.loads(line)
         except Exception:
             continue
+        if not isinstance(e, dict):
+            continue
         _absorb(tot, e)
     prev = state.get(path) or {}
     state[path] = {"offset": newoff, "totals": tot, "schema": SCHEMA, "root": prev.get("root")}
@@ -209,8 +229,9 @@ def conversation_root(path):
     except Exception:
         st = {}
     row = st.get(path) or {}
-    if row.get("root"):
-        return row["root"]
+    cached_root = row.get("root")
+    if isinstance(cached_root, str) and cached_root:
+        return cached_root
     root = None
     try:
         with open(path) as fh:
@@ -221,8 +242,11 @@ def conversation_root(path):
                     e = json.loads(line)
                 except Exception:
                     continue
-                if e.get("type") == "user" and e.get("uuid"):
-                    root = e["uuid"]
+                if not isinstance(e, dict):
+                    continue
+                uuid_value = e.get("uuid")
+                if e.get("type") == "user" and isinstance(uuid_value, str) and uuid_value:
+                    root = uuid_value
                     break
     except Exception:
         return None
