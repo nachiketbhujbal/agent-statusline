@@ -13,12 +13,14 @@ import json
 import os
 import sys
 import time
+from collections.abc import Mapping
 
 if __package__ in (None, ""):  # running as a plain script from a checkout
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 from agent_statusline import ledger
 from agent_statusline import probes as pr
+from agent_statusline.coerce import finite_integer, finite_number
 from agent_statusline.paths import state
 from agent_statusline.render import (
     BLU,
@@ -105,6 +107,8 @@ def ledger_update(sid, cost, project, name, root=None, pid=None):
             "name": name,
             **({"root": root} if root else {}),
         }
+        if not isinstance(row.get("root"), str):
+            row.pop("root", None)
         # Lifetime cost, carried across runs. Resuming a closed row makes it live
         # again; `closed` is left in place as the last close time.
         session_cost = ledger.apply_cost(row, cost, pid)
@@ -122,8 +126,10 @@ def ledger_update(sid, cost, project, name, root=None, pid=None):
 
     # A row counts as a real session only if it produced something: a cost, or a
     # readable transcript (its conversation root).
-    real = [r for r in rows if r.get("cost", 0) > 0 or r.get("root")]
-    convos = {r.get("root") or id(r) for r in real}
+    real = [
+        r for r in rows if r.get("cost", 0) > 0 or (isinstance(r.get("root"), str) and r["root"])
+    ]
+    convos = {r["root"] if isinstance(r.get("root"), str) and r["root"] else id(r) for r in real}
     return {
         "all": sum(r.get("cost", 0) for r in rows),
         "n": len(real),
@@ -148,17 +154,21 @@ def rl_log(node5, node7):
     change, nothing on an unchanged render.
     """
     try:
+
+        def optional_number(value):
+            return None if value is None else finite_number(value)
+
         cur = {
-            "5h": dig(node5, "used_percentage"),
-            "5h_reset": dig(node5, "resets_at"),
-            "7d": dig(node7, "used_percentage"),
-            "7d_reset": dig(node7, "resets_at"),
+            "5h": optional_number(dig(node5, "used_percentage")),
+            "5h_reset": optional_number(dig(node5, "resets_at")),
+            "7d": optional_number(dig(node7, "used_percentage")),
+            "7d_reset": optional_number(dig(node7, "resets_at")),
         }
         last = None
         if os.path.exists(RLHIST):
-            with open(RLHIST, "rb") as fh:
-                fh.seek(max(0, os.path.getsize(RLHIST) - 4096))
-                tailed = fh.read().decode("utf-8", "replace").strip().splitlines()
+            with open(RLHIST, "rb") as binary_fh:
+                binary_fh.seek(max(0, os.path.getsize(RLHIST) - 4096))
+                tailed = binary_fh.read().decode("utf-8", "replace").strip().splitlines()
             if tailed:
                 try:
                     last = json.loads(tailed[-1])
@@ -167,19 +177,24 @@ def rl_log(node5, node7):
         if last and all(last.get(k) == v for k, v in cur.items()):
             return
         cur["at"] = ledger.iso()
-        with open(RLHIST, "a") as fh:
-            fh.write(json.dumps(cur) + "\n")
+        with open(RLHIST, "a") as text_fh:
+            text_fh.write(json.dumps(cur) + "\n")
     except Exception:
         pass
 
 
 def limit_seg(label, node, window_h):
-    pct = float(dig(node, "used_percentage", default=0) or 0)
-    resets = dig(node, "resets_at")
+    pct = finite_number(dig(node, "used_percentage", default=0) or 0)
+    reset_value = dig(node, "resets_at")
+    resets = None if reset_value is None else finite_number(reset_value)
     s = f"{D}{label:<3}{R}{bar(pct)} {grade(pct)}{pct:4.1f}%{R}"
     if resets:
+        try:
+            clock = time.strftime("%a %H:%M", time.localtime(resets))
+        except (OverflowError, OSError, ValueError):
+            resets = None
+    if resets:
         left = resets - time.time()
-        clock = time.strftime("%a %H:%M", time.localtime(resets))
         if pct < 100:
             elapsed = max(0.05, window_h - left / 3600)
             burn = pct / elapsed
@@ -209,8 +224,13 @@ def main():
     except Exception:
         print(f"{D}claude{R}")
         return
+    if not isinstance(d, Mapping):
+        print(f"{D}claude{R}")
+        return
     rows = {}
-    t = transcript_totals(d.get("transcript_path"))
+    transcript_value = d.get("transcript_path")
+    transcript_path = transcript_value if isinstance(transcript_value, str) else None
+    t = transcript_totals(transcript_path)
 
     # ---------- rows 1-2: project/git, then model + mode flags ----------
     pj = []
@@ -223,7 +243,9 @@ def main():
     )
     # fast mode is shown either way: silence would hide that it is on
     p1.append(f"{RED}{B}FAST ON{R}" if dig(d, "fast_mode") else f"{D}fast off{R}")
-    perm = t.get("perm") or dig(d, "permission_mode")
+    transcript_perm = t.get("perm")
+    perm_value = transcript_perm if isinstance(transcript_perm, str) else dig(d, "permission_mode")
+    perm = perm_value if isinstance(perm_value, str) else None
     if perm:
         pc, plab = MODES.get(perm, (D, perm))
         p1.append(f"{pc}{plab}{R}" if perm == "default" else f"{pc}{B}{plab}{R}")
@@ -236,11 +258,15 @@ def main():
     if ver:
         p1.append(f"{D}v{ver}{R}")
 
-    cwd = dig(d, "workspace", "current_dir") or dig(d, "cwd") or os.getcwd()
-    proj = os.path.basename(dig(d, "workspace", "project_dir") or cwd)
+    cwd_value = dig(d, "workspace", "current_dir") or dig(d, "cwd")
+    cwd = cwd_value if isinstance(cwd_value, str) else os.getcwd()
+    project_value = dig(d, "workspace", "project_dir")
+    project_path = project_value if isinstance(project_value, str) else cwd
+    proj = os.path.basename(project_path)
     here = os.path.basename(cwd)
     pj.append(f"{BLU}{B}{proj}{R}" if here == proj else f"{BLU}{B}{proj}{R}{D}/{R}{BLU}{here}{R}")
     extra = dig(d, "workspace", "added_dirs") or []
+    extra = extra if isinstance(extra, list) else []
     if extra:
         pj.append(f"{D}+{len(extra)} dir{'s' if len(extra)!=1 else ''}{R}")
 
@@ -294,14 +320,21 @@ def main():
 
     # ---------- row 2: context + both rate-limit windows ----------
     cw = dig(d, "context_window", default={})
-    size = int(dig(cw, "context_window_size", default=0) or 0)
-    upct = float(dig(cw, "used_percentage", default=0) or 0)
+    size = finite_integer(dig(cw, "context_window_size", default=0) or 0)
+    upct = finite_number(dig(cw, "used_percentage", default=0) or 0)
     cur = dig(cw, "current_usage", default={})
+    cur = cur if isinstance(cur, Mapping) else {}
     live = sum(
-        int(cur.get(k) or 0)
+        finite_integer(cur.get(k) or 0)
         for k in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
     )
-    served = t["cr"] + t["cw"] + t["in"]
+    t_cr = finite_integer(t.get("cr"))
+    t_cw = finite_integer(t.get("cw"))
+    t_in = finite_integer(t.get("in"))
+    t_out = finite_integer(t.get("out"))
+    t_think = finite_integer(t.get("think"))
+    t_turns = finite_integer(t.get("turns"))
+    served = t_cr + t_cw + t_in
 
     # Context and this session's own token throughput belong together; the rate-limit
     # windows are account-wide and get their own row so both stay easy to scan.
@@ -311,14 +344,13 @@ def main():
         if upct >= 80:
             c += f" {RED}{B}⚠{R}"
         segs.append(c)
-    sess = [f"{D}session{R} {CYN}{tok(served)}{R}{D} in{R}", f"{CYN}{tok(t['out'])}{R}{D} out{R}"]
-    if t["think"]:
-        sess.append(f"{MAG}{tok(t['think'])}{R}{D} thinking{R}")
-    sess.append(f"{t['turns']}{D} api turns{R}")
-    if t["turns"]:
+    sess = [f"{D}session{R} {CYN}{tok(served)}{R}{D} in{R}", f"{CYN}{tok(t_out)}{R}{D} out{R}"]
+    if t_think:
+        sess.append(f"{MAG}{tok(t_think)}{R}{D} thinking{R}")
+    sess.append(f"{t_turns}{D} api turns{R}")
+    if t_turns:
         sess.append(
-            f"{D}avg{R} {tok(served//t['turns'])}{D}/{R}{tok(t['out']//t['turns'])}"
-            f"{D} per turn{R}"
+            f"{D}avg{R} {tok(served//t_turns)}{D}/{R}{tok(t_out//t_turns)}" f"{D} per turn{R}"
         )
     segs.append(f" {D}·{R} ".join(sess))
     if segs:
@@ -327,7 +359,7 @@ def main():
     rl = dig(d, "rate_limits", default={})
     lim = []
     fh_ = dig(rl, "five_hour")
-    over_pct = float(dig(fh_, "used_percentage", default=0) or 0) if fh_ else 0.0
+    over_pct = finite_number(dig(fh_, "used_percentage", default=0) or 0) if fh_ else 0.0
     over_active = over_pct >= 100
     if fh_:
         seg = limit_seg("5h", fh_, 5)
@@ -342,7 +374,7 @@ def main():
 
     # ---------- row 3: cache economics ----------
     if served:
-        hit = t["cr"] / served * 100
+        hit = t_cr / served * 100
         hc = GRN if hit >= 80 else YEL if hit >= 50 else RED
         r3 = [f"{hc}{B}{hit:.1f}%{R}{D} hit{R}"]
         # TTL is detected from which ephemeral bucket the writes landed in, so this
@@ -369,24 +401,29 @@ def main():
                     f"{D} ▸ expires {R}{time.strftime('%H:%M',time.localtime(time.time()-age+ttl))}"
                 )
         r3.append(w)
-        eff = (t["cr"] * W_READ + t["cw"] * W_WRITE + t["in"] * W_FRESH) / served
+        eff = (t_cr * W_READ + t_cw * W_WRITE + t_in * W_FRESH) / served
         ec = GRN if eff <= 0.4 else YEL if eff <= 0.8 else RED
         r3.append(f"{ec}{eff:.2f}x{R}{D} vs all-uncached{R}")
-        if t["b1h"] or t["b5m"]:
-            r3.append(f"{D}writes{R} {tok(t['b1h'])}{D} 1h ·{R} {tok(t['b5m'])}{D} 5m{R}")
+        t_b1h = finite_integer(t.get("b1h"))
+        t_b5m = finite_integer(t.get("b5m"))
+        if t_b1h or t_b5m:
+            r3.append(f"{D}writes{R} {tok(t_b1h)}{D} 1h ·{R} {tok(t_b5m)}{D} 5m{R}")
         rows["CACHE"] = row("CACHE", r3)
 
         # ---------- row 4: token flow ----------
+        cur_cr = finite_integer(cur.get("cache_read_input_tokens"))
+        cur_cw = finite_integer(cur.get("cache_creation_input_tokens"))
+        cur_in = finite_integer(cur.get("input_tokens"))
         rows["TOKENS"] = row(
             "TOKENS",
             [
-                f"{D}total{R} {GRN}{tok(t['cr'])}{R}{D} reused{R} {D}·{R} "
-                f"{YEL}{tok(t['cw'])}{R}{D} written{R} {D}·{R} "
-                f"{RED}{tok(t['in'])}{R}{D} uncached{R}",
-                f"{D}turn{R} {GRN}{tok(cur.get('cache_read_input_tokens'))}{R}{D} reused{R} "
+                f"{D}total{R} {GRN}{tok(t_cr)}{R}{D} reused{R} {D}·{R} "
+                f"{YEL}{tok(t_cw)}{R}{D} written{R} {D}·{R} "
+                f"{RED}{tok(t_in)}{R}{D} uncached{R}",
+                f"{D}turn{R} {GRN}{tok(cur_cr)}{R}{D} reused{R} "
                 f"{D}·{R} "
-                f"{YEL}{tok(cur.get('cache_creation_input_tokens'))}{R}{D} written{R} {D}·{R} "
-                f"{RED}{tok(cur.get('input_tokens'))}{R}{D} uncached{R}",
+                f"{YEL}{tok(cur_cw)}{R}{D} written{R} {D}·{R} "
+                f"{RED}{tok(cur_in)}{R}{D} uncached{R}",
             ],
         )
 
@@ -422,14 +459,14 @@ def main():
 
     # ---------- row 6: timing ----------
     cost = dig(d, "cost", default={})
-    wall = dig(cost, "total_duration_ms", default=0) / 1000
-    api = dig(cost, "total_api_duration_ms", default=0) / 1000
+    wall = max(0.0, finite_number(dig(cost, "total_duration_ms", default=0) or 0) / 1000)
+    api = max(0.0, finite_number(dig(cost, "total_api_duration_ms", default=0) or 0) / 1000)
     r6 = []
     if t["durs"]:
-        s = sorted(t["durs"])
+        s = sorted(finite_integer(value) for value in t["durs"])
         med = s[len(s) // 2] / 1000
-        last = t["durs"][-1] / 1000
-        mx = max(t["durs"]) / 1000
+        last = finite_integer(t["durs"][-1]) / 1000
+        mx = max(s) / 1000
         r6.append(
             f"{D}turn{R} {dur(last)}{D} last · {dur(med)} median · {dur(mx)} max"
             f" ({len(t['durs'])} timed){R}"
@@ -485,13 +522,16 @@ def main():
         rows["SYSTEM"] = row("SYSTEM", r7)
 
     # ---------- row 8: money ----------
-    usd = dig(cost, "total_cost_usd")
+    usd_value = dig(cost, "total_cost_usd")
+    usd = None if usd_value is None else finite_number(usd_value)
+    session_value = d.get("session_id")
+    session_id = session_value if isinstance(session_value, str) else "?"
     agg = ledger_update(
-        d.get("session_id", "?"),
+        session_id,
         usd,
         proj,
         dig(d, "session_name"),
-        conversation_root(d.get("transcript_path")),
+        conversation_root(transcript_path),
         pid=procs.get("mine_pid"),
     )
     p8 = []
@@ -516,7 +556,8 @@ def main():
         + (f" · {agg['forks']} fork{'s' if agg['forks']!=1 else ''}" if agg["forks"] else "")
         + f"){R}"
     )
-    la, lr = dig(cost, "total_lines_added", default=0), dig(cost, "total_lines_removed", default=0)
+    la = finite_integer(dig(cost, "total_lines_added", default=0) or 0)
+    lr = finite_integer(dig(cost, "total_lines_removed", default=0) or 0)
     p8.append(f"{GRN}+{la}{R}{D}/{R}{RED}-{lr}{R}{D} lines{R}")
 
     # Credits. The balance is NOT obtainable locally (see statusline_probes.account),

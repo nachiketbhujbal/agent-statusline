@@ -4,7 +4,19 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.2.2
+## Unreleased — 0.2.3
+
+Malformed but valid JSON from the host now degrades safely instead of removing
+the status line ([ADR 0032](adrs/0032-normalize-malformed-host-input-at-the-boundary.md)).
+Non-object payloads use the minimal fallback, non-object transcript rows are
+ignored while later valid rows still count, and bounded finite coercion protects
+payload, transcript, and formatter numeric paths. Invalid path, sequence,
+permission-mode, and session-identifier shapes now fall back safely as well,
+and transcript conversation identifiers and tool names can no longer poison
+incremental or accounting state. Valid output is unchanged and an absent cost
+is not converted into zero.
+
+## 0.2.2
 
 Establish the locked, reproducible local development and release gate
 ([ADR 0023](adrs/0023-use-a-locked-local-quality-gate.md)): a committed
