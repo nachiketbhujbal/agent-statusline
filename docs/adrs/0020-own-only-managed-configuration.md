@@ -62,11 +62,41 @@ user happened to point a link.
 
 Confinement is a decision about a path, so it is bound to an object before it is
 acted on: the receiving directory is opened once, without following a symlink at
-any step below the configuration directory, and the temporary file is created,
-permissioned, and renamed relative to that descriptor. A second `realpath()`
-check would only re-run the race it is meant to detect. Where the platform
-cannot offer directory-relative operations, publication refuses rather than
-falling back to an unchecked path.
+any step of the walk from the filesystem root down to it, and the temporary file
+is created, permissioned, and renamed relative to that descriptor. The walk
+covers the configuration root itself and every component above it, not only the
+components below it -- a directory that is opened by its resolved *name* alone,
+even once, can still be a symlink an attacker swapped in after the name was
+resolved and before the open ran. A second `realpath()` check would only re-run
+the race it is meant to detect. Where the platform cannot offer
+directory-relative operations, publication refuses rather than falling back to
+an unchecked path. This same confinement decision is made before existing
+settings are read, not only before they are written, so an out-of-tree symlink
+target is refused before its content ever reaches memory.
+
+A raw file descriptor is closed exactly once on every path through publication,
+success or failure. Setting its permissions is not yet safe to hand off to
+Python's buffered file object -- that handoff is what gives the descriptor an
+owner that closes it automatically -- so a failure in between closes it
+explicitly rather than leaving it open past the error that reports the failure.
+
+Install and uninstall each perform two mutations with no shared commit point:
+the checkout symlink, and the settings rewrite. Neither can be made to succeed
+or fail together with the other, so instead the link's state is captured before
+either mutation begins, and an expected failure in the mutation that runs
+second rolls the link back to what it was -- a pre-existing link restored to its
+original target, or a link this run just created removed. This does not make
+the pair atomic; it makes the two outcomes that were possible before this
+(effectively confirmed) -- link changed, settings unchanged, or the reverse --
+into two that resolve back to a single consistent state on failure: fully
+applied, or fully as it was.
+
+Ownership of a hook applies to the hook entry, not to other fields on the group
+that contains it. A group carrying a user's `matcher` alongside a managed hook
+keeps that `matcher` when its last managed hook is removed, with `"hooks": []`
+left in its place; a group with nothing but managed hooks is still dropped
+entirely once emptied, because it then carries no information this release
+promises to preserve.
 
 Verification state lives in a uniquely created system temporary directory that
 is removed again. A fixed path inside the configuration directory made a normal
@@ -93,5 +123,18 @@ of an automatic reset. Someone already running another status line must remove i
 themselves before installing this one, which is the deliberate cost of never
 destroying it. The installer needs focused regression tests for mixed hook
 ownership, changed status lines, malformed JSON, custom configuration
-directories, symlinks it does not own, v0.2.0 upgrade paths, and publication
-that is redirected after confinement is checked.
+directories, symlinks it does not own, v0.2.0 upgrade paths, publication that is
+redirected after confinement is checked (at the configuration root as well as
+below it), an interrupted install or uninstall that must roll a partial link
+change back, and a hook group carrying fields this package never claimed.
+
+One finding is recorded here as explicitly unresolved rather than fixed: a
+narrow race remains between the confinement decision for an existing
+`settings.json` and the plain, path-named read that follows it (ordering the two
+so confinement is decided first closes the non-racing case, and is done, but
+does not close the race itself). Closing it fully would mean reading through the
+same descriptor-bound directory walk publication uses, and that walk treats a
+configuration directory that does not yet exist as a hard failure, while a fresh
+install's read must tolerate exactly that case and treat it as "no settings
+yet." Reconciling those two behaviors is a larger change than this release's
+scope, so the race is left open and named rather than papered over.

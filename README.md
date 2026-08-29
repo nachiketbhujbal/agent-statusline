@@ -87,9 +87,16 @@ If your `settings.json` is itself a symlink to another file inside your configur
 directory, the link is followed and the real file is updated, so the indirection and its
 permissions survive. A link resolving *outside* that directory is refused rather than
 followed — an installer that writes wherever a link points is a write-anywhere primitive.
-Publication is bound to an opened directory, so redirecting it after that check has been
-made is refused too
+Publication is bound to an opened directory reached without following a symlink at any
+step from the filesystem root down, so redirecting it — at the configuration directory
+itself or anywhere below it — after that check has been made is refused too
 ([ADR 0020](docs/adrs/0020-own-only-managed-configuration.md)).
+
+An expected failure partway through an install or uninstall — a full disk, a permission
+error — cannot always avoid touching anything (the checkout symlink and the settings file
+are two separate writes), but it cannot leave them disagreeing either: if one has already
+changed when the other fails, the change is rolled back, so a link and its settings never
+end up out of sync with each other.
 
 One documented exception to "only what it owns": `showMessageTimestamps` is set to `true`
 when absent and is deliberately *not* removed on uninstall, because a value already in
@@ -223,7 +230,7 @@ will replace the link with a regular file.
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
-.venv/bin/python -m pytest        # 180 tests, none of which touch ~/.claude
+.venv/bin/python -m pytest        # 200 tests, none of which touch ~/.claude
 .venv/bin/ruff check src tests install.py
 ```
 
