@@ -70,6 +70,28 @@ def test_probe_exception_is_cached_as_none(tmp_path, monkeypatch):
     assert json.loads(state.read_text())["key"]["val"] is None
 
 
+def test_storage_read_failure_degrades_to_computed_value(monkeypatch):
+    def fail_read(_path, _default):
+        raise OSError("read failed")
+
+    monkeypatch.setattr(probes, "read_json", fail_read)
+    monkeypatch.setattr(probes, "update_json", lambda _path, _default, update: update({})[1])
+
+    assert probes.probe("key", 10, lambda: "computed") == "computed"
+
+
+def test_storage_publication_failure_degrades_to_computed_value(tmp_path, monkeypatch):
+    state = tmp_path / "probes.json"
+    monkeypatch.setattr(probes, "STATE", str(state))
+
+    def fail_update(_path, _default, _update):
+        raise OSError("publish failed")
+
+    monkeypatch.setattr(probes, "update_json", fail_update)
+
+    assert probes.probe("key", 10, lambda: "computed") == "computed"
+
+
 def test_concurrent_distinct_probe_keys_are_all_preserved(tmp_path):
     state_dir = tmp_path / "state"
     state_dir.mkdir()
@@ -110,13 +132,23 @@ from agent_statusline.probes import probe
 value = sys.argv[1]
 result = probe("shared", 60, lambda: (time.sleep(0.02), value)[1])
 assert result in {"left", "right"}
+print(result)
 """
     processes = [
-        subprocess.Popen([sys.executable, "-c", code, value], env=env)
+        subprocess.Popen(
+            [sys.executable, "-c", code, value],
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
         for value in ("left", "right")
     ]
 
-    assert [process.wait(timeout=20) for process in processes] == [0, 0]
+    completed = [process.communicate(timeout=20) for process in processes]
+    assert [process.returncode for process in processes] == [0, 0]
+    returned = [stdout.splitlines()[-1] for stdout, _stderr in completed]
     cache = json.loads((state_dir / "statusline-probe-cache.json").read_text())
+    assert returned[0] == returned[1] == cache["shared"]["val"]
     assert cache["shared"]["val"] in {"left", "right"}
     assert set(cache) == {"shared"}
