@@ -5,6 +5,8 @@ import os
 import subprocess
 import sys
 
+import pytest
+
 from agent_statusline import probes
 
 
@@ -57,6 +59,15 @@ def test_malformed_nested_rows_degrade_and_later_values_are_usable(tmp_path, mon
     assert cache["bad-at"]["val"] == "at-ok"
     assert cache["infinite"]["val"] == "finite-ok"
     assert cache["valid"]["val"] == "keep"
+
+
+@pytest.mark.parametrize("observed", [10**1000, -(10**1000)])
+def test_oversized_cache_timestamp_is_stale(tmp_path, monkeypatch, observed):
+    state = tmp_path / "probes.json"
+    state.write_text(json.dumps({"key": {"at": observed, "val": "bad"}}))
+    monkeypatch.setattr(probes, "STATE", str(state))
+
+    assert probes.probe("key", 10, lambda: "computed") == "computed"
 
 
 def test_probe_exception_is_cached_as_none(tmp_path, monkeypatch):

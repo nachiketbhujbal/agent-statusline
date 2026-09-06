@@ -25,7 +25,10 @@ def _fresh(row, now, ttl):
     observed = row.get("at")
     if isinstance(observed, bool) or not isinstance(observed, (int, float)):
         return False
-    return math.isfinite(observed) and now - observed < ttl
+    try:
+        return math.isfinite(observed) and now - observed < ttl
+    except OverflowError:
+        return False
 
 
 def probe(key, ttl, fn):
