@@ -31,7 +31,10 @@ def _fresh(row, now, ttl):
 def probe(key, ttl, fn):
     """Run fn() at most once per ttl seconds, persisting the result across renders."""
     now = time.time()
-    cache = read_json(STATE, {})
+    try:
+        cache = read_json(STATE, {})
+    except Exception:
+        cache = {}
     row = cache.get(key)
     if _fresh(row, now, ttl):
         return row.get("val")
@@ -47,7 +50,10 @@ def probe(key, ttl, fn):
         current[key] = {"at": now, "val": val}
         return True, val
 
-    return update_json(STATE, {}, publish)
+    try:
+        return update_json(STATE, {}, publish)
+    except Exception:
+        return val
 
 
 def _run(*args, timeout=1.0):
