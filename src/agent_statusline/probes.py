@@ -7,39 +7,47 @@ through `probe()` and reused for a few seconds. Measured costs on this machine:
 `os.statvfs` ~0ms. Uncached that is ~55ms per redraw; cached it is ~0.
 """
 import json
+import math
 import os
 import subprocess
 import time
+from collections.abc import Mapping
 
 from agent_statusline.paths import state
+from agent_statusline.storage import read_json, update_json
 
 STATE = state("statusline-probe-cache.json")
+
+
+def _fresh(row, now, ttl):
+    if not isinstance(row, Mapping):
+        return False
+    observed = row.get("at")
+    if isinstance(observed, bool) or not isinstance(observed, (int, float)):
+        return False
+    return math.isfinite(observed) and now - observed < ttl
 
 
 def probe(key, ttl, fn):
     """Run fn() at most once per ttl seconds, persisting the result across renders."""
     now = time.time()
-    try:
-        with open(STATE) as fh:
-            cache = json.load(fh)
-    except Exception:
-        cache = {}
+    cache = read_json(STATE, {})
     row = cache.get(key)
-    if row and now - row.get("at", 0) < ttl:
+    if _fresh(row, now, ttl):
         return row.get("val")
     try:
         val = fn()
     except Exception:
         val = None
-    cache[key] = {"at": now, "val": val}
-    try:
-        tmp = STATE + ".tmp"
-        with open(tmp, "w") as fh:
-            json.dump(cache, fh)
-        os.replace(tmp, STATE)
-    except Exception:
-        pass
-    return val
+
+    def publish(current):
+        existing = current.get(key)
+        if _fresh(existing, now, ttl):
+            return False, existing.get("val")
+        current[key] = {"at": now, "val": val}
+        return True, val
+
+    return update_json(STATE, {}, publish)
 
 
 def _run(*args, timeout=1.0):
