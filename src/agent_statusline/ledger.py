@@ -13,14 +13,15 @@ crash, lost daemon):
 """
 import argparse
 import datetime
-import json
 import os
 import sys
+from collections.abc import Mapping
 
 # Entry point: make the package importable when run as a plain script.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 from agent_statusline.paths import state
+from agent_statusline.storage import read_json, update_json
 
 LEDGER = state("cost-ledger.json")
 
@@ -112,38 +113,67 @@ def epoch(value):
         return 0.0
 
 
+def _normalized_sessions(value):
+    if not isinstance(value, Mapping):
+        return {}
+    return {sid: dict(row) for sid, row in value.items() if isinstance(row, Mapping)}
+
+
 def load():
-    try:
-        with open(LEDGER) as fh:
-            data = json.load(fh)
-    except Exception:
-        data = {}
-    data.setdefault("sessions", {})
+    data = read_json(LEDGER, {})
+    data["sessions"] = _normalized_sessions(data.get("sessions"))
     return data
 
 
 def save(data):
     """Atomic temp+rename, pretty-printed so the file stays readable by hand."""
-    tmp = LEDGER + ".tmp"
-    with open(tmp, "w") as fh:
-        json.dump(data, fh, indent=2)
-        fh.write("\n")
-    os.replace(tmp, LEDGER)
+
+    def replace(current):
+        replacement = dict(data) if isinstance(data, Mapping) else {}
+        replacement["sessions"] = _normalized_sessions(replacement.get("sessions"))
+        current.clear()
+        current.update(replacement)
+        return True, None
+
+    update_json(LEDGER, {}, replace)
 
 
-def close_session(sid, reason="end", transcript=None, when=None):
+def update(updater):
+    """Run one locked ledger transaction with a normalized sessions mapping."""
+
+    def normalized(data):
+        previous = data.get("sessions")
+        sessions = _normalized_sessions(previous)
+        normalization_changed = "sessions" in data and previous != sessions
+        data["sessions"] = sessions
+        changed, result = updater(data)
+        return normalization_changed or changed, result
+
+    return update_json(LEDGER, {}, normalized)
+
+
+def close_session(sid, reason="end", transcript=None, when=None, create=False):
     """Stamp a row closed. Returns the row, or None if the session is unknown."""
-    data = load()
-    row = data["sessions"].get(sid)
-    if row is None:
-        return None
-    row["state"] = "closed"
-    row["closed"] = iso(when)
-    row["reason"] = reason
-    if transcript:
-        row["transcript"] = transcript
-    save(data)
-    return row
+
+    def close(data):
+        sessions = data["sessions"]
+        row = sessions.get(sid)
+        if not isinstance(row, Mapping):
+            if not create:
+                return False, None
+            row = {"cost": 0.0, "started": iso(when)}
+            sessions[sid] = row
+        else:
+            row = dict(row)
+            sessions[sid] = row
+        row["state"] = "closed"
+        row["closed"] = iso(when)
+        row["reason"] = reason
+        if transcript:
+            row["transcript"] = transcript
+        return True, dict(row)
+
+    return update(close)
 
 
 def _main():
