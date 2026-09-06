@@ -37,6 +37,6 @@ def _resolved_state_dir():
 
 def state(name):
     """Absolute path to one direct state entry in a once-resolved root."""
-    if not isinstance(name, str) or not name or os.path.basename(name) != name:
+    if not isinstance(name, str) or name in ("", ".", "..") or os.path.basename(name) != name:
         raise ValueError("state entry must be a direct non-empty filename")
     return os.path.join(_resolved_state_dir(), name)

@@ -43,7 +43,7 @@ def test_symlinked_state_root_resolves_once(tmp_path, monkeypatch):
     assert paths.state("value.json") == str(target / "value.json")
 
 
-@pytest.mark.parametrize("name", ["", "../value.json", "nested/value.json"])
+@pytest.mark.parametrize("name", ["", ".", "..", "../value.json", "nested/value.json"])
 def test_state_rejects_non_direct_entries(tmp_path, monkeypatch, name):
     monkeypatch.setattr(paths, "STATE_DIR", str(tmp_path))
     with pytest.raises(ValueError):
