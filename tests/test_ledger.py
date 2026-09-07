@@ -5,6 +5,11 @@ twice and roughly doubled a session's reported cost (docs/adrs/0014). The defenc
 pid-keyed run detection and a high-water fallback; both are pinned here.
 """
 
+import json
+import os
+import subprocess
+import sys
+
 from agent_statusline import ledger
 
 
@@ -85,3 +90,85 @@ class TestPersistence:
     def test_closing_an_unknown_session_returns_none(self):
         ledger.save({"sessions": {}})
         assert ledger.close_session("nope") is None
+
+    def test_session_end_can_create_and_close_an_unseen_session_atomically(self):
+        ledger.save({"sessions": {}})
+        row = ledger.close_session("new", reason="end", create=True)
+        assert row["state"] == "closed"
+        assert row["cost"] == 0.0
+        assert ledger.load()["sessions"]["new"]["state"] == "closed"
+
+    def test_load_normalizes_sessions_without_dropping_unrelated_state(self):
+        with open(ledger.LEDGER, "w") as fh:
+            json.dump(
+                {
+                    "sessions": {
+                        "good": {"cost": 2.0},
+                        "bad-list": [],
+                        "bad-scalar": "invalid",
+                    },
+                    "metadata": {"keep": True},
+                },
+                fh,
+            )
+
+        assert ledger.load() == {
+            "sessions": {"good": {"cost": 2.0}},
+            "metadata": {"keep": True},
+        }
+
+    def test_save_normalizes_a_malformed_sessions_container(self):
+        ledger.save({"sessions": ["bad"], "metadata": {"keep": True}})
+
+        assert ledger.load() == {"sessions": {}, "metadata": {"keep": True}}
+
+    def test_close_handles_a_malformed_session_row(self):
+        ledger.save({"sessions": {"bad": []}})
+
+        assert ledger.close_session("bad") is None
+        row = ledger.close_session("bad", create=True)
+
+        assert row["state"] == "closed"
+        assert ledger.load()["sessions"]["bad"]["state"] == "closed"
+
+
+def test_concurrent_ledger_update_and_close_preserve_every_field(tmp_path):
+    state_dir = tmp_path / "state"
+    state_dir.mkdir()
+    env = dict(os.environ)
+    env["AGENT_STATUSLINE_STATE"] = str(state_dir)
+    env["HOME"] = str(tmp_path / "home")
+    source = os.path.abspath("src")
+    env["PYTHONPATH"] = source + os.pathsep + env.get("PYTHONPATH", "")
+    initialize = r"""
+from agent_statusline import ledger
+ledger.save({"sessions": {"shared": {"cost": 1.0, "state": "live"}}})
+"""
+    subprocess.run([sys.executable, "-c", initialize], env=env, check=True)
+    update_code = r"""
+import sys
+from agent_statusline import ledger
+key = sys.argv[1]
+def change(data):
+    row = data["sessions"]["shared"]
+    row[key] = key
+    return True, None
+ledger.update(change)
+"""
+    close_code = r"""
+from agent_statusline import ledger
+ledger.close_session("shared", reason="end")
+"""
+    processes = [
+        subprocess.Popen([sys.executable, "-c", update_code, f"field_{number}"], env=env)
+        for number in range(6)
+    ]
+    processes.append(subprocess.Popen([sys.executable, "-c", close_code], env=env))
+
+    assert [process.wait(timeout=20) for process in processes] == [0] * 7
+    data = json.loads((state_dir / "cost-ledger.json").read_text())
+    row = data["sessions"]["shared"]
+    assert row["state"] == "closed"
+    assert row["reason"] == "end"
+    assert row["cost"] == 1.0
+    assert all(row[f"field_{number}"] == f"field_{number}" for number in range(6))
