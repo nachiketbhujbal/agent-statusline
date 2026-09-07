@@ -4,7 +4,28 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.2.3
+## Unreleased — 0.2.4
+
+Package-owned runtime state is now private and serialized through one
+dependency-free storage service
+([ADR 0021](adrs/0021-lock-and-privatize-runtime-state.md)). Ledger, transcript,
+probe, payload, context-hook, session-close, and rate-history updates use
+per-file advisory locks; replacement writes use unique same-directory `0600`
+temporary files, flush and sync before atomic publication, and leave prior bytes
+intact on ordinary publication failure. New state roots are `0700`, state and
+lock files are `0600`, and final symlink or non-regular state entries are
+refused rather than followed.
+
+Malformed nested package caches are normalized without losing valid siblings.
+Concurrent ledger, transcript, probe, and rate-history writers preserve their
+accepted per-file semantics, including exact computed ledger totals when
+publication fails after an update has run. Atomicity is per file, not across
+files; deliberate same-user pathname races and Windows support remain outside
+the practical local-tool boundary. All ten output rows, valid display behavior,
+and existing cost-accounting semantics are unchanged; no v0.2.5 accounting
+model is included.
+
+## 0.2.3
 
 Malformed but valid JSON from the host now degrades safely instead of removing
 the status line ([ADR 0032](adrs/0032-normalize-malformed-host-input-at-the-boundary.md)).
