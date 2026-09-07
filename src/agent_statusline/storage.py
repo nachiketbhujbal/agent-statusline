@@ -110,7 +110,7 @@ def _read_unlocked(path, default):
         with os.fdopen(fd, "r", encoding="utf-8") as fh:
             fd = None
             data = json.load(fh)
-    except (UnicodeError, json.JSONDecodeError):
+    except (UnicodeError, ValueError, RecursionError):
         return fallback
     finally:
         if fd is not None:
@@ -209,7 +209,7 @@ def _tail_record(path):
     for line in reversed(chunk.decode("utf-8", "replace").splitlines()):
         try:
             candidate = json.loads(line)
-        except json.JSONDecodeError:
+        except (ValueError, RecursionError):
             continue
         if isinstance(candidate, Mapping):
             previous = candidate

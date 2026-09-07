@@ -29,11 +29,12 @@ installed-artifact evidence.
 
 0.2.1 through 0.2.3 are tagged and released. 0.2.4 is active on this branch;
 its implementation components and release records have independent exact-SHA
-acceptance, and its aggregate RC has passed the complete local owner gate plus
-an isolated Python 3.9 pre-release-wheel proof. Independent aggregate review,
-the tag, hosted evidence, and exact tagged-artifact installation proof remain
-pending. Nothing in 0.2.5 and later is present, and a later release's evidence
-can never stand in for an earlier tag's.
+acceptance. Independent review rejected the first aggregate RC, and its bounded
+correction has passed the complete local owner gate plus an isolated Python 3.9
+pre-release-wheel proof. Renewed exact-SHA review, the tag, hosted evidence, and
+exact tagged-artifact installation proof remain pending. Nothing in 0.2.5 and
+later is present, and a later release's evidence can never stand in for an
+earlier tag's.
 
 ## 0.2.1 — ownership-safe installation
 
@@ -84,8 +85,8 @@ Released:
 
 ## 0.2.4 — private, serialized runtime state
 
-Assembled and locally release-gated on this branch; independent aggregate
-acceptance remains pending:
+Corrected and locally release-gated on this branch; renewed independent
+aggregate acceptance remains pending:
 
 - Route package-owned ledger, transcript, probe, payload, hook, and rate-history
   state through one dependency-free storage service.
@@ -97,8 +98,11 @@ acceptance remains pending:
 - Refuse final symlink and non-regular state or lock entries, keep direct state
   names inside the once-resolved root, and apply `0700` to roots the package
   creates and `0600` to package-owned state and lock files.
+- Defer state-root initialization until first filesystem use, and keep
+  stateless rendering available when optional state cannot be read or published
+  without weakening refusal or prior-byte preservation.
 - Normalize malformed nested package caches while preserving valid siblings,
-  monotonic transcript progress, probe fallback behavior, and exact computed
-  ledger aggregates.
+  monotonic transcript progress, coupled transcript offset/totals validity,
+  probe fallback behavior, and exact computed ledger aggregates.
 - Preserve all ten rows, valid output, and the existing accounting model. This
   release adds no v0.2.5 cost-event or attribution semantics.

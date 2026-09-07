@@ -376,6 +376,37 @@ class TestCachedStateShape:
         assert totals["out"] == 4
         assert json.loads(state_path.read_text())[str(path)]["offset"] == path.stat().st_size
 
+    def test_non_mapping_totals_with_valid_eof_offset_replays_from_zero(
+        self, tmp_path, monkeypatch
+    ):
+        path = tmp_path / "session.jsonl"
+        path.write_text('{"type":"assistant","message":{"usage":{"input_tokens":5}}}\n')
+        other = tmp_path / "other.jsonl"
+        state_path = tmp_path / "state.json"
+        state_path.write_text(
+            json.dumps(
+                {
+                    str(path): {
+                        "schema": transcript.SCHEMA,
+                        "offset": path.stat().st_size,
+                        "totals": [],
+                        "root": "root-keep",
+                    },
+                    str(other): {"keep": True},
+                }
+            )
+        )
+        monkeypatch.setattr(transcript, "TSTATE", str(state_path))
+
+        totals = transcript.transcript_totals(str(path))
+
+        cache = json.loads(state_path.read_text())
+        assert totals["in"] == 5
+        assert totals["turns"] == 1
+        assert cache[str(path)]["offset"] == path.stat().st_size
+        assert cache[str(path)]["root"] == "root-keep"
+        assert cache[str(other)] == {"keep": True}
+
     def test_nested_totals_containers_are_normalized_before_absorb(self, tmp_path, monkeypatch):
         path = tmp_path / "session.jsonl"
         path.write_text('{"type":"assistant","message":{"usage":{"input_tokens":2}}}\n')
@@ -443,6 +474,66 @@ class TestCachedStateShape:
 
         assert transcript.conversation_root(str(path)) == "root-123"
         assert json.loads(state_path.read_text())[str(path)]["root"] == "root-123"
+
+
+def test_transcript_cache_read_failure_uses_established_fallbacks(tmp_path, monkeypatch):
+    path = tmp_path / "session.jsonl"
+    path.write_text(
+        '{"type":"user","uuid":"root-123"}\n'
+        '{"type":"assistant","message":{"usage":{"input_tokens":5}}}\n'
+    )
+
+    def fail_read(_path, _default, _updater):
+        raise PermissionError("read-only state directory")
+
+    monkeypatch.setattr(transcript, "update_json", fail_read)
+
+    assert transcript.transcript_totals(str(path)) == transcript._blank()
+    assert transcript.conversation_root(str(path)) is None
+
+
+def test_transcript_cache_symlink_is_refused_without_touching_target(tmp_path, monkeypatch):
+    path = tmp_path / "session.jsonl"
+    path.write_text(
+        '{"type":"user","uuid":"root-123"}\n'
+        '{"type":"assistant","message":{"usage":{"input_tokens":5}}}\n'
+    )
+    outside = tmp_path / "outside.json"
+    outside.write_text('{"sentinel":true}\n')
+    state_path = tmp_path / "state.json"
+    state_path.symlink_to(outside)
+    before = outside.read_bytes()
+    monkeypatch.setattr(transcript, "TSTATE", str(state_path))
+
+    assert transcript.transcript_totals(str(path)) == transcript._blank()
+    assert transcript.conversation_root(str(path)) is None
+    assert outside.read_bytes() == before
+    assert state_path.is_symlink()
+
+
+def test_transcript_cache_publication_failure_returns_computed_results(tmp_path, monkeypatch):
+    path = tmp_path / "session.jsonl"
+    path.write_text(
+        '{"type":"user","uuid":"root-123"}\n'
+        '{"type":"assistant","message":{"usage":{"input_tokens":5}}}\n'
+    )
+    computed = []
+
+    def fail_after_update(_path, _default, updater):
+        changed, result = updater({})
+        assert changed
+        computed.append(result)
+        raise OSError("injected publication failure")
+
+    monkeypatch.setattr(transcript, "update_json", fail_after_update)
+
+    totals = transcript.transcript_totals(str(path))
+    root = transcript.conversation_root(str(path))
+
+    assert totals == computed[0]
+    assert totals["in"] == 5
+    assert totals["turns"] == 1
+    assert root == computed[1] == "root-123"
 
 
 def test_truncated_final_line_is_deferred_without_double_counting(tmp_path, monkeypatch):

@@ -9,7 +9,7 @@ import sys
 
 import pytest
 
-from agent_statusline import render, statusline
+from agent_statusline import render, statusline, transcript
 from agent_statusline.hooks import context_guard, session_end
 
 ANSI = re.compile(r"\033\[[0-9;]*m")
@@ -93,6 +93,46 @@ class TestRobustness:
         monkeypatch.setattr("sys.stdin", io.StringIO("not json"))
         statusline.main()
         assert "claude" in ANSI.sub("", capsys.readouterr().out)
+
+    @pytest.mark.parametrize("state_shape", ["file", "child-of-file"])
+    def test_unusable_state_root_does_not_abort_fresh_process(self, tmp_path, payload, state_shape):
+        blocker = tmp_path / "blocked"
+        blocker.write_text("sentinel")
+        state_root = blocker if state_shape == "file" else blocker / "state"
+        env = dict(os.environ)
+        env["AGENT_STATUSLINE_STATE"] = str(state_root)
+        env["HOME"] = str(tmp_path / "home")
+        env["COLUMNS"] = "200"
+        source = os.path.abspath("src")
+        env["PYTHONPATH"] = source + os.pathsep + env.get("PYTHONPATH", "")
+
+        result = subprocess.run(
+            [sys.executable, "-m", "agent_statusline.statusline"],
+            input=json.dumps(payload),
+            env=env,
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert "PROJECT" in ANSI.sub("", result.stdout)
+        assert blocker.read_text() == "sentinel"
+
+    def test_transcript_state_failure_does_not_abort_render(
+        self, tmp_path, payload, monkeypatch, capsys
+    ):
+        transcript_path = tmp_path / "session.jsonl"
+        transcript_path.write_text('{"type":"assistant","message":{"usage":{"input_tokens":5}}}\n')
+        payload["transcript_path"] = str(transcript_path)
+
+        def fail_state(_path, _default, _updater):
+            raise PermissionError("read-only transcript state")
+
+        monkeypatch.setattr(transcript, "update_json", fail_state)
+
+        assert "PROJECT" in labels(draw(payload, monkeypatch, capsys))
 
     @pytest.mark.parametrize("payload", [[], ["not a payload"], "scalar", 17, None])
     def test_json_non_object_payload_degrades_to_a_stub(self, payload, monkeypatch, capsys):
@@ -457,7 +497,7 @@ rl_log(
         )
 
         assert context_guard.main() == 0
-        assert seen["path"].endswith("hook-lastrun.json")
+        assert os.fspath(seen["path"]).endswith("hook-lastrun.json")
         assert seen["record"]["hook"] == "UserPromptSubmit"
         assert seen["record"]["session"] == "session-1"
 

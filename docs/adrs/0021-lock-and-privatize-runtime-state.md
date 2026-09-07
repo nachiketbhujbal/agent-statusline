@@ -33,14 +33,15 @@ that one destination. Directory sync is best effort. Lock files are also
 `0600`; a state root created by the package is `0700`. An existing state root's
 mode is not changed.
 
-The state root is resolved once for each path construction, and a package state
-name must identify one direct, non-empty filename inside that root. Before the
-service reads, permissions, locks, appends to, or replaces a state or lock
-entry, it rejects a final symlink or other non-regular entry. Opens use
-`O_NOFOLLOW` where the platform provides it and verify the opened descriptor is
-regular. Malformed JSON and unsupported top-level or nested package-cache
-shapes degrade to fresh or normalized state without discarding valid sibling
-records.
+Package state paths are lazy: the state root is created, resolved, and verified
+only when a filesystem operation first uses an entry, not while modules import.
+A package state name must identify one direct, non-empty filename inside that
+root. Before the service reads, permissions, locks, appends to, or replaces a
+state or lock entry, it rejects a final symlink or other non-regular entry.
+Opens use `O_NOFOLLOW` where the platform provides it and verify the opened
+descriptor is regular. Malformed JSON, decoder resource errors, and unsupported
+top-level or nested package-cache shapes degrade to fresh or normalized state
+without discarding valid sibling records.
 
 This decision provides atomicity per state file, not across multiple files. It
 supports macOS and Linux, where the required POSIX locking primitives exist;
@@ -61,3 +62,9 @@ permissioning, replacing, or appending runtime state independently. The added
 locking and sync work is intentionally local and bounded; no runtime dependency,
 transaction journal, multi-file commit protocol, or stronger hostile-process
 security claim is introduced.
+
+Runtime persistence remains optional display metadata. A consumer may contain
+an expected storage failure with its established stateless fallback or a result
+already computed inside a transaction, but the storage operation itself still
+fails closed: it does not follow an unsafe entry, publish to an unverified root,
+or report an uncommitted write as successful.

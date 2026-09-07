@@ -35,8 +35,24 @@ def _resolved_state_dir():
     return directory
 
 
+class _StateEntry(os.PathLike):
+    """A package state entry whose root is initialized on first filesystem use."""
+
+    def __init__(self, name):
+        self.name = name
+        self._path = None
+
+    def __fspath__(self):
+        if self._path is None:
+            self._path = os.path.join(_resolved_state_dir(), self.name)
+        return self._path
+
+    def __str__(self):
+        return os.fspath(self)
+
+
 def state(name):
-    """Absolute path to one direct state entry in a once-resolved root."""
+    """A lazy path to one direct state entry inside the verified state root."""
     if not isinstance(name, str) or name in ("", ".", "..") or os.path.basename(name) != name:
         raise ValueError("state entry must be a direct non-empty filename")
-    return os.path.join(_resolved_state_dir(), name)
+    return _StateEntry(name)
