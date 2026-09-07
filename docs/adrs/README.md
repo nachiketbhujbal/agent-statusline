@@ -26,6 +26,7 @@ old one rather than rewriting why the earlier choice was made.
 | [0018](0018-budget-hosted-ci.md) | Hosted CI budgeted around Actions billing |
 | [0019](0019-release-tags-are-immutable.md) | Release tags are immutable |
 | [0020](0020-own-only-managed-configuration.md) | Own only managed configuration |
+| [0021](0021-lock-and-privatize-runtime-state.md) | Lock, atomically publish, and privatize runtime state |
 | [0023](0023-use-a-locked-local-quality-gate.md) | Use a locked local quality gate |
 | [0030](0030-ship-hardening-as-small-pre-one-patches.md) | Ship hardening as small pre-1.0 patches |
 | [0031](0031-practical-local-threat-model.md) | Practical local-tool threat model |

@@ -7,16 +7,52 @@ config directory (`~/.claude` by default). Override with AGENT_STATUSLINE_STATE
 to run a second instance, or to point a test at a throwaway directory.
 """
 import os
+import stat
 
 STATE_DIR = os.path.abspath(
     os.path.expanduser(os.environ.get("AGENT_STATUSLINE_STATE") or "~/.claude")
 )
 
 
-def state(name):
-    """Absolute path to a state file, creating the directory if needed."""
+def _resolved_state_dir():
+    """Return one verified state root, creating an absent root privately."""
+    created = False
     try:
-        os.makedirs(STATE_DIR, exist_ok=True)
-    except Exception:
+        os.mkdir(STATE_DIR, 0o700)
+        created = True
+    except FileExistsError:
         pass
-    return os.path.join(STATE_DIR, name)
+    except FileNotFoundError:
+        os.makedirs(STATE_DIR, mode=0o700, exist_ok=True)
+        created = True
+
+    directory = os.path.realpath(STATE_DIR)
+    info = os.stat(directory)
+    if not stat.S_ISDIR(info.st_mode):
+        raise NotADirectoryError(f"unsafe agent-statusline state root: {STATE_DIR}")
+    if created:
+        os.chmod(directory, 0o700)
+    return directory
+
+
+class _StateEntry(os.PathLike):
+    """A package state entry whose root is initialized on first filesystem use."""
+
+    def __init__(self, name):
+        self.name = name
+        self._path = None
+
+    def __fspath__(self):
+        if self._path is None:
+            self._path = os.path.join(_resolved_state_dir(), self.name)
+        return self._path
+
+    def __str__(self):
+        return os.fspath(self)
+
+
+def state(name):
+    """A lazy path to one direct state entry inside the verified state root."""
+    if not isinstance(name, str) or name in ("", ".", "..") or os.path.basename(name) != name:
+        raise ValueError("state entry must be a direct non-empty filename")
+    return _StateEntry(name)
