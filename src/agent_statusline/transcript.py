@@ -17,6 +17,7 @@ from collections.abc import Mapping
 
 from agent_statusline.coerce import finite_integer
 from agent_statusline.paths import state
+from agent_statusline.storage import update_json
 
 TSTATE = state("statusline-transcript.json")
 
@@ -66,6 +67,60 @@ def _blank():
         "tier": None,
         "last_bucket": None,
     }
+
+
+_COUNT_FIELDS = (
+    "in",
+    "cw",
+    "cr",
+    "out",
+    "turns",
+    "think",
+    "b1h",
+    "b5m",
+    "errors",
+    "synth",
+    "side",
+    "compact",
+    "hook_runs",
+    "hook_errs",
+)
+_COUNT_MAP_FIELDS = ("tools", "cmds")
+_PATH_LIST_FIELDS = ("f_edit", "f_read")
+_COUNT_LIST_FIELDS = ("durs", "hook_ms")
+_STRING_FIELDS = ("last_ts", "perm", "tier", "last_bucket")
+
+
+def _normalized_totals(value):
+    """Return a complete safe totals mapping from package-owned cache state."""
+    normalized = _blank()
+    if not isinstance(value, Mapping):
+        return normalized
+    for key in _COUNT_FIELDS:
+        normalized[key] = max(0, finite_integer(value.get(key)))
+    for key in _COUNT_MAP_FIELDS:
+        current = value.get(key)
+        if isinstance(current, Mapping):
+            normalized[key] = {
+                name: max(0, finite_integer(count))
+                for name, count in current.items()
+                if isinstance(name, str)
+            }
+    for key in _PATH_LIST_FIELDS:
+        current = value.get(key)
+        if isinstance(current, list):
+            normalized[key] = [item for item in current if isinstance(item, str)]
+    for key in _COUNT_LIST_FIELDS:
+        current = value.get(key)
+        if isinstance(current, list):
+            normalized[key] = [max(0, finite_integer(item)) for item in current]
+    for key in _STRING_FIELDS:
+        current = value.get(key)
+        if isinstance(current, str):
+            normalized[key] = current
+    if normalized["last_bucket"] not in (None, "1h", "5m"):
+        normalized["last_bucket"] = None
+    return normalized
 
 
 def _absorb(tot, e):
@@ -161,103 +216,136 @@ def transcript_totals(path):
     z = _blank()
     if not path or not os.path.exists(path):
         return z
-    try:
-        st = os.stat(path)
-    except Exception:
-        return z
-    state = {}
-    try:
-        with open(TSTATE) as fh:
-            state = json.load(fh)
-    except Exception:
-        pass
-    row = state.get(path) or {}
-    if row.get("schema") != SCHEMA:
-        row = {}
-    off = row.get("offset", 0)
-    tot = row.get("totals") or _blank()
-    for k, v in _blank().items():
-        tot.setdefault(k, v)
-    if st.st_size < off:
-        off, tot = 0, _blank()
-    if st.st_size == off:
-        return tot
-    try:
-        with open(path, "rb") as fh:
-            fh.seek(off)
-            chunk = fh.read()
-            newoff = fh.tell()
-    except Exception:
-        return tot
-    tail = b""
-    if not chunk.endswith(b"\n"):
-        cut = chunk.rfind(b"\n")
-        if cut == -1:
-            return tot
-        tail = chunk[cut + 1 :]
-        chunk = chunk[: cut + 1]
-        newoff -= len(tail)
-    for line in chunk.split(b"\n"):
-        if not line.strip():
-            continue
+    computed = z
+
+    def absorb_new(cache):
+        nonlocal computed
+        raw_row = cache.get(path)
+        row = dict(raw_row) if isinstance(raw_row, Mapping) else {}
+        root = row.get("root") if isinstance(row.get("root"), str) else None
+        if row.get("schema") == SCHEMA:
+            offset_value = row.get("offset")
+            if (
+                isinstance(offset_value, int)
+                and not isinstance(offset_value, bool)
+                and offset_value >= 0
+                and isinstance(row.get("totals"), Mapping)
+            ):
+                offset = offset_value
+                totals = _normalized_totals(row.get("totals"))
+            else:
+                offset, totals = 0, _blank()
+        else:
+            offset, totals = 0, _blank()
+        computed = totals
+        normalized_row = {"offset": offset, "totals": totals, "schema": SCHEMA, "root": root}
+        normalized = raw_row != normalized_row
+
         try:
-            e = json.loads(line)
+            size = os.stat(path).st_size
         except Exception:
-            continue
-        if not isinstance(e, dict):
-            continue
-        _absorb(tot, e)
-    prev = state.get(path) or {}
-    state[path] = {"offset": newoff, "totals": tot, "schema": SCHEMA, "root": prev.get("root")}
+            if normalized:
+                cache[path] = normalized_row
+            return normalized, totals
+        if size < offset:
+            offset, totals = 0, _blank()
+            computed = totals
+        if size == offset:
+            row = {"offset": offset, "totals": totals, "schema": SCHEMA, "root": root}
+            if normalized or raw_row != row:
+                cache[path] = row
+                return True, totals
+            return False, totals
+        try:
+            with open(path, "rb") as fh:
+                fh.seek(offset)
+                chunk = fh.read()
+                new_offset = fh.tell()
+        except Exception:
+            if normalized:
+                cache[path] = normalized_row
+            return normalized, totals
+        if not chunk.endswith(b"\n"):
+            cut = chunk.rfind(b"\n")
+            if cut == -1:
+                if normalized:
+                    cache[path] = normalized_row
+                return normalized, totals
+            tail = chunk[cut + 1 :]
+            chunk = chunk[: cut + 1]
+            new_offset -= len(tail)
+        for line in chunk.split(b"\n"):
+            if not line.strip():
+                continue
+            try:
+                entry = json.loads(line)
+            except Exception:
+                continue
+            if not isinstance(entry, dict):
+                continue
+            _absorb(totals, entry)
+        cache[path] = {
+            "offset": new_offset,
+            "totals": totals,
+            "schema": SCHEMA,
+            "root": root,
+        }
+        return True, totals
+
     try:
-        tmp = TSTATE + ".tmp"
-        with open(tmp, "w") as fh:
-            json.dump(state, fh)
-        os.replace(tmp, TSTATE)
-    except Exception:
-        pass
-    return tot
+        return update_json(TSTATE, {}, absorb_new)
+    except OSError:
+        # Cache persistence is optional. Unsafe entries and failed publications
+        # stay refused by storage, while this redraw retains only a result that
+        # was already computed inside the failed transaction.
+        return computed
 
 
 def conversation_root(path):
     """First user message uuid -- identical across forks of one conversation."""
     if not path or not os.path.exists(path):
         return None
-    try:
-        with open(TSTATE) as fh:
-            st = json.load(fh)
-    except Exception:
-        st = {}
-    row = st.get(path) or {}
-    cached_root = row.get("root")
-    if isinstance(cached_root, str) and cached_root:
-        return cached_root
-    root = None
-    try:
-        with open(path) as fh:
-            for i, line in enumerate(fh):
-                if i > 400:
-                    break
-                try:
-                    e = json.loads(line)
-                except Exception:
-                    continue
-                if not isinstance(e, dict):
-                    continue
-                uuid_value = e.get("uuid")
-                if e.get("type") == "user" and isinstance(uuid_value, str) and uuid_value:
-                    root = uuid_value
-                    break
-    except Exception:
-        return None
-    if root:
-        row["root"] = root
-        st[path] = row
+    computed = None
+
+    def discover(cache):
+        nonlocal computed
+        raw_row = cache.get(path)
+        row = dict(raw_row) if isinstance(raw_row, Mapping) else {}
+        cached_root = row.get("root")
+        if isinstance(cached_root, str) and cached_root:
+            computed = cached_root
+            return False, cached_root
+        row.pop("root", None)
+        root = None
         try:
-            tmp = TSTATE + ".tmp"
-            with open(tmp, "w") as fh:
-                json.dump(st, fh)
-            os.replace(tmp, TSTATE)
+            with open(path) as fh:
+                for number, line in enumerate(fh):
+                    if number > 400:
+                        break
+                    try:
+                        entry = json.loads(line)
+                    except Exception:
+                        continue
+                    if not isinstance(entry, dict):
+                        continue
+                    uuid_value = entry.get("uuid")
+                    if entry.get("type") == "user" and isinstance(uuid_value, str) and uuid_value:
+                        root = uuid_value
+                        break
         except Exception:
-            pass
-    return root
+            if raw_row != row:
+                cache[path] = row
+                return True, None
+            return False, None
+        if root:
+            row["root"] = root
+        computed = root
+        if raw_row != row:
+            cache[path] = row
+            return True, root
+        return False, root
+
+    try:
+        return update_json(TSTATE, {}, discover)
+    except OSError:
+        return computed

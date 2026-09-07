@@ -15,8 +15,8 @@ installed-artifact evidence.
 | --- | --- | --- |
 | 0.2.1 | Ownership-safe installation and removal | **Released** |
 | 0.2.2 | Locked local quality gate | **Released** |
-| 0.2.3 | Malformed host-input resilience | **Active** |
-| 0.2.4 | Private, serialized runtime state | Planned |
+| 0.2.3 | Malformed host-input resilience | **Released** |
+| 0.2.4 | Private, serialized runtime state | **Active** |
 | 0.2.5 | Exact rolling-cost attribution | Planned |
 | 0.2.6 | Session-scoped process evidence | Planned |
 | 0.2.7 | Bounded observation state | Planned |
@@ -27,9 +27,14 @@ installed-artifact evidence.
 | 0.2.12 | Documentation, pinned workflow, and public-readiness closure | Planned |
 | 0.3.0 | Production-ready milestone | Planned after the patch train |
 
-0.2.1 and 0.2.2 are tagged and released. 0.2.3 is active on this branch;
-nothing in 0.2.4 and later is present in this repository yet, and a later
-release's evidence can never stand in for an earlier tag's.
+0.2.1 through 0.2.3 are tagged and released. 0.2.4 is active on this branch;
+its implementation components and release records have independent exact-SHA
+acceptance. Independent review rejected the first aggregate RC, and its bounded
+correction has passed the complete local owner gate plus an isolated Python 3.9
+pre-release-wheel proof. Renewed exact-SHA review, the tag, hosted evidence, and
+exact tagged-artifact installation proof remain pending. Nothing in 0.2.5 and
+later is present, and a later release's evidence can never stand in for an
+earlier tag's.
 
 ## 0.2.1 — ownership-safe installation
 
@@ -62,7 +67,7 @@ Released:
 
 ## 0.2.3 — malformed host-input resilience
 
-Implemented on this branch:
+Released:
 
 - Require decoded payload and transcript rows to have mapping shape before
   field access; use the established fallback or skip unsupported rows.
@@ -77,3 +82,27 @@ Implemented on this branch:
   invalid, non-finite, and oversized values without emitting `nan` or `inf`.
 - Keep absence distinct from zero where it carries meaning, especially payload
   cost, and preserve all ten labels, their order, and valid display output.
+
+## 0.2.4 — private, serialized runtime state
+
+Corrected and locally release-gated on this branch; renewed independent
+aggregate acceptance remains pending:
+
+- Route package-owned ledger, transcript, probe, payload, hook, and rate-history
+  state through one dependency-free storage service.
+- Serialize each file's complete read-modify-write transaction with a private
+  sidecar lock; append rate-history records under the same lock.
+- Publish replacement files through unique private same-directory temporaries,
+  preserving prior bytes and cleaning up the attempted temporary on ordinary
+  failure.
+- Refuse final symlink and non-regular state or lock entries, keep direct state
+  names inside the once-resolved root, and apply `0700` to roots the package
+  creates and `0600` to package-owned state and lock files.
+- Defer state-root initialization until first filesystem use, and keep
+  stateless rendering available when optional state cannot be read or published
+  without weakening refusal or prior-byte preservation.
+- Normalize malformed nested package caches while preserving valid siblings,
+  monotonic transcript progress, coupled transcript offset/totals validity,
+  probe fallback behavior, and exact computed ledger aggregates.
+- Preserve all ten rows, valid output, and the existing accounting model. This
+  release adds no v0.2.5 cost-event or attribution semantics.

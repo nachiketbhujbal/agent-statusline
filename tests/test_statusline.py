@@ -2,11 +2,15 @@
 
 import io
 import json
+import os
 import re
+import subprocess
+import sys
 
 import pytest
 
-from agent_statusline import render, statusline
+from agent_statusline import render, statusline, transcript
+from agent_statusline.hooks import context_guard, session_end
 
 ANSI = re.compile(r"\033\[[0-9;]*m")
 
@@ -89,6 +93,46 @@ class TestRobustness:
         monkeypatch.setattr("sys.stdin", io.StringIO("not json"))
         statusline.main()
         assert "claude" in ANSI.sub("", capsys.readouterr().out)
+
+    @pytest.mark.parametrize("state_shape", ["file", "child-of-file"])
+    def test_unusable_state_root_does_not_abort_fresh_process(self, tmp_path, payload, state_shape):
+        blocker = tmp_path / "blocked"
+        blocker.write_text("sentinel")
+        state_root = blocker if state_shape == "file" else blocker / "state"
+        env = dict(os.environ)
+        env["AGENT_STATUSLINE_STATE"] = str(state_root)
+        env["HOME"] = str(tmp_path / "home")
+        env["COLUMNS"] = "200"
+        source = os.path.abspath("src")
+        env["PYTHONPATH"] = source + os.pathsep + env.get("PYTHONPATH", "")
+
+        result = subprocess.run(
+            [sys.executable, "-m", "agent_statusline.statusline"],
+            input=json.dumps(payload),
+            env=env,
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert "PROJECT" in ANSI.sub("", result.stdout)
+        assert blocker.read_text() == "sentinel"
+
+    def test_transcript_state_failure_does_not_abort_render(
+        self, tmp_path, payload, monkeypatch, capsys
+    ):
+        transcript_path = tmp_path / "session.jsonl"
+        transcript_path.write_text('{"type":"assistant","message":{"usage":{"input_tokens":5}}}\n')
+        payload["transcript_path"] = str(transcript_path)
+
+        def fail_state(_path, _default, _updater):
+            raise PermissionError("read-only transcript state")
+
+        monkeypatch.setattr(transcript, "update_json", fail_state)
+
+        assert "PROJECT" in labels(draw(payload, monkeypatch, capsys))
 
     @pytest.mark.parametrize("payload", [[], ["not a payload"], "scalar", 17, None])
     def test_json_non_object_payload_degrades_to_a_stub(self, payload, monkeypatch, capsys):
@@ -185,19 +229,20 @@ class TestRobustness:
         assert seen["cost"] is None
 
     def test_cached_non_string_ledger_root_does_not_break_other_sessions(self, monkeypatch):
-        monkeypatch.setattr(
-            statusline.ledger,
-            "load",
-            lambda: {
-                "sessions": {
-                    "prior": {
-                        "cost": 1.0,
-                        "updated": statusline.ledger.iso(),
-                        "root": ["invalid"],
-                    }
+        data = {
+            "sessions": {
+                "prior": {
+                    "cost": 1.0,
+                    "updated": statusline.ledger.iso(),
+                    "root": ["invalid"],
                 }
-            },
-        )
+            }
+        }
+
+        def fake_update(updater):
+            return updater(data)[1]
+
+        monkeypatch.setattr(statusline.ledger, "update", fake_update)
 
         aggregate = statusline.ledger_update("current", None, "project", "session")
 
@@ -215,10 +260,14 @@ class TestRobustness:
             }
         }
         saved = {}
-        monkeypatch.setattr(statusline.ledger, "load", lambda: data)
-        monkeypatch.setattr(
-            statusline.ledger, "save", lambda value: saved.setdefault("data", value)
-        )
+
+        def fake_update(updater):
+            changed, result = updater(data)
+            if changed:
+                saved["data"] = data
+            return result
+
+        monkeypatch.setattr(statusline.ledger, "update", fake_update)
 
         statusline.ledger_update("prior", 2.0, "project", "session")
 
@@ -256,6 +305,250 @@ class TestRobustness:
         assert "inf" not in out
         assert "context" in out
         assert "timing" in out
+
+
+class TestSerializedRuntimeState:
+    def test_payload_is_published_through_storage(self, monkeypatch, capsys):
+        seen = {}
+        monkeypatch.setattr("sys.stdin", io.StringIO("not json"))
+        monkeypatch.setattr(
+            statusline,
+            "write_text",
+            lambda path, text: seen.update(path=path, text=text),
+        )
+
+        statusline.main()
+
+        assert seen == {"path": statusline.PAYLOAD, "text": "not json"}
+        assert "claude" in ANSI.sub("", capsys.readouterr().out)
+
+    def test_payload_storage_failure_does_not_remove_fallback(self, monkeypatch, capsys):
+        monkeypatch.setattr("sys.stdin", io.StringIO("not json"))
+
+        def fail_write(_path, _text):
+            raise OSError("state unavailable")
+
+        monkeypatch.setattr(statusline, "write_text", fail_write)
+
+        statusline.main()
+
+        assert "claude" in ANSI.sub("", capsys.readouterr().out)
+
+    def test_rate_history_is_appended_through_storage(self, monkeypatch):
+        seen = {}
+
+        def fake_append(path, record, keys):
+            seen.update(path=path, record=record, keys=keys)
+            return True
+
+        monkeypatch.setattr(statusline, "append_json_if_changed", fake_append)
+
+        statusline.rl_log(
+            {"used_percentage": 15, "resets_at": 1_700_000_000},
+            {"used_percentage": 40, "resets_at": 1_800_000_000},
+        )
+
+        assert seen["path"] == statusline.RLHIST
+        assert seen["keys"] == ("5h", "5h_reset", "7d", "7d_reset")
+        assert {key: seen["record"][key] for key in seen["keys"]} == {
+            "5h": 15.0,
+            "5h_reset": 1_700_000_000.0,
+            "7d": 40.0,
+            "7d_reset": 1_800_000_000.0,
+        }
+        assert "at" in seen["record"]
+
+    def test_ledger_storage_failure_preserves_a_renderable_aggregate(self, monkeypatch):
+        def fail_update(_updater):
+            raise OSError("state unavailable")
+
+        monkeypatch.setattr(statusline.ledger, "update", fail_update)
+
+        aggregate = statusline.ledger_update(
+            "session-1", 2.5, "project", "name", root="conversation-1", pid=100
+        )
+
+        assert aggregate["session"] == 2.5
+        assert aggregate["all"] == 2.5
+        assert aggregate["n"] == 1
+        assert aggregate["convos"] == 1
+
+    def test_ledger_publish_failure_preserves_computed_exact_money(self, monkeypatch):
+        stamp = statusline.ledger.iso()
+        data = {
+            "sessions": {
+                "prior": {
+                    "cost": 5.0,
+                    "updated": stamp,
+                    "state": "closed",
+                    "root": "conversation-prior",
+                },
+                "session-1": {
+                    "cost": 10.0,
+                    "cost_base": 0.0,
+                    "cost_run": 10.0,
+                    "runs": 1,
+                    "pid": 100,
+                    "updated": stamp,
+                    "state": "live",
+                    "root": "conversation-current",
+                },
+            }
+        }
+        seen = {}
+
+        def fail_after_update(updater):
+            changed, result = updater(data)
+            assert changed
+            seen["computed"] = result
+            raise OSError("publication failed")
+
+        monkeypatch.setattr(statusline.ledger, "update", fail_after_update)
+
+        aggregate = statusline.ledger_update(
+            "session-1", 2.0, "project", "name", root="conversation-current", pid=200
+        )
+
+        assert aggregate == seen["computed"]
+        assert aggregate["session"] == 12.0
+        assert aggregate["base"] == 10.0
+        assert aggregate["runs"] == 2
+        assert aggregate["all"] == 17.0
+        assert aggregate["last5"] == 17.0
+        assert aggregate["d1"] == 17.0
+        assert aggregate["d7"] == 17.0
+        assert aggregate["d30"] == 17.0
+
+    def test_concurrent_statusline_writers_preserve_every_session(self, tmp_path):
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+        env = dict(os.environ)
+        env["AGENT_STATUSLINE_STATE"] = str(state_dir)
+        env["HOME"] = str(tmp_path / "home")
+        source = os.path.abspath("src")
+        env["PYTHONPATH"] = source + os.pathsep + env.get("PYTHONPATH", "")
+        code = r"""
+import sys
+from agent_statusline.statusline import ledger_update
+
+number = int(sys.argv[1])
+ledger_update(
+    f"session-{number}",
+    float(number + 1),
+    "project",
+    f"writer-{number}",
+    root=f"conversation-{number}",
+    pid=number + 100,
+)
+"""
+        processes = [
+            subprocess.Popen([sys.executable, "-c", code, str(number)], env=env)
+            for number in range(8)
+        ]
+
+        assert [process.wait(timeout=20) for process in processes] == [0] * 8
+        sessions = json.loads((state_dir / "cost-ledger.json").read_text())["sessions"]
+        assert set(sessions) == {f"session-{number}" for number in range(8)}
+        assert sum(row["cost"] for row in sessions.values()) == 36.0
+
+    def test_concurrent_rate_history_writers_deduplicate_same_facts(self, tmp_path):
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+        env = dict(os.environ)
+        env["AGENT_STATUSLINE_STATE"] = str(state_dir)
+        env["HOME"] = str(tmp_path / "home")
+        source = os.path.abspath("src")
+        env["PYTHONPATH"] = source + os.pathsep + env.get("PYTHONPATH", "")
+        code = r"""
+from agent_statusline.statusline import rl_log
+
+rl_log(
+    {"used_percentage": 15, "resets_at": 1700000000},
+    {"used_percentage": 40, "resets_at": 1800000000},
+)
+"""
+        processes = [subprocess.Popen([sys.executable, "-c", code], env=env) for _ in range(8)]
+
+        assert [process.wait(timeout=20) for process in processes] == [0] * 8
+        lines = (state_dir / "rate-limit-history.jsonl").read_text().splitlines()
+        assert len(lines) == 1
+        assert json.loads(lines[0])["5h"] == 15.0
+
+    def test_context_guard_uses_storage_for_payload_and_lastrun(self, monkeypatch):
+        seen = {}
+        monkeypatch.setattr(
+            context_guard,
+            "read_json",
+            lambda path, default: {
+                "context_window": {"context_window_size": 200_000},
+                "path": path,
+                "default": default,
+            },
+        )
+
+        assert context_guard.window_size() == 200_000
+
+        monkeypatch.setattr("sys.stdin", io.StringIO('{"session_id":"session-1"}'))
+        monkeypatch.setattr(context_guard, "window_size", lambda: 0)
+        monkeypatch.setattr(
+            context_guard,
+            "write_text",
+            lambda path, text: seen.update(path=path, record=json.loads(text)),
+        )
+
+        assert context_guard.main() == 0
+        assert os.fspath(seen["path"]).endswith("hook-lastrun.json")
+        assert seen["record"]["hook"] == "UserPromptSubmit"
+        assert seen["record"]["session"] == "session-1"
+
+    def test_context_guard_read_failure_keeps_default_window(self, monkeypatch):
+        def fail_read(_path, _default):
+            raise OSError("state unavailable")
+
+        monkeypatch.setattr(context_guard, "read_json", fail_read)
+
+        assert context_guard.window_size() == 1_000_000
+
+    def test_session_end_creates_and_closes_through_one_ledger_call(self, monkeypatch):
+        seen = {}
+        monkeypatch.setattr(
+            "sys.stdin",
+            io.StringIO(
+                json.dumps(
+                    {
+                        "session_id": "session-1",
+                        "reason": "logout",
+                        "transcript_path": "/synthetic/transcript.jsonl",
+                    }
+                )
+            ),
+        )
+
+        def fail_legacy_call(*_args, **_kwargs):
+            raise AssertionError("legacy load/save path must not run")
+
+        def fake_close(sid, reason, transcript=None, when=None, create=False):
+            seen.update(
+                sid=sid,
+                reason=reason,
+                transcript=transcript,
+                when=when,
+                create=create,
+            )
+            return {"state": "closed"}
+
+        monkeypatch.setattr(session_end.ledger, "load", fail_legacy_call)
+        monkeypatch.setattr(session_end.ledger, "save", fail_legacy_call)
+        monkeypatch.setattr(session_end.ledger, "close_session", fake_close)
+
+        assert session_end.main() == 0
+        assert seen == {
+            "sid": "session-1",
+            "reason": "logout",
+            "transcript": "/synthetic/transcript.jsonl",
+            "when": None,
+            "create": True,
+        }
 
 
 def _totals(**over):
