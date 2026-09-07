@@ -41,6 +41,44 @@ once the regression that demonstrates it exists in this repository.
 | HOST-005 | Medium | Valid JSON values of the wrong shape in path, sequence, permission-mode, or session-identifier fields reached filesystem/container operations and could remove the complete status line. | 0.2.3 | Resolved by narrow payload-field shape guards and fallback behavior, with end-to-end regressions |
 | HOST-006 | High | A non-string transcript conversation identifier could poison both cached transcript state and the shared accounting ledger, then remove the status line across sessions. | 0.2.3 | Resolved by accepting and caching only non-empty string roots and tolerating unsupported roots already present in persisted state |
 | HOST-007 | Medium | A non-string transcript tool name was used as a mapping key before the incremental offset advanced, so the same malformed row removed every later redraw for that session. | 0.2.3 | Resolved by assigning unsupported names to the existing unknown-tool bucket before accumulation |
+| STORAGE-001 | Low | The new direct-state-name boundary still accepted the reserved components `.` and `..`, so callers could construct a root or parent path instead of one direct state filename. | 0.2.4 | Resolved by rejecting reserved components before path construction, with focused path regressions |
+| LEDGER-001 | Medium | A malformed persisted per-session row such as a list reached mapping operations during a ledger transaction, preventing the update or close operation instead of repairing that row while preserving valid siblings and metadata. | 0.2.4 | Resolved by normalizing only mapping-shaped session rows at the transaction boundary, with save, update, close, and preservation regressions |
+| TRANSCRIPT-001 | Medium | An invalid cached transcript offset was reset to zero while its prior totals were retained, so replaying the transcript counted already-observed usage and activity a second time. | 0.2.4 | Resolved by discarding cached totals whenever the offset is invalid, with negative, boolean, and container-offset regressions |
+| TEST-TRANSCRIPT-001 | Low | The subprocess concurrency regression assumed its JSON result was the only stdout line, but subprocess-aware coverage can add diagnostic output, making the gate fail while parsing otherwise valid evidence. | 0.2.4 | Resolved by parsing the explicit final JSON line, matching the locked coverage environment |
+| PROBE-001 | Medium | Probe-cache read or publication failures escaped the cache boundary and could remove probe-backed status information instead of returning the value computed for that redraw. | 0.2.4 | Resolved by preserving the existing computed-value fallback across storage failures, with read and publication failure regressions |
+| PROBE-002 | Low | Concurrent stale callers for the same probe key could each return a different computed value even though only one became the cached value for that interval. | 0.2.4 | Resolved by returning the winner selected inside the locked transaction, with a same-key convergence regression |
+| PROBE-003 | Medium | An oversized positive or negative persisted probe timestamp could raise `OverflowError` during freshness arithmetic and remove probe-backed status information. | 0.2.4 | Resolved by treating freshness arithmetic overflow as stale cache state, with both-sign regressions |
+| RUNTIME-001 | High | If atomic ledger publication failed after the locked updater computed a complete aggregate, runtime fallback discarded that result and returned current-payload-only totals, omitting historical exactly accounted money from the redraw. | 0.2.4 | Resolved by retaining the computed aggregate when available while preserving prior ledger bytes, with a fail-after-updater exact-money regression |
+
+## v0.2.4 component review status
+
+The accepted implementation boundary is the released v0.2.3 commit
+`0375e6b2c6a5fc473c0ff335f76df30b5cdb7bcb` followed by these independently
+reviewed exact component heads:
+
+| Component | Accepted exact SHA | Evidence at acceptance |
+| --- | --- | --- |
+| Storage foundation | `8f67f12663d5d0c8ac265a901a27d98188c8e78f` | 28 focused tests and the locked all-files gate |
+| Ledger adapter | `e20b3af60c0a959e4b8d0c448c68bfb139ddae92` | 47 ledger/storage tests and the locked all-files gate |
+| Transcript adapter | `106281f4f242807f297d0e9ebcdd7b28e93e8671` | 38 focused tests, 355 full tests at 82.65% subprocess-aware coverage, and the locked all-files gate |
+| Probe adapter | `9704b5ba1ad65c0056cb1639b63b26f320a9bcbc` | 38 probe/storage tests and the locked all-files gate |
+| Runtime wiring | `1d4ec4777af41d1f8f596f9f2cd82df5c1d293f2` | 121 focused tests, 50/50 repeated concurrency invocations, 380 full tests at 84.70% subprocess-aware coverage, and the locked all-files gate |
+
+The dependency-correct Wave 2 aggregate is
+`092540c8022258dc479fffd0291bd0e020d16e8b`; its accepted inputs were integrated
+without conflict repair and were byte-identical to their reviewed heads. The
+superseded review targets were `40cc6a81ea4250560c296c0b9af190d252033a00`,
+`ae0965a2cd1b95d89abc31a34b8e03a0a5e7dada`,
+`1d4c05b6f4ab2d982c370cfd8ebc72327b3a14f2`,
+`f2683f5de8eeacd1ae86c339eb9a88d5259c16f3`, and
+`439bf4cdb8f2dc240c96837db3989a4e57c59285`; each was corrected and replaced.
+Target `f99fad9ce8d313422ffff6f58d4a9212728ab37b` was invalidated when its review
+corrections changed the head.
+
+This is component acceptance, not an aggregate release-candidate verdict.
+Linux was not independently rerun, hosted Actions remain unavailable, and the
+release-records review, aggregate gate, tag, and installed-artifact proof remain
+pending.
 
 The read-before-confinement advisory recorded in an earlier round of this table
 is substantially closed by INSTALL-023/025: the initial settings read now goes
