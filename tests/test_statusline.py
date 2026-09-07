@@ -333,6 +333,52 @@ class TestSerializedRuntimeState:
         assert aggregate["n"] == 1
         assert aggregate["convos"] == 1
 
+    def test_ledger_publish_failure_preserves_computed_exact_money(self, monkeypatch):
+        stamp = statusline.ledger.iso()
+        data = {
+            "sessions": {
+                "prior": {
+                    "cost": 5.0,
+                    "updated": stamp,
+                    "state": "closed",
+                    "root": "conversation-prior",
+                },
+                "session-1": {
+                    "cost": 10.0,
+                    "cost_base": 0.0,
+                    "cost_run": 10.0,
+                    "runs": 1,
+                    "pid": 100,
+                    "updated": stamp,
+                    "state": "live",
+                    "root": "conversation-current",
+                },
+            }
+        }
+        seen = {}
+
+        def fail_after_update(updater):
+            changed, result = updater(data)
+            assert changed
+            seen["computed"] = result
+            raise OSError("publication failed")
+
+        monkeypatch.setattr(statusline.ledger, "update", fail_after_update)
+
+        aggregate = statusline.ledger_update(
+            "session-1", 2.0, "project", "name", root="conversation-current", pid=200
+        )
+
+        assert aggregate == seen["computed"]
+        assert aggregate["session"] == 12.0
+        assert aggregate["base"] == 10.0
+        assert aggregate["runs"] == 2
+        assert aggregate["all"] == 17.0
+        assert aggregate["last5"] == 17.0
+        assert aggregate["d1"] == 17.0
+        assert aggregate["d7"] == 17.0
+        assert aggregate["d30"] == 17.0
+
     def test_concurrent_statusline_writers_preserve_every_session(self, tmp_path):
         state_dir = tmp_path / "state"
         state_dir.mkdir()
