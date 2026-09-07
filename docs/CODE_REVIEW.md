@@ -50,7 +50,7 @@ once the regression that demonstrates it exists in this repository.
 | PROBE-003 | Medium | An oversized positive or negative persisted probe timestamp could raise `OverflowError` during freshness arithmetic and remove probe-backed status information. | 0.2.4 | Resolved by treating freshness arithmetic overflow as stale cache state, with both-sign regressions |
 | RUNTIME-001 | High | If atomic ledger publication failed after the locked updater computed a complete aggregate, runtime fallback discarded that result and returned current-payload-only totals, omitting historical exactly accounted money from the redraw. | 0.2.4 | Resolved by retaining the computed aggregate when available while preserving prior ledger bytes, with a fail-after-updater exact-money regression |
 
-## v0.2.4 component review status
+## v0.2.4 reviewed inputs and aggregate RC owner status
 
 The accepted implementation boundary is the released v0.2.3 commit
 `0375e6b2c6a5fc473c0ff335f76df30b5cdb7bcb` followed by these independently
@@ -63,6 +63,7 @@ reviewed exact component heads:
 | Transcript adapter | `106281f4f242807f297d0e9ebcdd7b28e93e8671` | 38 focused tests, 355 full tests at 82.65% subprocess-aware coverage, and the locked all-files gate |
 | Probe adapter | `9704b5ba1ad65c0056cb1639b63b26f320a9bcbc` | 38 probe/storage tests and the locked all-files gate |
 | Runtime wiring | `1d4ec4777af41d1f8f596f9f2cd82df5c1d293f2` | 121 focused tests, 50/50 repeated concurrency invocations, 380 full tests at 84.70% subprocess-aware coverage, and the locked all-files gate |
+| Release records | `06a34c407c264881d3d052f84484bba79a371b20` | Renewed exact-SHA acceptance with no findings after RECORD-005 restored the accepted transcript-finding severity; the locked all-files gate and 380 full tests at 84.70% subprocess-aware coverage |
 
 The dependency-correct Wave 2 aggregate is
 `092540c8022258dc479fffd0291bd0e020d16e8b`; its accepted inputs were integrated
@@ -75,10 +76,25 @@ superseded review targets were `40cc6a81ea4250560c296c0b9af190d252033a00`,
 Target `f99fad9ce8d313422ffff6f58d4a9212728ab37b` was invalidated when its review
 corrections changed the head.
 
-This is component acceptance, not an aggregate release-candidate verdict.
-Linux was not independently rerun, hosted Actions remain unavailable, and the
-release-records review, aggregate gate, tag, and installed-artifact proof remain
-pending.
+Codex assembled the aggregate RC directly from the accepted release-records
+head, with no further source/test integration or conflict repair. On
+macOS/Python 3.11.5 the owner gate passed the locked dependency sync and
+all-files checks, 169 focused storage/ledger/transcript/probe/runtime tests, 380
+full tests at 85.22% subprocess-aware coverage, and both source and wheel
+builds. A fresh Python 3.9.6 environment installed the wheel with no index and
+no dependencies, reported its expected hatch-vcs development version and no
+runtime `Requires-Dist`, and passed synthetic render, hook, ledger, installed-
+shape, checkout-shape, and uninstall smoke checks. Distribution inventories
+contained no private runtime state or generated cache artifacts.
+
+The dormant hosted workflow's checkout-shape assertion still expects the
+released v0.2.0 literal `python3 ~/.claude/...` command. That assertion is stale
+against the v0.2.1 contract requiring the exact interpreter and selected
+configuration directory, so it is not counted as passing evidence and is not
+changed in this release. The correct contract passed locally. This is owner
+verification, not an independent aggregate verdict: Linux and hosted Actions
+remain unavailable evidence, and independent review, the tag, and exact tagged-
+artifact installation proof remain pending.
 
 The read-before-confinement advisory recorded in an earlier round of this table
 is substantially closed by INSTALL-023/025: the initial settings read now goes

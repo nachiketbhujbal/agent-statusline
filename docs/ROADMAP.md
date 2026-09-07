@@ -28,8 +28,10 @@ installed-artifact evidence.
 | 0.3.0 | Production-ready milestone | Planned after the patch train |
 
 0.2.1 through 0.2.3 are tagged and released. 0.2.4 is active on this branch;
-its implementation components have independent exact-SHA acceptance, while its
-aggregate release-candidate gate, tag, and installed-artifact proof remain
+its implementation components and release records have independent exact-SHA
+acceptance, and its aggregate RC has passed the complete local owner gate plus
+an isolated Python 3.9 pre-release-wheel proof. Independent aggregate review,
+the tag, hosted evidence, and exact tagged-artifact installation proof remain
 pending. Nothing in 0.2.5 and later is present, and a later release's evidence
 can never stand in for an earlier tag's.
 
@@ -82,7 +84,8 @@ Released:
 
 ## 0.2.4 — private, serialized runtime state
 
-Implemented on this branch; aggregate release acceptance remains pending:
+Assembled and locally release-gated on this branch; independent aggregate
+acceptance remains pending:
 
 - Route package-owned ledger, transcript, probe, payload, hook, and rate-history
   state through one dependency-free storage service.
