@@ -216,8 +216,10 @@ def transcript_totals(path):
     z = _blank()
     if not path or not os.path.exists(path):
         return z
+    computed = z
 
     def absorb_new(cache):
+        nonlocal computed
         raw_row = cache.get(path)
         row = dict(raw_row) if isinstance(raw_row, Mapping) else {}
         root = row.get("root") if isinstance(row.get("root"), str) else None
@@ -227,6 +229,7 @@ def transcript_totals(path):
                 isinstance(offset_value, int)
                 and not isinstance(offset_value, bool)
                 and offset_value >= 0
+                and isinstance(row.get("totals"), Mapping)
             ):
                 offset = offset_value
                 totals = _normalized_totals(row.get("totals"))
@@ -234,6 +237,7 @@ def transcript_totals(path):
                 offset, totals = 0, _blank()
         else:
             offset, totals = 0, _blank()
+        computed = totals
         normalized_row = {"offset": offset, "totals": totals, "schema": SCHEMA, "root": root}
         normalized = raw_row != normalized_row
 
@@ -245,6 +249,7 @@ def transcript_totals(path):
             return normalized, totals
         if size < offset:
             offset, totals = 0, _blank()
+            computed = totals
         if size == offset:
             row = {"offset": offset, "totals": totals, "schema": SCHEMA, "root": root}
             if normalized or raw_row != row:
@@ -287,19 +292,28 @@ def transcript_totals(path):
         }
         return True, totals
 
-    return update_json(TSTATE, {}, absorb_new)
+    try:
+        return update_json(TSTATE, {}, absorb_new)
+    except OSError:
+        # Cache persistence is optional. Unsafe entries and failed publications
+        # stay refused by storage, while this redraw retains only a result that
+        # was already computed inside the failed transaction.
+        return computed
 
 
 def conversation_root(path):
     """First user message uuid -- identical across forks of one conversation."""
     if not path or not os.path.exists(path):
         return None
+    computed = None
 
     def discover(cache):
+        nonlocal computed
         raw_row = cache.get(path)
         row = dict(raw_row) if isinstance(raw_row, Mapping) else {}
         cached_root = row.get("root")
         if isinstance(cached_root, str) and cached_root:
+            computed = cached_root
             return False, cached_root
         row.pop("root", None)
         root = None
@@ -325,9 +339,13 @@ def conversation_root(path):
             return False, None
         if root:
             row["root"] = root
+        computed = root
         if raw_row != row:
             cache[path] = row
             return True, root
         return False, root
 
-    return update_json(TSTATE, {}, discover)
+    try:
+        return update_json(TSTATE, {}, discover)
+    except OSError:
+        return computed

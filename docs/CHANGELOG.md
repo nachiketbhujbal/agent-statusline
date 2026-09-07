@@ -16,14 +16,18 @@ intact on ordinary publication failure. New state roots are `0700`, state and
 lock files are `0600`, and final symlink or non-regular state entries are
 refused rather than followed.
 
-Malformed nested package caches are normalized without losing valid siblings.
-Concurrent ledger, transcript, probe, and rate-history writers preserve their
-accepted per-file semantics, including exact computed ledger totals when
-publication fails after an update has run. Atomicity is per file, not across
-files; deliberate same-user pathname races and Windows support remain outside
-the practical local-tool boundary. All ten output rows, valid display behavior,
-and existing cost-accounting semantics are unchanged; no v0.2.5 accounting
-model is included.
+Malformed nested package caches and decoder resource errors fall back safely
+without losing valid siblings. State-root setup is deferred until storage is
+actually used, so an unusable optional root or transcript-cache failure no
+longer suppresses stateless rendering; unsafe entries and failed writes remain
+refused. Transcript offsets are reused only with mapping-shaped totals, avoiding
+silent zero totals when malformed cache state requires replay. Concurrent
+ledger, transcript, probe, and rate-history writers preserve their accepted
+per-file semantics, including exact computed results when publication fails
+after an update has run. Atomicity is per file, not across files; deliberate
+same-user pathname races and Windows support remain outside the practical
+local-tool boundary. All ten output rows, valid display behavior, and existing
+cost-accounting semantics are unchanged; no v0.2.5 accounting model is included.
 
 ## 0.2.3
 

@@ -42,13 +42,18 @@ once the regression that demonstrates it exists in this repository.
 | HOST-006 | High | A non-string transcript conversation identifier could poison both cached transcript state and the shared accounting ledger, then remove the status line across sessions. | 0.2.3 | Resolved by accepting and caching only non-empty string roots and tolerating unsupported roots already present in persisted state |
 | HOST-007 | Medium | A non-string transcript tool name was used as a mapping key before the incremental offset advanced, so the same malformed row removed every later redraw for that session. | 0.2.3 | Resolved by assigning unsupported names to the existing unknown-tool bucket before accumulation |
 | STORAGE-001 | Low | The new direct-state-name boundary still accepted the reserved components `.` and `..`, so callers could construct a root or parent path instead of one direct state filename. | 0.2.4 | Resolved by rejecting reserved components before path construction, with focused path regressions |
+| STORAGE-002 | Medium | State-root creation and verification ran while module constants were imported, so a configured root that was a file or had an inaccessible parent aborted the process before the renderer's optional-state fallbacks could run. | 0.2.4 | Resolved by making package state entries lazy and verifying the root only on first filesystem use; fresh-process regressions prove rendering survives while the unusable target remains untouched |
+| STORAGE-003 | Medium | Deeply nested valid JSON could raise a decoder `RecursionError` outside the JSON and JSONL malformed-state fallbacks and remove the complete status line. | 0.2.4 | Resolved by treating decoder `ValueError` and `RecursionError` as malformed state while preserving filesystem-error and unsafe-entry refusal, with real deep-input, JSONL-tail, and injected decoder regressions |
 | LEDGER-001 | Medium | A malformed persisted per-session row such as a list reached mapping operations during a ledger transaction, preventing the update or close operation instead of repairing that row while preserving valid siblings and metadata. | 0.2.4 | Resolved by normalizing only mapping-shaped session rows at the transaction boundary, with save, update, close, and preservation regressions |
 | TRANSCRIPT-001 | Medium | An invalid cached transcript offset was reset to zero while its prior totals were retained, so replaying the transcript counted already-observed usage and activity a second time. | 0.2.4 | Resolved by discarding cached totals whenever the offset is invalid, with negative, boolean, and container-offset regressions |
+| TRANSCRIPT-002 | Medium | Transcript-cache lock, read, refusal, or publication failures propagated through both cache callers and removed the renderer output, even when a result had already been computed. | 0.2.4 | Resolved by returning the established blank/`None` fallback before the updater and the captured totals/root after it, while leaving storage refusal and prior bytes intact; permission, symlink, and post-updater regressions cover the boundary |
+| TRANSCRIPT-003 | Medium | A current-schema cache row with a valid EOF offset but non-mapping totals reused the offset with blank totals, silently publishing zero without replaying the transcript. | 0.2.4 | Resolved by validating offset and totals as one unit and replaying from byte zero when either is invalid, while preserving a valid root and sibling cache rows |
 | TEST-TRANSCRIPT-001 | Medium | The subprocess concurrency regression assumed its JSON result was the only stdout line, but subprocess-aware coverage can add diagnostic output, making the gate fail while parsing otherwise valid evidence. | 0.2.4 | Resolved by parsing the explicit final JSON line, matching the locked coverage environment |
 | PROBE-001 | Medium | Probe-cache read or publication failures escaped the cache boundary and could remove probe-backed status information instead of returning the value computed for that redraw. | 0.2.4 | Resolved by preserving the existing computed-value fallback across storage failures, with read and publication failure regressions |
 | PROBE-002 | Low | Concurrent stale callers for the same probe key could each return a different computed value even though only one became the cached value for that interval. | 0.2.4 | Resolved by returning the winner selected inside the locked transaction, with a same-key convergence regression |
 | PROBE-003 | Medium | An oversized positive or negative persisted probe timestamp could raise `OverflowError` during freshness arithmetic and remove probe-backed status information. | 0.2.4 | Resolved by treating freshness arithmetic overflow as stale cache state, with both-sign regressions |
 | RUNTIME-001 | High | If atomic ledger publication failed after the locked updater computed a complete aggregate, runtime fallback discarded that result and returned current-payload-only totals, omitting historical exactly accounted money from the redraw. | 0.2.4 | Resolved by retaining the computed aggregate when available while preserving prior ledger bytes, with a fail-after-updater exact-money regression |
+| RECORD-006 | Low | The first aggregate owner record reported 85.22% full-suite coverage from an existing cumulative coverage database rather than the reproducible clean exact-target result of 83.23%. | 0.2.4 | Resolved by withdrawing 85.22%, recording the rejected target's clean 83.23% result, and running the correction suite with a fresh external coverage database |
 
 ## v0.2.4 reviewed inputs and aggregate RC owner status
 
@@ -76,25 +81,35 @@ superseded review targets were `40cc6a81ea4250560c296c0b9af190d252033a00`,
 Target `f99fad9ce8d313422ffff6f58d4a9212728ab37b` was invalidated when its review
 corrections changed the head.
 
-Codex assembled the aggregate RC directly from the accepted release-records
-head, with no further source/test integration or conflict repair. On
-macOS/Python 3.11.5 the owner gate passed the locked dependency sync and
-all-files checks, 169 focused storage/ledger/transcript/probe/runtime tests, 380
-full tests at 85.22% subprocess-aware coverage, and both source and wheel
-builds. A fresh Python 3.9.6 environment installed the wheel with no index and
-no dependencies, reported its expected hatch-vcs development version and no
-runtime `Requires-Dist`, and passed synthetic render, hook, ledger, installed-
-shape, checkout-shape, and uninstall smoke checks. Distribution inventories
-contained no private runtime state or generated cache artifacts.
+Codex assembled first aggregate RC
+`de2fb47a1420bf27429f49d4d42ac5697db73772` directly from the accepted
+release-records head, with no further component integration or conflict repair.
+Independent exact-SHA review rejected it for STORAGE-002, STORAGE-003,
+TRANSCRIPT-002, TRANSCRIPT-003, and RECORD-006. Its clean full-suite result is
+380 tests at 83.23% subprocess-aware coverage; the prior 85.22% claim matched
+an existing cumulative database and is withdrawn.
+
+The bounded owner correction changes only the affected storage, path, and
+transcript boundaries, their regressions, and current v0.2.4 records. On
+macOS/Python 3.11.5 it passed the locked all-files checks, 179 focused
+storage/ledger/transcript/probe/runtime tests, 80/80 repeated concurrency/dedup
+invocations, and 390 full tests above the required 77.0% subprocess-aware
+coverage gate from clean committed worktrees using fresh external coverage
+databases. The clean totals ranged from 85.34% to 85.44% as concurrent child
+processes exercised different optional branches, so neither observation is
+promoted as a reproducible exact total. Both source and wheel builds passed. A
+fresh Python 3.9.6 environment installed the correction wheel with no index and no
+dependencies, reported no runtime `Requires-Dist`, and passed synthetic render,
+hook, ledger, installed-shape, checkout-shape, and uninstall smokes.
 
 The dormant hosted workflow's checkout-shape assertion still expects the
 released v0.2.0 literal `python3 ~/.claude/...` command. That assertion is stale
 against the v0.2.1 contract requiring the exact interpreter and selected
 configuration directory, so it is not counted as passing evidence and is not
 changed in this release. The correct contract passed locally. This is owner
-verification, not an independent aggregate verdict: Linux and hosted Actions
-remain unavailable evidence, and independent review, the tag, and exact tagged-
-artifact installation proof remain pending.
+verification, not an independent corrected-aggregate verdict: Linux and hosted
+Actions remain unavailable evidence, and renewed independent review, the tag,
+and exact tagged-artifact installation proof remain pending.
 
 The read-before-confinement advisory recorded in an earlier round of this table
 is substantially closed by INSTALL-023/025: the initial settings read now goes

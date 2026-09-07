@@ -19,7 +19,9 @@ def test_absent_state_root_is_created_private(tmp_path, monkeypatch):
     root = tmp_path / "new" / "state"
     monkeypatch.setattr(paths, "STATE_DIR", str(root))
 
-    assert paths.state("value.json") == str(root / "value.json")
+    entry = paths.state("value.json")
+    assert not root.exists()
+    assert os.fspath(entry) == str(root / "value.json")
     assert mode(root) == 0o700
 
 
@@ -29,7 +31,7 @@ def test_existing_state_root_mode_is_not_changed(tmp_path, monkeypatch):
     root.chmod(0o750)
     monkeypatch.setattr(paths, "STATE_DIR", str(root))
 
-    assert paths.state("value.json") == str(root / "value.json")
+    assert os.fspath(paths.state("value.json")) == str(root / "value.json")
     assert mode(root) == 0o750
 
 
@@ -40,7 +42,7 @@ def test_symlinked_state_root_resolves_once(tmp_path, monkeypatch):
     link.symlink_to(target, target_is_directory=True)
     monkeypatch.setattr(paths, "STATE_DIR", str(link))
 
-    assert paths.state("value.json") == str(target / "value.json")
+    assert os.fspath(paths.state("value.json")) == str(target / "value.json")
 
 
 @pytest.mark.parametrize("name", ["", ".", "..", "../value.json", "nested/value.json"])
@@ -88,6 +90,16 @@ def test_jsonl_append_separates_a_truncated_final_line(tmp_path):
     storage.append_json_if_changed(path, {"old": 2}, ("old",))
 
     assert path.read_text().splitlines() == ['{"old":', '{"old": 2}']
+
+
+def test_jsonl_tail_skips_a_deeply_nested_valid_record(tmp_path):
+    path = tmp_path / "history.jsonl"
+    depth = sys.getrecursionlimit() + 100
+    deep_record = "[" * depth + "0" + "]" * depth
+    path.write_text('{"value":7,"at":1}\n' + deep_record + "\n")
+
+    assert not storage.append_json_if_changed(path, {"value": 7, "at": 2}, ("value",))
+    assert path.read_text().splitlines() == ['{"value":7,"at":1}', deep_record]
 
 
 def test_concurrent_json_transactions_lose_no_updates(tmp_path):
@@ -140,6 +152,28 @@ def test_malformed_or_wrong_json_shape_returns_a_fresh_default(tmp_path, content
 
     assert result == default
     assert result is not default
+
+
+def test_deeply_nested_valid_json_returns_a_fresh_default(tmp_path):
+    path = tmp_path / "state.json"
+    depth = sys.getrecursionlimit() + 100
+    path.write_text("[" * depth + "0" + "]" * depth)
+
+    result = storage.read_json(path, {})
+
+    assert result == {}
+
+
+def test_json_decoder_value_error_returns_a_fresh_default(tmp_path, monkeypatch):
+    path = tmp_path / "state.json"
+    path.write_text("{}")
+
+    def fail_load(_handle):
+        raise ValueError("decoder resource limit")
+
+    monkeypatch.setattr(storage.json, "load", fail_load)
+
+    assert storage.read_json(path, {}) == {}
 
 
 def test_wrong_json_shape_is_replaced_by_the_declared_default(tmp_path):
