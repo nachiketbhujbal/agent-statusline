@@ -54,6 +54,7 @@ once the regression that demonstrates it exists in this repository.
 | PROBE-003 | Medium | An oversized positive or negative persisted probe timestamp could raise `OverflowError` during freshness arithmetic and remove probe-backed status information. | 0.2.4 | Resolved by treating freshness arithmetic overflow as stale cache state, with both-sign regressions |
 | RUNTIME-001 | High | If atomic ledger publication failed after the locked updater computed a complete aggregate, runtime fallback discarded that result and returned current-payload-only totals, omitting historical exactly accounted money from the redraw. | 0.2.4 | Resolved by retaining the computed aggregate when available while preserving prior ledger bytes, with a fail-after-updater exact-money regression |
 | RECORD-006 | Low | The first aggregate owner record reported 85.22% full-suite coverage from an existing cumulative coverage database rather than the reproducible clean exact-target result of 83.23%. | 0.2.4 | Resolved by withdrawing 85.22%, recording the rejected target's clean 83.23% result, and running the correction suite with a fresh external coverage database |
+| RECORD-007 | Low | The corrected aggregate owner record narrowed clean subprocess-aware coverage to 85.34%-85.44%, but independent runs across supported interpreters and clean checkout shapes produced measurements outside that range. | 0.2.4 | Resolved by removing the unsupported range and retaining only the reproducible fact that the complete 390-test suite passes the enforced 77.0% coverage threshold; individual measurements remain environment-specific evidence |
 
 ## v0.2.4 reviewed inputs and aggregate RC owner status
 
@@ -95,12 +96,20 @@ macOS/Python 3.11.5 it passed the locked all-files checks, 179 focused
 storage/ledger/transcript/probe/runtime tests, 80/80 repeated concurrency/dedup
 invocations, and 390 full tests above the required 77.0% subprocess-aware
 coverage gate from clean committed worktrees using fresh external coverage
-databases. The clean totals ranged from 85.34% to 85.44% as concurrent child
-processes exercised different optional branches, so neither observation is
-promoted as a reproducible exact total. Both source and wheel builds passed. A
-fresh Python 3.9.6 environment installed the correction wheel with no index and no
-dependencies, reported no runtime `Requires-Dist`, and passed synthetic render,
-hook, ledger, installed-shape, checkout-shape, and uninstall smokes.
+databases. Both source and wheel builds passed. A fresh Python 3.9.6 environment
+installed the correction wheel with no index and no dependencies, reported no
+runtime `Requires-Dist`, and passed synthetic render, hook, ledger,
+installed-shape, checkout-shape, and uninstall smokes.
+
+Independent exact-SHA review of correction
+`f94b59a204f1137608a13ec4dcd5c4c9b1082e80` closed STORAGE-002, STORAGE-003,
+TRANSCRIPT-002, and TRANSCRIPT-003, and rejected only RECORD-007. Reviewer
+measurements were 83.37% on Python 3.9.6, 83.47% twice on Python 3.11.5, and
+84.92% in a separate clean detached Python 3.11.5 checkout. Those point
+measurements are retained as environment-specific evidence, not a universal
+percentage or range; the reproducible release claim is that all 390 tests pass
+the enforced 77.0% coverage threshold. This records-only owner correction
+changes no runtime, test, workflow, configuration, or release mechanics.
 
 The dormant hosted workflow's checkout-shape assertion still expects the
 released v0.2.0 literal `python3 ~/.claude/...` command. That assertion is stale
@@ -108,8 +117,10 @@ against the v0.2.1 contract requiring the exact interpreter and selected
 configuration directory, so it is not counted as passing evidence and is not
 changed in this release. The correct contract passed locally. This is owner
 verification, not an independent corrected-aggregate verdict: Linux and hosted
-Actions remain unavailable evidence, and renewed independent review, the tag,
-and exact tagged-artifact installation proof remain pending.
+Actions remain unavailable evidence, and renewed independent review remains
+pending. The agreed next boundary is a clean reviewed merge to `main`; tag,
+GitHub Release, exact tagged-artifact installation, and hosted CI remain outside
+the authorized boundary.
 
 The read-before-confinement advisory recorded in an earlier round of this table
 is substantially closed by INSTALL-023/025: the initial settings read now goes
