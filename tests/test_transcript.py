@@ -4,6 +4,11 @@ Field names here are not documented by Claude Code and were verified against
 real transcripts; these tests are what stops a refactor silently renaming one.
 """
 
+import json
+import os
+import subprocess
+import sys
+
 from agent_statusline import transcript
 
 
@@ -331,3 +336,180 @@ class TestRowShape:
         monkeypatch.setattr(transcript, "TSTATE", str(state_path))
 
         assert transcript.conversation_root(str(path)) == "root-123"
+
+
+class TestCachedStateShape:
+    def test_non_mapping_cache_row_is_replaced_without_losing_other_rows(
+        self, tmp_path, monkeypatch
+    ):
+        path = tmp_path / "session.jsonl"
+        path.write_text('{"type":"assistant","message":{"usage":{"input_tokens":3}}}\n')
+        other = tmp_path / "other.jsonl"
+        state_path = tmp_path / "state.json"
+        state_path.write_text(json.dumps({str(path): [], str(other): {"keep": True}}))
+        monkeypatch.setattr(transcript, "TSTATE", str(state_path))
+
+        assert transcript.transcript_totals(str(path))["in"] == 3
+        cache = json.loads(state_path.read_text())
+        assert cache[str(other)] == {"keep": True}
+        assert cache[str(path)]["totals"]["in"] == 3
+
+    def test_non_mapping_totals_and_invalid_offset_are_normalized(self, tmp_path, monkeypatch):
+        path = tmp_path / "session.jsonl"
+        path.write_text('{"type":"assistant","message":{"usage":{"output_tokens":4}}}\n')
+        state_path = tmp_path / "state.json"
+        state_path.write_text(
+            json.dumps(
+                {
+                    str(path): {
+                        "schema": transcript.SCHEMA,
+                        "offset": [],
+                        "totals": [],
+                    }
+                }
+            )
+        )
+        monkeypatch.setattr(transcript, "TSTATE", str(state_path))
+
+        totals = transcript.transcript_totals(str(path))
+
+        assert totals["out"] == 4
+        assert json.loads(state_path.read_text())[str(path)]["offset"] == path.stat().st_size
+
+    def test_nested_totals_containers_are_normalized_before_absorb(self, tmp_path, monkeypatch):
+        path = tmp_path / "session.jsonl"
+        path.write_text('{"type":"assistant","message":{"usage":{"input_tokens":2}}}\n')
+        state_path = tmp_path / "state.json"
+        state_path.write_text(
+            json.dumps(
+                {
+                    str(path): {
+                        "schema": transcript.SCHEMA,
+                        "offset": 0,
+                        "totals": {
+                            "tools": [],
+                            "cmds": "bad",
+                            "f_edit": {},
+                            "durs": "bad",
+                            "in": [],
+                            "last_bucket": [],
+                        },
+                    }
+                }
+            )
+        )
+        monkeypatch.setattr(transcript, "TSTATE", str(state_path))
+
+        totals = transcript.transcript_totals(str(path))
+
+        assert totals["in"] == 2
+        assert totals["tools"] == {}
+        assert totals["cmds"] == {}
+        assert totals["f_edit"] == []
+        assert totals["durs"] == []
+        assert totals["last_bucket"] is None
+
+    def test_invalid_offset_discards_cached_totals_before_replay(self, tmp_path, monkeypatch):
+        path = tmp_path / "session.jsonl"
+        path.write_text('{"type":"assistant","message":{"usage":{"input_tokens":5}}}\n')
+        state_path = tmp_path / "state.json"
+        for invalid_offset in (-1, True, []):
+            totals = transcript._blank()
+            totals.update({"in": 5, "turns": 1})
+            state_path.write_text(
+                json.dumps(
+                    {
+                        str(path): {
+                            "schema": transcript.SCHEMA,
+                            "offset": invalid_offset,
+                            "totals": totals,
+                        }
+                    }
+                )
+            )
+            monkeypatch.setattr(transcript, "TSTATE", str(state_path))
+
+            result = transcript.transcript_totals(str(path))
+
+            assert result["in"] == 5
+            assert result["turns"] == 1
+
+    def test_non_mapping_conversation_row_is_replaced(self, tmp_path, monkeypatch):
+        path = tmp_path / "session.jsonl"
+        path.write_text('{"type":"user","uuid":"root-123"}\n')
+        state_path = tmp_path / "state.json"
+        state_path.write_text(json.dumps({str(path): []}))
+        monkeypatch.setattr(transcript, "TSTATE", str(state_path))
+
+        assert transcript.conversation_root(str(path)) == "root-123"
+        assert json.loads(state_path.read_text())[str(path)]["root"] == "root-123"
+
+
+def test_truncated_final_line_is_deferred_without_double_counting(tmp_path, monkeypatch):
+    path = tmp_path / "session.jsonl"
+    first = '{"type":"assistant","message":{"usage":{"input_tokens":1}}}\n'
+    second = '{"type":"assistant","message":{"usage":{"input_tokens":2}}}'
+    path.write_text(first + second[:30])
+    state_path = tmp_path / "state.json"
+    monkeypatch.setattr(transcript, "TSTATE", str(state_path))
+
+    assert transcript.transcript_totals(str(path))["in"] == 1
+    with path.open("a") as fh:
+        fh.write(second[30:] + "\n")
+
+    assert transcript.transcript_totals(str(path))["in"] == 3
+    assert json.loads(state_path.read_text())[str(path)]["offset"] == path.stat().st_size
+
+
+def test_concurrent_readers_of_a_growing_transcript_do_not_regress_state(tmp_path):
+    transcript_path = tmp_path / "growing.jsonl"
+    transcript_path.write_text("")
+    state_dir = tmp_path / "state"
+    state_dir.mkdir()
+    env = dict(os.environ)
+    env["AGENT_STATUSLINE_STATE"] = str(state_dir)
+    env["HOME"] = str(tmp_path / "home")
+    source = os.path.abspath("src")
+    env["PYTHONPATH"] = source + os.pathsep + env.get("PYTHONPATH", "")
+    reader = r"""
+import sys, time
+from agent_statusline.transcript import transcript_totals
+for _ in range(50):
+    transcript_totals(sys.argv[1])
+    time.sleep(0.002)
+"""
+    writer = r"""
+import json, sys, time
+with open(sys.argv[1], "a") as handle:
+    for number in range(40):
+        record = {"type": "assistant", "message": {"usage": {"input_tokens": 1}}}
+        handle.write(json.dumps(record) + "\n")
+        handle.flush()
+        time.sleep(0.001)
+"""
+    readers = [
+        subprocess.Popen([sys.executable, "-c", reader, str(transcript_path)], env=env)
+        for _ in range(6)
+    ]
+    growing = subprocess.Popen([sys.executable, "-c", writer, str(transcript_path)], env=env)
+
+    assert growing.wait(timeout=20) == 0
+    assert [process.wait(timeout=20) for process in readers] == [0] * 6
+    inspect = r"""
+import json, sys
+from agent_statusline.transcript import transcript_totals
+print(json.dumps(transcript_totals(sys.argv[1])))
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", inspect, str(transcript_path)],
+        env=env,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    totals = json.loads(result.stdout.splitlines()[-1])
+    cache = json.loads((state_dir / "statusline-transcript.json").read_text())
+
+    assert totals["in"] == 40
+    assert totals["turns"] == 40
+    assert cache[str(transcript_path)]["offset"] == transcript_path.stat().st_size
