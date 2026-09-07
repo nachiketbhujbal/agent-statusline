@@ -40,6 +40,7 @@ from agent_statusline.render import (
     row,
     tok,
 )
+from agent_statusline.storage import append_json_if_changed, write_text
 from agent_statusline.transcript import (
     conversation_root,
     dig,
@@ -91,58 +92,75 @@ ORDER = [
 def ledger_update(sid, cost, project, name, root=None, pid=None):
     # Timestamps are ISO 8601 local-with-offset (see ledger.py); every comparison
     # goes through ledger.epoch so legacy numeric rows still sort correctly.
-    data = ledger.load()
-    s = data["sessions"]
-    now = time.time()
-    stamp = ledger.iso(now)
-    prev = s.get(sid, {})
-    session_cost = prev.get("cost", 0.0)
-    if cost is not None:
-        row = {
-            **prev,
-            "updated": stamp,
-            "state": "live",
-            "started": prev.get("started", stamp),
-            "project": project,
-            "name": name,
-            **({"root": root} if root else {}),
+    def mutate(data):
+        sessions = data["sessions"]
+        now = time.time()
+        stamp = ledger.iso(now)
+        previous = sessions.get(sid, {})
+        session_cost = previous.get("cost", 0.0)
+        changed = False
+        if cost is not None:
+            entry = {
+                **previous,
+                "updated": stamp,
+                "state": "live",
+                "started": previous.get("started", stamp),
+                "project": project,
+                "name": name,
+                **({"root": root} if root else {}),
+            }
+            if not isinstance(entry.get("root"), str):
+                entry.pop("root", None)
+            # Lifetime cost, carried across runs. Resuming a closed row makes it live
+            # again; `closed` is left in place as the last close time.
+            session_cost = ledger.apply_cost(entry, cost, pid)
+            sessions[sid] = entry
+            changed = (
+                abs(previous.get("cost", -1) - session_cost) > 1e-9
+                or previous.get("state") != "live"
+            )
+        rows = sorted(
+            sessions.values(), key=lambda row: ledger.epoch(row.get("updated")), reverse=True
+        )
+
+        def since(days):
+            cut = now - days * 86400
+            return sum(
+                row.get("cost", 0) for row in rows if ledger.epoch(row.get("updated")) >= cut
+            )
+
+        # A row counts as a real session only if it produced something: a cost, or a
+        # readable transcript (its conversation root).
+        real = [
+            row
+            for row in rows
+            if row.get("cost", 0) > 0 or (isinstance(row.get("root"), str) and row["root"])
+        ]
+        conversations = {
+            row["root"] if isinstance(row.get("root"), str) and row["root"] else id(row)
+            for row in real
         }
-        if not isinstance(row.get("root"), str):
-            row.pop("root", None)
-        # Lifetime cost, carried across runs. Resuming a closed row makes it live
-        # again; `closed` is left in place as the last close time.
-        session_cost = ledger.apply_cost(row, cost, pid)
-        s[sid] = row
-        if abs(prev.get("cost", -1) - session_cost) > 1e-9 or prev.get("state") != "live":
-            try:
-                ledger.save(data)
-            except Exception:
-                pass
-    rows = sorted(s.values(), key=lambda r: ledger.epoch(r.get("updated")), reverse=True)
+        result = {
+            "all": sum(row.get("cost", 0) for row in rows),
+            "n": len(real),
+            "convos": len(conversations),
+            "forks": max(0, len(real) - len(conversations)),
+            "last5": sum(row.get("cost", 0) for row in rows[:5]),
+            "d1": since(1),
+            "d7": since(7),
+            "d30": since(30),
+            "session": session_cost,
+            "base": sessions.get(sid, {}).get("cost_base", 0.0),
+            "runs": sessions.get(sid, {}).get("runs", 1),
+        }
+        return changed, result
 
-    def since(days):
-        cut = now - days * 86400
-        return sum(r.get("cost", 0) for r in rows if ledger.epoch(r.get("updated")) >= cut)
-
-    # A row counts as a real session only if it produced something: a cost, or a
-    # readable transcript (its conversation root).
-    real = [
-        r for r in rows if r.get("cost", 0) > 0 or (isinstance(r.get("root"), str) and r["root"])
-    ]
-    convos = {r["root"] if isinstance(r.get("root"), str) and r["root"] else id(r) for r in real}
-    return {
-        "all": sum(r.get("cost", 0) for r in rows),
-        "n": len(real),
-        "convos": len(convos),
-        "forks": max(0, len(real) - len(convos)),
-        "last5": sum(r.get("cost", 0) for r in rows[:5]),
-        "d1": since(1),
-        "d7": since(7),
-        "d30": since(30),
-        "session": session_cost,
-        "base": s.get(sid, {}).get("cost_base", 0.0),
-        "runs": s.get(sid, {}).get("runs", 1),
-    }
+    try:
+        return ledger.update(mutate)
+    except OSError:
+        # State is optional display metadata. Preserve the render when a private
+        # state transaction fails, without claiming that the update was published.
+        return mutate({"sessions": {}})[1]
 
 
 def rl_log(node5, node7):
@@ -164,21 +182,8 @@ def rl_log(node5, node7):
             "7d": optional_number(dig(node7, "used_percentage")),
             "7d_reset": optional_number(dig(node7, "resets_at")),
         }
-        last = None
-        if os.path.exists(RLHIST):
-            with open(RLHIST, "rb") as binary_fh:
-                binary_fh.seek(max(0, os.path.getsize(RLHIST) - 4096))
-                tailed = binary_fh.read().decode("utf-8", "replace").strip().splitlines()
-            if tailed:
-                try:
-                    last = json.loads(tailed[-1])
-                except Exception:
-                    last = None
-        if last and all(last.get(k) == v for k, v in cur.items()):
-            return
         cur["at"] = ledger.iso()
-        with open(RLHIST, "a") as text_fh:
-            text_fh.write(json.dumps(cur) + "\n")
+        append_json_if_changed(RLHIST, cur, ("5h", "5h_reset", "7d", "7d_reset"))
     except Exception:
         pass
 
@@ -213,10 +218,7 @@ def limit_seg(label, node, window_h):
 def main():
     raw = sys.stdin.read()
     try:
-        tmp = PAYLOAD + ".tmp"
-        with open(tmp, "w") as fh:
-            fh.write(raw)
-        os.replace(tmp, PAYLOAD)
+        write_text(PAYLOAD, raw)
     except Exception:
         pass
     try:
