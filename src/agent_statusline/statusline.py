@@ -92,7 +92,10 @@ ORDER = [
 def ledger_update(sid, cost, project, name, root=None, pid=None):
     # Timestamps are ISO 8601 local-with-offset (see ledger.py); every comparison
     # goes through ledger.epoch so legacy numeric rows still sort correctly.
+    computed_result = None
+
     def mutate(data):
+        nonlocal computed_result
         sessions = data["sessions"]
         now = time.time()
         stamp = ledger.iso(now)
@@ -153,6 +156,7 @@ def ledger_update(sid, cost, project, name, root=None, pid=None):
             "base": sessions.get(sid, {}).get("cost_base", 0.0),
             "runs": sessions.get(sid, {}).get("runs", 1),
         }
+        computed_result = result
         return changed, result
 
     try:
@@ -160,6 +164,10 @@ def ledger_update(sid, cost, project, name, root=None, pid=None):
     except OSError:
         # State is optional display metadata. Preserve the render when a private
         # state transaction fails, without claiming that the update was published.
+        # Publication happens after the updater, so retain its exact-money result
+        # when available rather than discarding already-read historical totals.
+        if computed_result is not None:
+            return computed_result
         return mutate({"sessions": {}})[1]
 
 
