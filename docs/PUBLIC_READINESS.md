@@ -7,15 +7,22 @@ identifier.
 
 ## Current verdict
 
-**No-go for public visibility and no-go for the v0.2.12 tag until the reachable
-history rewrite in [ADR 0034](adrs/0034-rewrite-reachable-pre-public-history-once.md)
-is complete and independently verified.**
+**No-go for public visibility. The ordinary reachable history rewrite is
+complete, but v0.2.12 remains no-go until the renewed prevention candidate is
+independently reviewed and passes its normal private hosted release sequence.**
 
-The v0.2.12 working tree removes private billing detail and adds prevention and
-audit tooling. That does not remove prior blobs or commit metadata. Current
-published refs still reach one unchanged private-billing blob through 99 commit
-snapshots, and 12 release-spine merge commits carry a personal maintainer author
-identity. The repository remains private.
+The ADR 0034 cutover atomically rewrote all 21 intended ordinary branch and tag
+refs. A fresh fetch limited to ordinary heads and tags passes the complete
+reachable-history audit. Existing v0.2.4 through v0.2.11 Release assets match
+the independently verified artifacts built from the rewritten tags.
+
+GitHub still retains twelve provider-managed historical pull heads. Together
+they reach 79 old commits, including 11 prior-identity commits and one
+superseded private-billing blob. None of their pull-request diffs changed the
+private ADR path, but a deliberate fetch can still retrieve the refs. The
+maintainer accepted that bounded exposure in [ADR 0035](adrs/0035-accept-historical-pull-refs-and-gate-future-ancestry.md)
+rather than replace the repository. Claims below therefore distinguish clean
+ordinary refs from the accepted historical pull namespace.
 
 Unreachable commit objects are deliberately outside this audit. The maintainer
 accepted that boundary for this migration and will consider those objects
@@ -28,27 +35,30 @@ separately. No GitHub Support request is planned.
   account email.
 - This checkout has a repository-local no-reply identity and refuses guessed
   identities.
-- Automatic `main` CI validates the generated release-spine commit identity.
+- Every pull request and `main` push audits the complete ancestry of `HEAD`,
+  including documentation-only changes. Only the minimal ancestry job runs for
+  documentation-only refs; the full gate remains conservatively skipped.
+- Automatic `main` CI also validates the generated release-spine commit
+  identity when the full gate applies.
 - Release validates the annotated tagger and peeled commit identities before
-  testing, building, or publishing.
+  testing, building, or publishing, and audits the tagged commit's ancestry.
 - `scripts/verify_public_readiness.py` rejects missing private-root ignores,
   mutable workflow action refs, the undefined dependency prefix, drift from the
   lean workflow boundary, and exact billing evidence in the current ADR.
 - `scripts/verify_artifacts.py` rejects private paths and private textual
   evidence from wheel and source-distribution contents.
-- `scripts/audit_reachable_history.py` audits local, `origin`, and tag refs for
-  private paths, exact billing evidence, personal-provider email content, and
-  non-no-reply commit or tag identities. It intentionally fails before the
-  rewrite and must pass afterward.
+- `scripts/audit_reachable_history.py` audits local, `origin`, and tag refs—or
+  an explicitly selected ref and its ancestry—for private paths, exact billing
+  evidence, personal-provider email content, and non-no-reply identities.
 
-## Required rewrite evidence
+## Completed rewrite evidence
 
-Before any remote ref changes, preserve a private offline bundle and record its
+Before remote ref changes, a private offline bundle preserved and recorded its
 permissions, object verification result, checksum, and exact included refs.
-Perform the transformation in a disposable mirror and produce an old-to-new
+The transformation ran in a disposable mirror and produced an old-to-new
 mapping for every changed branch, commit, and annotated tag object.
 
-The rehearsal must prove all of the following:
+The rehearsal and cutover proved all of the following:
 
 1. every intended current branch and release tag is accounted for;
 2. no backup, mirror, pull-request, or temporary ref is in the push set;
@@ -61,17 +71,18 @@ The rehearsal must prove all of the following:
    its original version; and
 8. one independent reviewer accepts the exact rewritten candidate and mapping.
 
-Any correction changes the candidate and requires renewed exact-SHA review.
+The rewritten candidate passed the full local gate and one independent review
+before cutover. The post-cutover ancestry prevention change creates a new
+candidate and therefore requires a renewed exact-SHA review.
 
-## Remote cutover boundary
+## Completed remote cutover
 
-The remote rewrite is a later, destructive boundary. It requires a separate
-maintainer check-in after the offline bundle and rehearsal evidence are
-available. At that boundary, workflows and blocking rules are changed only as
-explicitly authorized; branches and tags are updated from an enumerated ref
-manifest rather than a broad mirror push. Existing Releases and uploaded
-artifacts are then reconciled against their rewritten tags before workflows are
-restored.
+After explicit maintainer authorization, both workflows were suspended, all 20
+changed or new refs were applied in one atomic push with exact old-value leases,
+and the complete 21-ref ordinary namespace was verified. The twelve accepted
+pull refs were separately required to retain their exact inventoried values.
+The existing Releases were reconciled against their rewritten tags from private
+rollback-backed artifacts before workflow restoration.
 
 Historical Actions logs and artifacts must be inventoried before public
 conversion because GitHub makes private-repository Actions history visible when
@@ -80,7 +91,7 @@ orphan-object work remain separate from the v0.2.12 history cleanup.
 
 ## Final public decision
 
-After the in-place rewrite, release repair, fresh hosted evidence, and remote
-reachable-ref audit all pass, update this document with exact public-safe
-evidence and present a new visibility recommendation. A passing repository does
-not itself authorize changing visibility.
+After renewed exact-SHA review, fresh hosted evidence, and the private v0.2.12
+release all pass, present a new visibility recommendation that explicitly
+retains the ADR 0035 pull-ref caveat. A passing repository does not itself
+authorize changing visibility.

@@ -19,7 +19,8 @@ def valid_repository(tmp_path):
         f"""name: CI
 on:
   push:
-    paths-ignore: ["docs/**", "**/*.md", "LICENSE"]
+    branches: [main]
+  pull_request:
   workflow_dispatch:
     inputs:
       hosted_macos:
@@ -28,8 +29,18 @@ permissions:
   contents: read
 jobs:
   checks:
+    outputs:
+      full: ${{{{ steps.scope.outputs.full }}}}
     steps:
       - uses: actions/checkout@{PIN} # v7.0.1
+        with:
+          fetch-depth: 0
+      - run: python scripts/audit_reachable_history.py --ref HEAD
+      - id: scope
+        run: git diff --quiet "${{BASE_SHA}}" HEAD -- .
+  test:
+    needs: checks
+    if: needs.checks.outputs.full == 'true'
   macos:
     if: github.event_name == 'workflow_dispatch' && inputs.hosted_macos
 """,
@@ -46,6 +57,9 @@ jobs:
   release:
     steps:
       - uses: actions/checkout@{PIN} # v7
+        with:
+          fetch-depth: 0
+      - run: python scripts/audit_reachable_history.py --ref HEAD
 """,
     )
     write(
@@ -142,6 +156,49 @@ def test_public_readiness_policy_rejects_exact_private_billing(tmp_path):
 
     assert result.returncode == 1
     assert "exact private billing data" in result.stderr
+
+
+def test_public_readiness_policy_rejects_path_skipped_ancestry_audit(tmp_path):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "ci.yml"
+    write(workflow, workflow.read_text() + '\npaths-ignore: ["docs/**"]\n')
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert "ancestry audit must not skip documentation-only refs" in result.stderr
+
+
+def test_public_readiness_policy_requires_ci_ancestry_audit(tmp_path):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "ci.yml"
+    write(
+        workflow,
+        workflow.read_text().replace(
+            "python scripts/audit_reachable_history.py --ref HEAD", "python -c pass", 1
+        ),
+    )
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert "missing lean-policy fragment" in result.stderr
+
+
+def test_public_readiness_policy_requires_release_ancestry_audit(tmp_path):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "release.yml"
+    write(
+        workflow,
+        workflow.read_text().replace(
+            "python scripts/audit_reachable_history.py --ref HEAD", "python -c pass"
+        ),
+    )
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert "missing release-policy fragment" in result.stderr
 
 
 def test_public_readiness_policy_accepts_release_commit_no_reply_identity(tmp_path):

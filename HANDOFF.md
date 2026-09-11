@@ -11,15 +11,17 @@ the roadmap, or accepted ADRs.
 - Branch owner: Codex; only the owner changes the release branch.
 - Reviewer role: one independent read-only reviewer, assigned after the exact
   candidate SHA is frozen. No second reviewer or delegated worker runs beside it.
-- Both hosted workflows are active. Ordinary CI is Linux-only, hosted macOS is
-  opt-in, and redundant runs are not dispatched while the repository is private.
+- Both hosted workflows are active. Every pull request and `main` push runs one
+  complete-ancestry audit; documentation-only refs skip the full Linux gate,
+  hosted macOS remains opt-in, and redundant runs are not dispatched while the
+  repository is private.
 - Runtime dependencies remain empty and versions remain Git-tag-derived.
 
 The v0.2.12 release aligns public documentation with the released source, pins
 third-party workflow actions to reviewed immutable commits, restores every root
 private-workspace ignore, removes private billing detail from tracked records,
-prevents another personal release identity, and stages the recoverable
-reachable-history rewrite required before its tag. It changes no renderer,
+prevents another personal release identity or unsafe PR ancestry, and completes
+the recoverable reachable-history rewrite required before its tag. It changes no renderer,
 display contract, runtime dependency, live configuration, or repository
 visibility.
 
@@ -53,15 +55,14 @@ a whole or import a later slice into the current release.
 
 ## Resume point
 
-Run the release-equivalent gate in [AGENTS.md](AGENTS.md), freeze one prevention
-candidate SHA, and obtain one independent review of that exact SHA. Do not tag
-or release it: the reachable-history audit is expected to fail until the later
-ADR 0034 rewrite. Preserve a verified offline bundle and stop for maintainer
-approval before any workflow disablement, protection change, force-with-lease
-ref update, tag movement, or release repair. The rewritten candidate requires a
-renewed exact-SHA review before the normal private v0.2.12 release sequence.
-Do not change visibility; [PUBLIC_READINESS.md](docs/PUBLIC_READINESS.md) defines
-the rewrite, conversion, and post-conversion verification boundaries.
+The ADR 0034 ordinary-ref rewrite and historical Release repair are complete;
+twelve GitHub-managed historical pull heads remain as the explicitly accepted
+ADR 0035 residue. Run the release-equivalent gate in [AGENTS.md](AGENTS.md),
+freeze the renewed ancestry-prevention candidate, and obtain one independent
+review of that exact SHA. Then restore workflows, use only the automatic PR and
+`main` runs, and release v0.2.12 from the verified merge. Do not change
+visibility; [PUBLIC_READINESS.md](docs/PUBLIC_READINESS.md) defines the accepted
+pull-ref caveat, conversion, and post-conversion verification boundaries.
 
 Durable decisions live in [ADRs](docs/adrs/README.md), completed behavior in the
 [changelog](docs/CHANGELOG.md), review evidence in

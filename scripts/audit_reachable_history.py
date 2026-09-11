@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Audit reachable Git refs for private billing evidence and personal identities."""
 
+import argparse
 import re
 import subprocess
 import sys
@@ -147,22 +148,35 @@ def check_reachable_objects(root: Path, refs: Sequence[str]) -> list[str]:
     return errors
 
 
-def audit(root: Path) -> list[str]:
+def audit(root: Path, explicit_refs: Sequence[str] = ()) -> list[str]:
     root = root.resolve()
-    refs = published_refs(root)
+    refs = sorted(set(explicit_refs)) if explicit_refs else published_refs(root)
     if not refs:
         return ["reachable history: no local, origin, or tag refs found"]
     errors = []
     errors.extend(check_commit_identities(root, refs))
-    errors.extend(check_tag_identities(root))
+    if not explicit_refs:
+        errors.extend(check_tag_identities(root))
     errors.extend(check_reachable_objects(root, refs))
     return sorted(set(errors))
 
 
+def _parse_args(argv: Sequence[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("root", nargs="?", type=Path, default=Path(__file__).resolve().parents[1])
+    parser.add_argument(
+        "--ref",
+        action="append",
+        default=[],
+        help="audit only this ref and its complete ancestry; may be repeated",
+    )
+    return parser.parse_args(argv[1:])
+
+
 def main(argv: Sequence[str]) -> int:
-    root = Path(argv[1]) if len(argv) > 1 else Path(__file__).resolve().parents[1]
+    args = _parse_args(argv)
     try:
-        errors = audit(root)
+        errors = audit(args.root, args.ref)
     except (OSError, ValueError) as error:
         print(f"reachable-history audit: {error}", file=sys.stderr)
         return 2
@@ -170,7 +184,8 @@ def main(argv: Sequence[str]) -> int:
         for error in errors:
             print(f"reachable-history audit: {error}", file=sys.stderr)
         return 1
-    print("reachable-history audit passed: refs, identities, paths, and private evidence")
+    scope = "selected ref ancestry" if args.ref else "published refs"
+    print("reachable-history audit passed: " f"{scope}, identities, paths, and private evidence")
     return 0
 
 

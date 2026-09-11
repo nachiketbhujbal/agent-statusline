@@ -26,10 +26,17 @@ GitHub and repository-local no-reply controls now prevent another maintainer
 merge from exposing a personal address. Automatic `main` CI validates the
 generated merge identity, Release validates the annotated tagger and peeled
 commit before publication, artifact policy scans archive contents, and a
-deterministic audit covers only reachable branches and tags. ADR 0034 defines a
-recoverable one-time in-place rewrite; v0.2.12 remains unreleased until that
-audit passes on rewritten history. Runtime behavior and dependencies are
-unchanged.
+deterministic audit covers ordinary reachable branches and tags. The ADR 0034
+one-time rewrite and historical Release repair are complete. Twelve immutable
+GitHub-managed historical pull heads remain as the explicitly accepted ADR 0035
+residue.
+
+CI now audits the complete ancestry of every pull request and `main` push,
+including documentation-only refs, while skipping the expensive gate for
+documentation-only changes. Release audits the tagged commit's complete
+ancestry before publication. The policy verifier enforces both workflow steps,
+full checkout history, and the absence of path filters that could bypass the
+audit. Runtime behavior and dependencies are unchanged.
 
 ## 0.2.11
 

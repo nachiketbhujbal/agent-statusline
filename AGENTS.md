@@ -54,7 +54,8 @@ tags through hatch-vcs; never duplicate a version string in source.
 - Both hosted workflows are active. Conserve private-repository Actions usage:
   do not dispatch a duplicate run when an automatic pull-request or `main` run
   already proves the same SHA, and request hosted macOS only deliberately.
-  Documentation-only changes remain outside ordinary hosted runs.
+  Documentation-only changes run only the ancestry audit and remain outside the
+  full hosted gate.
 - Pin future workflow action updates to immutable commits. Do not weaken local
   evidence when a hosted lane is intentionally skipped.
 - Record durable decisions as one numbered ADR under `docs/adrs/`. Supersede an

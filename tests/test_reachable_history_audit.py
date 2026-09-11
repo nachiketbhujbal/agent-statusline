@@ -35,9 +35,9 @@ def repository(tmp_path):
     return tmp_path
 
 
-def run_audit(root):
+def run_audit(root, *args):
     return subprocess.run(
-        [sys.executable, str(AUDIT), str(root)],
+        [sys.executable, str(AUDIT), *args, str(root)],
         capture_output=True,
         text=True,
     )
@@ -107,3 +107,27 @@ def test_reachable_history_audit_ignores_unreferenced_commit_objects(tmp_path):
     result = run_audit(root)
 
     assert result.returncode == 0, result.stderr
+
+
+def test_explicit_ref_audits_only_its_complete_ancestry(tmp_path):
+    root = repository(tmp_path)
+    git(root, "config", "user.email", "maintainer@example.com")
+    write(root / "README.md", "personal descendant\n")
+    git(root, "add", "README.md")
+    git(root, "commit", "-m", "personal descendant")
+
+    clean_result = run_audit(root, "--ref", "v0.2.12")
+    descendant_result = run_audit(root, "--ref", "HEAD")
+
+    assert clean_result.returncode == 0, clean_result.stderr
+    assert descendant_result.returncode == 1
+    assert "author email is not an approved no-reply identity" in descendant_result.stderr
+
+
+def test_explicit_ref_rejects_unknown_ref(tmp_path):
+    root = repository(tmp_path)
+
+    result = run_audit(root, "--ref", "refs/heads/missing")
+
+    assert result.returncode == 2
+    assert "unknown revision" in result.stderr

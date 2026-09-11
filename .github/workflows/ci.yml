@@ -17,9 +17,7 @@ name: CI
 on:
   push:
     branches: [main]
-    paths-ignore: ["docs/**", "**/*.md", "LICENSE"]
   pull_request:
-    paths-ignore: ["docs/**", "**/*.md", "LICENSE"]
   workflow_dispatch:
     inputs:
       hosted_macos:
@@ -40,19 +38,40 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      full: ${{ steps.scope.outputs.full }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0        # hatch-vcs derives the version from tags
+      - name: complete PR or main ancestry is public-safe
+        run: python scripts/audit_reachable_history.py --ref HEAD
+
+      - name: preserve the documentation-only cost boundary
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            echo "full=true" >> "${GITHUB_OUTPUT}"
+          elif git diff --quiet "${BASE_SHA}" HEAD -- . ':(exclude)docs/**' ':(exclude)**/*.md' ':(exclude)LICENSE'; then
+            echo "full=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "full=true" >> "${GITHUB_OUTPUT}"
+          fi
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        if: steps.scope.outputs.full == 'true'
         with:
           python-version: "3.12"
-      - run: pip install ruff build
+      - if: steps.scope.outputs.full == 'true'
+        run: pip install ruff build
 
       - name: lint
+        if: steps.scope.outputs.full == 'true'
         run: ruff check src tests scripts install.py
 
       - name: no runtime dependencies (ADR 0004)
+        if: steps.scope.outputs.full == 'true'
         run: |
           python - <<'PY'
           import sys, tomllib
@@ -62,18 +81,21 @@ jobs:
           print("no runtime dependencies")
           PY
       - name: the package imports with nothing installed
+        if: steps.scope.outputs.full == 'true'
         run: PYTHONPATH=src python -c "import agent_statusline.statusline"
 
       - name: documentation and public-readiness policy
+        if: steps.scope.outputs.full == 'true'
         run: |
           python scripts/verify_docs.py
           python scripts/verify_public_readiness.py
 
       - name: generated main commit uses the protected release identity
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: steps.scope.outputs.full == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: python scripts/verify_public_readiness.py --release-commit HEAD
 
       - name: install smoke -- checkout shape
+        if: steps.scope.outputs.full == 'true'
         env:
           CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-checkout
         run: |
@@ -90,9 +112,11 @@ jobs:
           python3 install.py --uninstall
 
       - name: build
+        if: steps.scope.outputs.full == 'true'
         run: python -m build
 
       - name: install smoke -- installed shape
+        if: steps.scope.outputs.full == 'true'
         env:
           CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-installed
           AGENT_STATUSLINE_STATE: ${{ runner.temp }}/state
@@ -142,8 +166,10 @@ jobs:
           agent-statusline uninstall
 
       - name: distribution archives satisfy evidence and privacy policy
+        if: steps.scope.outputs.full == 'true'
         run: python scripts/verify_artifacts.py dist/*
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: steps.scope.outputs.full == 'true'
         with:
           name: dist
           path: dist/
@@ -152,6 +178,8 @@ jobs:
   # Linux only: nothing here is platform-specific except the memory probe, which
   # the macOS job below covers when it is deliberately requested.
   test:
+    needs: checks
+    if: needs.checks.outputs.full == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:

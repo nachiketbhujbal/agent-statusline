@@ -234,6 +234,9 @@ Current release:
   public-safe lean-CI and conversion boundary in ADR 0033.
 - Prevent future personal merge/tag identities and execute the recoverable,
   one-time reachable-history migration in ADR 0034 before tagging v0.2.12.
+- Accept only the twelve immutable historical pull heads recorded by ADR 0035;
+  audit every future pull-request, `main`, and release ancestry while retaining
+  the documentation-only full-gate cost boundary.
 - Record a reproducible history/ref, artifact, secret/environment, workflow, and
   repository-setting audit in [PUBLIC_READINESS.md](PUBLIC_READINESS.md).
 - Release under the current private process. Present a direct visibility

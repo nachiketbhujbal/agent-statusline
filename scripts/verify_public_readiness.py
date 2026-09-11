@@ -77,13 +77,22 @@ def check_lean_policy(root: Path) -> list[str]:
     ci = _read(root / ".github" / "workflows" / "ci.yml", errors)
     release = _read(root / ".github" / "workflows" / "release.yml", errors)
     required_ci = (
-        'paths-ignore: ["docs/**", "**/*.md", "LICENSE"]',
+        "pull_request:",
         "workflow_dispatch:",
         "hosted_macos:",
         "if: github.event_name == 'workflow_dispatch' && inputs.hosted_macos",
         "contents: read",
+        "fetch-depth: 0",
+        "python scripts/audit_reachable_history.py --ref HEAD",
+        'git diff --quiet "${BASE_SHA}" HEAD --',
+        "if: needs.checks.outputs.full == 'true'",
     )
-    required_release = ('tags: ["v*"]', "contents: write")
+    required_release = (
+        'tags: ["v*"]',
+        "contents: write",
+        "fetch-depth: 0",
+        "python scripts/audit_reachable_history.py --ref HEAD",
+    )
     for fragment in required_ci:
         if fragment not in ci:
             errors.append(f".github/workflows/ci.yml: missing lean-policy fragment: {fragment}")
@@ -92,6 +101,10 @@ def check_lean_policy(root: Path) -> list[str]:
             errors.append(
                 f".github/workflows/release.yml: missing release-policy fragment: {fragment}"
             )
+    if "paths-ignore:" in ci:
+        errors.append(
+            ".github/workflows/ci.yml: ancestry audit must not skip documentation-only refs"
+        )
     return errors
 
 

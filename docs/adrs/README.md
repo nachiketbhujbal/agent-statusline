@@ -40,6 +40,7 @@ old one rather than rewriting why the earlier choice was made.
 | [0032](0032-normalize-malformed-host-input-at-the-boundary.md) | Normalize malformed host input at the boundary |
 | [0033](0033-pin-lean-ci-and-separate-public-conversion.md) | Pin lean CI and separate public conversion |
 | [0034](0034-rewrite-reachable-pre-public-history-once.md) | Rewrite reachable pre-public history once for privacy |
+| [0035](0035-accept-historical-pull-refs-and-gate-future-ancestry.md) | Accept historical pull refs and gate future ancestry |
 
 ## Reading order
 

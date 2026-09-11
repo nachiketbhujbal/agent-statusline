@@ -28,6 +28,9 @@ jobs:
           python-version: "3.12"
       - run: pip install build pytest
 
+      - name: complete release ancestry is public-safe
+        run: python scripts/audit_reachable_history.py --ref HEAD
+
       - name: documentation and public-readiness policy
         run: |
           python scripts/verify_docs.py
