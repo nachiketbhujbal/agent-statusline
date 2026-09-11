@@ -4,7 +4,23 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.2.4
+## 0.2.5
+
+Rolling `24h`, `7d`, and `30d` costs now use timestamped positive lifetime
+deltas instead of assigning an entire session lifetime to its latest update
+([ADR 0022](adrs/0022-account-rolling-costs-with-timestamped-deltas.md)).
+Existing lifetimes migrate as non-accrual seeds: provably in-window amounts are
+included, ended-before amounts are excluded, and uncertain amounts produce an
+exact `≥` lower bound. Assistant timestamps drive attribution when available,
+with observation fallback and a future-time clamp. Each horizon decides
+completeness independently, invalid or non-finite evidence cannot make an exact
+claim, and valid journal evidence is retained for 35 days.
+
+Lifetime session, resume/base/run, `last5`, `all`, row order, and every non-cost
+field remain compatible. Ledger mutation and event publication stay inside the
+v0.2.4 locked atomic transaction; no runtime dependency is added.
+
+## 0.2.4
 
 Package-owned runtime state is now private and serialized through one
 dependency-free storage service

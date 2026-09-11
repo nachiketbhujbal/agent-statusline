@@ -53,10 +53,11 @@ once the regression that demonstrates it exists in this repository.
 | PROBE-002 | Low | Concurrent stale callers for the same probe key could each return a different computed value even though only one became the cached value for that interval. | 0.2.4 | Resolved by returning the winner selected inside the locked transaction, with a same-key convergence regression |
 | PROBE-003 | Medium | An oversized positive or negative persisted probe timestamp could raise `OverflowError` during freshness arithmetic and remove probe-backed status information. | 0.2.4 | Resolved by treating freshness arithmetic overflow as stale cache state, with both-sign regressions |
 | RUNTIME-001 | High | If atomic ledger publication failed after the locked updater computed a complete aggregate, runtime fallback discarded that result and returned current-payload-only totals, omitting historical exactly accounted money from the redraw. | 0.2.4 | Resolved by retaining the computed aggregate when available while preserving prior ledger bytes, with a fail-after-updater exact-money regression |
+| COST-001 | High | Rolling `24h`, `7d`, and `30d` totals assigned each recently updated session's complete lifetime cost to the window, so resuming an old session could report historical money as recent spend. | 0.2.5 | Resolved by [ADR 0022](adrs/0022-account-rolling-costs-with-timestamped-deltas.md): locked positive-delta events, non-accrual migration seeds, assistant-time attribution, independent completeness, and explicit exact lower bounds |
 | RECORD-006 | Low | The first aggregate owner record reported 85.22% full-suite coverage from an existing cumulative coverage database rather than the reproducible clean exact-target result of 83.23%. | 0.2.4 | Resolved by withdrawing 85.22%, recording the rejected target's clean 83.23% result, and running the correction suite with a fresh external coverage database |
 | RECORD-007 | Low | The corrected aggregate owner record narrowed clean subprocess-aware coverage to 85.34%-85.44%, but independent runs across supported interpreters and clean checkout shapes produced measurements outside that range. | 0.2.4 | Resolved by removing the unsupported range and retaining only the reproducible fact that the complete 390-test suite passes the enforced 77.0% coverage threshold; individual measurements remain environment-specific evidence |
 
-## v0.2.4 reviewed inputs and aggregate RC owner status
+## v0.2.4 reviewed release record
 
 The accepted implementation boundary is the released v0.2.3 commit
 `0375e6b2c6a5fc473c0ff335f76df30b5cdb7bcb` followed by these independently
@@ -111,16 +112,15 @@ percentage or range; the reproducible release claim is that all 390 tests pass
 the enforced 77.0% coverage threshold. This records-only owner correction
 changes no runtime, test, workflow, configuration, or release mechanics.
 
-The dormant hosted workflow's checkout-shape assertion still expects the
-released v0.2.0 literal `python3 ~/.claude/...` command. That assertion is stale
-against the v0.2.1 contract requiring the exact interpreter and selected
-configuration directory, so it is not counted as passing evidence and is not
-changed in this release. The correct contract passed locally. This is owner
-verification, not an independent corrected-aggregate verdict: Linux and hosted
-Actions remain unavailable evidence, and renewed independent review remains
-pending. The agreed next boundary is a clean reviewed merge to `main`; tag,
-GitHub Release, exact tagged-artifact installation, and hosted CI remain outside
-the authorized boundary.
+Final independent review accepted exact corrected head
+`f7952f046bebc2dca703478ca954093dbcc08ec2`, which merged through PR #4 at
+`04120ec52adb325462bbf3df50fcde4a662f0aff`. PR #5 then merged the separately
+reviewed workflow assertion correction at exact release commit
+`73643bb9fe5b846202d3311f7a0f4a1bf6b3af87`. Hosted CI run 34555947827 passed
+that exact main commit on Python 3.9 through 3.13, with macOS deliberately
+skipped. Annotated tag `v0.2.4`, Release run 34556042333, the GitHub Release,
+and downloaded wheel/sdist digests all agree with that commit; the downloaded
+wheel passed an isolated installed lifecycle and has no runtime dependencies.
 
 The read-before-confinement advisory recorded in an earlier round of this table
 is substantially closed by INSTALL-023/025: the initial settings read now goes

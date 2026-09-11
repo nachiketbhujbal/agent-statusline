@@ -16,8 +16,8 @@ installed-artifact evidence.
 | 0.2.1 | Ownership-safe installation and removal | **Released** |
 | 0.2.2 | Locked local quality gate | **Released** |
 | 0.2.3 | Malformed host-input resilience | **Released** |
-| 0.2.4 | Private, serialized runtime state | **Active** |
-| 0.2.5 | Exact rolling-cost attribution | Planned |
+| 0.2.4 | Private, serialized runtime state | **Released** |
+| 0.2.5 | Exact rolling-cost attribution | **Current** |
 | 0.2.6 | Session-scoped process evidence | Planned |
 | 0.2.7 | Bounded observation state | Planned |
 | 0.2.8 | Tracked governance and review records | Planned |
@@ -27,14 +27,10 @@ installed-artifact evidence.
 | 0.2.12 | Documentation, pinned workflow, and public-readiness closure | Planned |
 | 0.3.0 | Production-ready milestone | Planned after the patch train |
 
-0.2.1 through 0.2.3 are tagged and released. 0.2.4 is active on this branch;
-its implementation components and release records have independent exact-SHA
-acceptance. Independent review rejected the first aggregate RC, and its bounded
-correction has passed the complete local owner gate plus an isolated Python 3.9
-pre-release-wheel proof. Renewed exact-SHA review, the tag, hosted evidence, and
-exact tagged-artifact installation proof remain pending. Nothing in 0.2.5 and
-later is present, and a later release's evidence can never stand in for an
-earlier tag's.
+0.2.1 through 0.2.4 are tagged and released. The current 0.2.5 boundary replaces
+whole-session rolling-window attribution with timestamped positive lifetime
+deltas and honest lower bounds; later releases remain absent. Every release's
+review, hosted CI, tag, and artifact evidence must stand on its own.
 
 ## 0.2.1 — ownership-safe installation
 
@@ -85,8 +81,7 @@ Released:
 
 ## 0.2.4 — private, serialized runtime state
 
-Corrected and locally release-gated on this branch; renewed independent
-aggregate acceptance remains pending:
+Released:
 
 - Route package-owned ledger, transcript, probe, payload, hook, and rate-history
   state through one dependency-free storage service.
@@ -106,3 +101,21 @@ aggregate acceptance remains pending:
   probe fallback behavior, and exact computed ledger aggregates.
 - Preserve all ten rows, valid output, and the existing accounting model. This
   release adds no v0.2.5 cost-event or attribution semantics.
+
+## 0.2.5 — exact rolling-cost attribution
+
+Current release:
+
+- Journal finite positive lifetime-cost deltas with observation and assistant
+  timestamps inside the existing locked ledger transaction.
+- Migrate existing lifetimes as idempotent non-accrual seeds without inventing
+  historical spend timing.
+- Compute `24h`, `7d`, and `30d` independently with inclusive boundaries and an
+  exact `≥` lower-bound marker whenever relevant evidence is unattributable or
+  invalid.
+- Prefer newest assistant time, fall back to observation time, and clamp future
+  evidence so a bad clock cannot keep spend inside every window.
+- Retain 35 days of valid evidence without pruning malformed rows merely to
+  manufacture completeness.
+- Preserve lifetime session, resume/base/run, `last5`, `all`, row order, all
+  non-cost fields, private storage, and the zero-runtime-dependency boundary.
