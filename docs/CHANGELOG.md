@@ -4,7 +4,23 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.2.7
+## Unreleased — 0.2.8
+
+Project authority and continuation state are now recoverable from tracked,
+public-safe files. `AGENTS.md` is the authoritative instruction record,
+`HANDOFF.md` is the concise current-state record, and research is separated from
+release commitments. [ADR 0026](adrs/0026-coordinate-one-owner-and-one-reviewer.md)
+establishes one branch owner and one independent reviewer, serial review with at
+most one reviewer active, owner-only corrections, and renewed exact-SHA review
+after any correction.
+
+A deterministic documentation check validates relative Markdown links, ADR
+index/file agreement and intentional reservations, release-version agreement,
+the ownership/review boundary, and public-safe governance text. Runtime,
+rendering, installation, accounting, storage, live configuration, workflow
+triggers, and repository visibility are unchanged.
+
+## 0.2.7
 
 Ephemeral observation state now has explicit lifecycle bounds
 ([ADR 0025](adrs/0025-bound-ephemeral-observation-state.md)). Probe rows expire
