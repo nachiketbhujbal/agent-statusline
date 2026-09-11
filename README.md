@@ -35,11 +35,13 @@ Rows are ordered by how often they answer a question worth asking — `PROJECT` 
 
 | document | what is in it |
 | --- | --- |
+| [HANDOFF.md](HANDOFF.md) | the concise current release boundary and exact resume point |
 | [docs/FIELDS.md](docs/FIELDS.md) | every row and every field, and where each value comes from |
 | [docs/INTERNALS.md](docs/INTERNALS.md) | data sources, width fitting, adding a field, how undocumented signals were discovered |
 | [docs/adrs/](docs/adrs/README.md) | architecture decision records — one file per durable decision, with an index. **Read 0001, 0014 and 0004 before changing anything that touches money or dependencies** |
 | [docs/DEFERRED.md](docs/DEFERRED.md) | ideas considered and consciously not built |
 | [docs/PORTING.md](docs/PORTING.md) | adapting this to Codex or another agent, and why Codex cannot run it as-is |
+| [docs/RESEARCH.md](docs/RESEARCH.md) | dated measurements and open questions that are not release commitments |
 | [docs/CHANGELOG.md](docs/CHANGELOG.md) | what changed in each release, and what is queued for the next one |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | the 0.2.x release sequence and what each one is for |
 | [docs/CODE_REVIEW.md](docs/CODE_REVIEW.md) | review findings, with the release that resolved each |

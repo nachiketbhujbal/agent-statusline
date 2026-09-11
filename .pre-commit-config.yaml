@@ -11,6 +11,12 @@ repos:
 
   - repo: local
     hooks:
+      - id: documentation-policy
+        name: Documentation consistency and privacy
+        entry: uv run --locked python scripts/verify_docs.py
+        language: system
+        pass_filenames: false
+        always_run: true
       - id: ruff
         name: Ruff lint
         entry: uv run --locked ruff check --force-exclude

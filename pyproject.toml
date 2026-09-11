@@ -48,7 +48,16 @@ version-file = "src/agent_statusline/_version.py"
 packages = ["src/agent_statusline"]
 
 [tool.hatch.build.targets.sdist]
-include = ["/src", "/tests", "/docs", "/scripts", "/install.py", "/README.md"]
+include = [
+    "/src",
+    "/tests",
+    "/docs",
+    "/scripts",
+    "/install.py",
+    "/AGENTS.md",
+    "/HANDOFF.md",
+    "/README.md",
+]
 exclude = ["/.pvt", "/.worktrees"]
 
 [dependency-groups]

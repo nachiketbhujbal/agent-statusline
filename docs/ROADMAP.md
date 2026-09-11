@@ -19,19 +19,20 @@ installed-artifact evidence.
 | 0.2.4 | Private, serialized runtime state | **Released** |
 | 0.2.5 | Exact rolling-cost attribution | **Released** |
 | 0.2.6 | Session-scoped process evidence | **Released** |
-| 0.2.7 | Bounded observation state | **Current** |
-| 0.2.8 | Tracked governance and review records | Planned |
+| 0.2.7 | Bounded observation state | **Released** |
+| 0.2.8 | Tracked governance and review records | **Current** |
 | 0.2.9 | Width-safe, sanitized rendering | Planned |
 | 0.2.10 | Hermetic installed-renderer evidence | Planned |
 | 0.2.11 | Isolated self-test and safe diagnostics | Planned |
 | 0.2.12 | Documentation, pinned workflow, and public-readiness closure | Planned |
 | 0.3.0 | Production-ready milestone | Planned after the patch train |
 
-0.2.1 through 0.2.6 are tagged and released. The current 0.2.7 boundary limits
-only ephemeral probe, transcript, and rate-limit observation state while
-preserving the active or newest evidence and the v0.2.4 storage guarantees;
-later releases remain absent. Every release's review, hosted CI, tag, and
-artifact evidence must stand on its own.
+0.2.1 through 0.2.7 are tagged and released. The current 0.2.8 boundary makes
+project authority, handoff, research, release scope, review findings, and
+one-owner/one-reviewer coordination durable and public-safe. It adds
+deterministic documentation-consistency evidence but changes no runtime
+behavior. Every release's review, hosted CI, tag, and artifact evidence must
+stand on its own.
 
 ## 0.2.1 — ownership-safe installation
 
@@ -136,7 +137,7 @@ Released:
 
 ## 0.2.7 — bounded observation state
 
-Current release:
+Released:
 
 - Expire probe rows older than seven days and retain at most 256, always
   preserving the active observation while evicting the oldest remaining rows.
@@ -149,3 +150,44 @@ Current release:
   discarding malformed rows during compaction.
 - Keep unchanged below-bound rate observations tail-only and preserve private
   modes, final-entry refusal, failure cleanup, output, and accounting behavior.
+
+## 0.2.8 — tracked governance and review records
+
+Current release:
+
+- Add one authoritative tracked instruction file and one concise public-safe
+  current-state handoff.
+- Preserve measured research separately from release commitments, date
+  environment-specific evidence, and require re-verification before promoting
+  a time-sensitive external claim.
+- Record exactly one branch owner and one independent reviewer per release.
+  Work serially, with at most one reviewer active at a time; the owner alone
+  applies corrections and every changed candidate receives renewed exact-SHA
+  review ([ADR 0026](adrs/0026-coordinate-one-owner-and-one-reviewer.md)).
+- Validate relative Markdown links, ADR index/file agreement and intentional
+  reservations, release-version agreement, ownership wording, and public-safe
+  governance text through a deterministic repository check.
+- Keep v0.2.9 rendering, v0.2.10 installed evidence, v0.2.11 diagnostics,
+  v0.2.12 workflow/public-readiness work, live configuration, and repository
+  visibility unchanged.
+
+## 0.2.9 through 0.2.12
+
+Planned, in dependency order:
+
+- **0.2.9:** make fitting terminal-cell-aware for wide and combining Unicode,
+  and sanitize untrusted control characters while preserving intentional style.
+- **0.2.10:** add hermetic synthetic end-to-end evidence for the installed
+  renderer and every approved row without reading live state.
+- **0.2.11:** add an isolated self-test and field-allowlisted, privacy-safe
+  failure evidence that cannot suppress normal rendering.
+- **0.2.12:** close documentation findings, replace moving workflow action tags
+  with immutable commits, audit history and workflow logs, and present the
+  maintainer with a direct public-visibility recommendation before any
+  visibility change.
+
+## 0.3.0 — production-ready milestone
+
+Planned only after every preceding patch is independently reviewed, released,
+and proven from its installed artifacts. The milestone is a statement about the
+completed patch train, not authorization for another monolithic hardening merge.
