@@ -69,11 +69,12 @@ jobs:
           CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-checkout
         run: |
           python3 install.py
-          python - <<'PY'
-          import json, os
+          python3 - <<'PY'
+          import json, os, shlex, sys
           d = os.environ["CLAUDE_CONFIG_DIR"]
           cfg = json.load(open(os.path.join(d, "settings.json")))
-          assert cfg["statusLine"]["command"] == "python3 ~/.claude/statusline/statusline.py", cfg
+          expected = f"{shlex.quote(sys.executable)} {shlex.quote(os.path.join(d, 'statusline', 'statusline.py'))}"
+          assert cfg["statusLine"]["command"] == expected, cfg
           assert os.path.islink(os.path.join(d, "statusline"))
           print("checkout shape wired correctly")
           PY
