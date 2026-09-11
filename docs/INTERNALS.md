@@ -64,13 +64,16 @@ the layout at whatever width the first render happened to see.
 
 `row(label, segs)` then fits the row in three stages, in this order:
 
-1. **Clip** any single segment wider than the budget (`clip()`), so one oversized segment
-   cannot overflow a line on its own. Escapes are copied through rather than counted, and a
-   reset is appended so a cut inside a coloured run cannot leak colour into the rest of the
-   line.
+1. **Sanitize and clip** each segment to the budget (`sanitize()` and `clip()`), so one
+   oversized segment cannot overflow a line on its own. Only exact package-owned SGR
+   styling survives; other escapes and Unicode control, format, or surrogate characters
+   are removed. A reset is appended so a cut inside a coloured run cannot leak colour into
+   the rest of the line.
 2. **Pack** segments onto up to `MAXLINES` (2) lines. A row that fits on one line stays on
    one line — wrapping only happens when the content genuinely does not fit. Continuation
-   lines are indented by `LABEL` spaces so the row still reads as one block.
+   lines are indented by `LABEL` spaces so the row still reads as one block. The indentation
+   follows an SGR prefix because Claude Code was observed trimming raw leading whitespace;
+   this host behavior must be re-verified if the interface changes.
 3. **Truncate** whatever is left over, marking it with `…`.
 
 Wrapping before truncating is deliberate. Claude Code caps how many lines the status line
@@ -79,9 +82,11 @@ would trade "lose the least important segment of a row" for "lose the `TIMING` r
 entirely". Two lines is the compromise: enough to keep almost everything at realistic
 widths, bounded enough that ten rows cannot silently become twenty.
 
-Because colour escapes must not count toward the budget, `vis()` measures printable width
-by stripping ANSI first. Measuring `len()` directly makes every coloured row look roughly
-twice as wide as it is.
+Because colour escapes must not count toward the budget, `vis()` preserves only intentional
+SGR styling and measures printable terminal cells. Combining marks occupy zero cells,
+wide/full-width characters occupy two, and other printable characters occupy one. Clipping
+stops only between complete code points. Measuring `len()` directly both miscounts Unicode
+and makes every coloured row look roughly twice as wide as it is.
 
 **Ordering segments is a design decision, not an implementation detail** — the last
 segment in the list is the first thing a narrow terminal loses.

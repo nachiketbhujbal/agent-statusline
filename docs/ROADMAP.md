@@ -20,19 +20,18 @@ installed-artifact evidence.
 | 0.2.5 | Exact rolling-cost attribution | **Released** |
 | 0.2.6 | Session-scoped process evidence | **Released** |
 | 0.2.7 | Bounded observation state | **Released** |
-| 0.2.8 | Tracked governance and review records | **Current** |
-| 0.2.9 | Width-safe, sanitized rendering | Planned |
+| 0.2.8 | Tracked governance and review records | **Released** |
+| 0.2.9 | Width-safe, sanitized rendering | **Current** |
 | 0.2.10 | Hermetic installed-renderer evidence | Planned |
 | 0.2.11 | Isolated self-test and safe diagnostics | Planned |
 | 0.2.12 | Documentation, pinned workflow, and public-readiness closure | Planned |
 | 0.3.0 | Production-ready milestone | Planned after the patch train |
 
-0.2.1 through 0.2.7 are tagged and released. The current 0.2.8 boundary makes
-project authority, handoff, research, release scope, review findings, and
-one-owner/one-reviewer coordination durable and public-safe. It adds
-deterministic documentation-consistency evidence but changes no runtime
-behavior. Every release's review, hosted CI, tag, and artifact evidence must
-stand on its own.
+0.2.1 through 0.2.8 are tagged and released. The current 0.2.9 boundary makes
+terminal fitting cell-aware, sanitizes untrusted terminal controls, preserves
+continuation alignment, keeps nested-Git display separate from disk evidence,
+and floors displayed allowance percentages. Every release's review, hosted CI,
+tag, and artifact evidence must stand on its own.
 
 ## 0.2.1 — ownership-safe installation
 
@@ -153,7 +152,7 @@ Released:
 
 ## 0.2.8 — tracked governance and review records
 
-Current release:
+Released:
 
 - Add one authoritative tracked instruction file and one concise public-safe
   current-state handoff.
@@ -171,12 +170,27 @@ Current release:
   v0.2.12 workflow/public-readiness work, live configuration, and repository
   visibility unchanged.
 
-## 0.2.9 through 0.2.12
+## 0.2.9 — width-safe, sanitized rendering
+
+Current release:
+
+- Measure printable terminal cells for wide, full-width, and combining Unicode.
+- Sanitize labels, separators, and segments while preserving only package-owned
+  SGR styling; remove line, control, format, bidirectional, and other terminal
+  escape input before fitting.
+- Clip only at code-point boundaries, enforce every physical line's width, and
+  preserve continuation alignment under observed host whitespace trimming.
+- Keep nested-Git branch discovery from rebinding the current-workspace disk
+  probe.
+- Floor the displayed 5h/7d allowance percentage, retain the burn-rate decimal,
+  and preserve numeric `pct >= 100` overage behavior.
+- Keep v0.2.10 installed evidence, v0.2.11 diagnostics, v0.2.12 workflow/public-
+  readiness work, live configuration, and repository visibility unchanged.
+
+## 0.2.10 through 0.2.12
 
 Planned, in dependency order:
 
-- **0.2.9:** make fitting terminal-cell-aware for wide and combining Unicode,
-  and sanitize untrusted control characters while preserving intentional style.
 - **0.2.10:** add hermetic synthetic end-to-end evidence for the installed
   renderer and every approved row without reading live state.
 - **0.2.11:** add an isolated self-test and field-allowlisted, privacy-safe
