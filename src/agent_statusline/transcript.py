@@ -12,7 +12,9 @@ nowhere else; do not guess at them (see docs/INTERNALS.md).
 
 import datetime
 import json
+import math
 import os
+import time
 from collections.abc import Mapping
 
 from agent_statusline.coerce import finite_integer
@@ -22,6 +24,71 @@ from agent_statusline.storage import update_json
 TSTATE = state("statusline-transcript.json")
 
 SCHEMA = 3
+CACHE_RETENTION_S = 35 * 24 * 60 * 60
+CACHE_TOUCH_S = 60 * 60
+MAX_CACHED_TRANSCRIPTS = 512
+
+
+def _accessed_at(row, now):
+    if not isinstance(row, Mapping):
+        return None
+    accessed = row.get("accessed_at")
+    if isinstance(accessed, bool) or not isinstance(accessed, (int, float)):
+        return None
+    try:
+        if not math.isfinite(accessed) or accessed < 0 or accessed > now:
+            return None
+    except OverflowError:
+        return None
+    return accessed
+
+
+def _maintain_cache(cache, path, now):
+    """Touch the active transcript and prune invalid, old, or excess rows."""
+    changed = False
+    raw_row = cache.get(path)
+    row = dict(raw_row) if isinstance(raw_row, Mapping) else {}
+    if raw_row != row or path not in cache:
+        cache[path] = row
+        changed = True
+
+    accessed = _accessed_at(row, now)
+    if accessed is None or now - accessed >= CACHE_TOUCH_S:
+        row["accessed_at"] = now
+        cache[path] = row
+        changed = True
+
+    observed = {path: row["accessed_at"]}
+    for cached_path, cached_row in list(cache.items()):
+        if cached_path == path:
+            continue
+        if not isinstance(cached_row, Mapping):
+            del cache[cached_path]
+            changed = True
+            continue
+        normalized = dict(cached_row)
+        last_access = _accessed_at(normalized, now)
+        if last_access is None:
+            last_access = now
+            normalized["accessed_at"] = now
+            cache[cached_path] = normalized
+            changed = True
+        if now - last_access > CACHE_RETENTION_S:
+            del cache[cached_path]
+            changed = True
+        else:
+            observed[cached_path] = last_access
+
+    if len(cache) > MAX_CACHED_TRANSCRIPTS:
+        remove = len(cache) - MAX_CACHED_TRANSCRIPTS
+        candidates = sorted(
+            (key for key in cache if key != path),
+            key=lambda key: (observed[key], str(key)),
+        )
+        for key in candidates[:remove]:
+            del cache[key]
+        changed = True
+    return row, changed
 
 
 def dig(d, *path, default=None):
@@ -217,11 +284,12 @@ def transcript_totals(path):
     if not path or not os.path.exists(path):
         return z
     computed = z
+    now = time.time()
 
     def absorb_new(cache):
         nonlocal computed
-        raw_row = cache.get(path)
-        row = dict(raw_row) if isinstance(raw_row, Mapping) else {}
+        row, changed = _maintain_cache(cache, path, now)
+        raw_row = dict(row)
         root = row.get("root") if isinstance(row.get("root"), str) else None
         if row.get("schema") == SCHEMA:
             offset_value = row.get("offset")
@@ -238,7 +306,13 @@ def transcript_totals(path):
         else:
             offset, totals = 0, _blank()
         computed = totals
-        normalized_row = {"offset": offset, "totals": totals, "schema": SCHEMA, "root": root}
+        normalized_row = {
+            "offset": offset,
+            "totals": totals,
+            "schema": SCHEMA,
+            "root": root,
+            "accessed_at": row["accessed_at"],
+        }
         normalized = raw_row != normalized_row
 
         try:
@@ -246,16 +320,22 @@ def transcript_totals(path):
         except Exception:
             if normalized:
                 cache[path] = normalized_row
-            return normalized, totals
+            return changed or normalized, totals
         if size < offset:
             offset, totals = 0, _blank()
             computed = totals
         if size == offset:
-            row = {"offset": offset, "totals": totals, "schema": SCHEMA, "root": root}
+            row = {
+                "offset": offset,
+                "totals": totals,
+                "schema": SCHEMA,
+                "root": root,
+                "accessed_at": normalized_row["accessed_at"],
+            }
             if normalized or raw_row != row:
                 cache[path] = row
                 return True, totals
-            return False, totals
+            return changed, totals
         try:
             with open(path, "rb") as fh:
                 fh.seek(offset)
@@ -264,13 +344,13 @@ def transcript_totals(path):
         except Exception:
             if normalized:
                 cache[path] = normalized_row
-            return normalized, totals
+            return changed or normalized, totals
         if not chunk.endswith(b"\n"):
             cut = chunk.rfind(b"\n")
             if cut == -1:
                 if normalized:
                     cache[path] = normalized_row
-                return normalized, totals
+                return changed or normalized, totals
             tail = chunk[cut + 1 :]
             chunk = chunk[: cut + 1]
             new_offset -= len(tail)
@@ -289,6 +369,7 @@ def transcript_totals(path):
             "totals": totals,
             "schema": SCHEMA,
             "root": root,
+            "accessed_at": normalized_row["accessed_at"],
         }
         return True, totals
 
@@ -306,16 +387,18 @@ def conversation_root(path):
     if not path or not os.path.exists(path):
         return None
     computed = None
+    now = time.time()
 
     def discover(cache):
         nonlocal computed
-        raw_row = cache.get(path)
-        row = dict(raw_row) if isinstance(raw_row, Mapping) else {}
+        row, changed = _maintain_cache(cache, path, now)
         cached_root = row.get("root")
         if isinstance(cached_root, str) and cached_root:
             computed = cached_root
-            return False, cached_root
-        row.pop("root", None)
+            return changed, cached_root
+        if "root" in row:
+            row.pop("root")
+            changed = True
         root = None
         try:
             with open(path) as fh:
@@ -333,17 +416,12 @@ def conversation_root(path):
                         root = uuid_value
                         break
         except Exception:
-            if raw_row != row:
-                cache[path] = row
-                return True, None
-            return False, None
+            return changed, None
         if root:
             row["root"] = root
+            changed = True
         computed = root
-        if raw_row != row:
-            cache[path] = row
-            return True, root
-        return False, root
+        return changed, root
 
     try:
         return update_json(TSTATE, {}, discover)

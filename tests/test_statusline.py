@@ -495,8 +495,8 @@ class TestSerializedRuntimeState:
     def test_rate_history_is_appended_through_storage(self, monkeypatch):
         seen = {}
 
-        def fake_append(path, record, keys):
-            seen.update(path=path, record=record, keys=keys)
+        def fake_append(path, record, keys, **options):
+            seen.update(path=path, record=record, keys=keys, options=options)
             return True
 
         monkeypatch.setattr(statusline, "append_json_if_changed", fake_append)
@@ -508,6 +508,7 @@ class TestSerializedRuntimeState:
 
         assert seen["path"] == statusline.RLHIST
         assert seen["keys"] == ("5h", "5h_reset", "7d", "7d_reset")
+        assert seen["options"] == {"max_bytes": statusline.RATE_HISTORY_MAX_BYTES}
         assert {key: seen["record"][key] for key in seen["keys"]} == {
             "5h": 15.0,
             "5h_reset": 1_700_000_000.0,
