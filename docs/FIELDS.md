@@ -157,6 +157,10 @@ The two memory figures answer different questions and routinely disagree:
 it hits a claude process, so the pid is **discovered, not guessed**. The pid is displayed
 because during a real incident, working out which process was which took far longer than
 it should have (see [ADR 0006](adrs/0006-cached-probes-only.md)).
+The combined process snapshot is cached separately for each host session identifier, with
+a parent-process fallback when no valid string identifier is available, so concurrent
+sessions cannot borrow one another's `this session` evidence (see
+[ADR 0024](adrs/0024-scope-process-probes-by-session.md)).
 
 **`compressed`** is macOS's memory compressor: rather than paging inactive memory out to
 disk, the kernel compresses those pages in place. A few gigabytes is normal and healthy. It

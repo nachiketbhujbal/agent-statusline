@@ -10,6 +10,32 @@ import pytest
 from agent_statusline import probes
 
 
+def test_process_values_come_from_one_snapshot(monkeypatch):
+    calls = []
+    snapshot = """\
+20 1 100 claude
+99 20 10 python-statusline
+30 20 50 child-tool
+40 1 200 /opt/ClaudeCode.app/claude
+"""
+
+    def fake_run(*args, **_kwargs):
+        calls.append(args)
+        return snapshot
+
+    monkeypatch.setattr(probes, "_run", fake_run)
+    monkeypatch.setattr(probes.os, "getpid", lambda: 99)
+
+    assert probes.processes() == {
+        "mine_rss": 160 * 1024,
+        "mine_pid": 20,
+        "mine_procs": 3,
+        "all_rss": 300 * 1024,
+        "all_n": 2,
+    }
+    assert calls == [("ps", "-eo", "pid=,ppid=,rss=,command=")]
+
+
 def test_fresh_cached_value_avoids_probe(tmp_path, monkeypatch):
     state = tmp_path / "probes.json"
     state.write_text('{"key":{"at":100,"val":"cached"}}')
