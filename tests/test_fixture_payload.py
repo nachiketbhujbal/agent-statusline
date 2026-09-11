@@ -10,6 +10,7 @@ import pytest
 from agent_statusline import selftest
 from fixture_payload import (
     PAYLOAD_TEMPLATE,
+    TRANSCRIPT_EVIDENCE,
     TRANSCRIPT_TEMPLATE,
     materialize_payload,
     verify_render_contract,
@@ -81,3 +82,4 @@ def test_runtime_selftest_matches_the_committed_synthetic_contract(tmp_path):
     assert runtime == committed
     assert runtime_entries == committed_entries
     assert tuple(selftest.ORDER) == selftest.EXPECTED_ROWS
+    assert selftest.TRANSCRIPT_EVIDENCE == TRANSCRIPT_EVIDENCE

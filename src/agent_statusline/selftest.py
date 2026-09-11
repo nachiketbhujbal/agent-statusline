@@ -14,6 +14,12 @@ from agent_statusline.statusline import ORDER
 
 EXPECTED_ROWS = tuple(ORDER)
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
+TRANSCRIPT_EVIDENCE = {
+    "CACHE": ("1h ttl", "writes 200 1h"),
+    "TOKENS": ("total 2k reused", "200 written", "20 uncached"),
+    "TOOLS": ("2 calls", "Read1", "Edit1"),
+    "TIMING": ("turn 1s last", "hooks 1 runs", "12ms median"),
+}
 
 
 def _write_transcript(path, workspace, now):
@@ -105,9 +111,28 @@ def _materialize_payload(workspace, now):
     }
 
 
-def _labels(output):
-    lines = [ANSI.sub("", line) for line in output.splitlines()]
-    return tuple(line.split()[0] for line in lines if line.strip() and not line.startswith(" "))
+def _rendered_rows(output):
+    labels = []
+    rows = {}
+    current = None
+    for physical in (ANSI.sub("", line) for line in output.splitlines()):
+        if not physical.strip():
+            continue
+        if not physical.startswith(" "):
+            current, _, content = physical.partition(" ")
+            labels.append(current)
+            rows[current] = content.strip()
+        elif current is not None:
+            rows[current] += " " + physical.strip()
+    return tuple(labels), rows
+
+
+def _has_transcript_evidence(rows):
+    return all(
+        marker in rows.get(label, "")
+        for label, markers in TRANSCRIPT_EVIDENCE.items()
+        for marker in markers
+    )
 
 
 def _private_directory(path):
@@ -151,7 +176,11 @@ def run():
         home_dir = os.path.join(workspace, "home")
         os.mkdir(home_dir, mode=0o700)
         payload = _materialize_payload(workspace, now)
-        env = dict(os.environ)
+        env = {
+            key: value
+            for key, value in os.environ.items()
+            if not key.startswith("COV_CORE_") and key != "COVERAGE_PROCESS_START"
+        }
         env["HOME"] = home_dir
         env["CLAUDE_CONFIG_DIR"] = os.path.join(home_dir, ".claude")
         env["AGENT_STATUSLINE_STATE"] = state_dir
@@ -171,8 +200,11 @@ def run():
             return _fail("isolated renderer timed out")
         if process.returncode:
             return _fail("isolated renderer exited non-zero")
-        if _labels(process.stdout) != EXPECTED_ROWS:
+        labels, rows = _rendered_rows(process.stdout)
+        if labels != EXPECTED_ROWS:
             return _fail("isolated renderer did not emit all approved rows in order")
+        if not _has_transcript_evidence(rows):
+            return _fail("isolated renderer did not emit the approved transcript evidence")
         if not _private_directory(home_dir):
             return _fail("isolated home is missing or not private")
         if not _private_state(state_dir):
