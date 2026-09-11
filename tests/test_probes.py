@@ -96,6 +96,77 @@ def test_oversized_cache_timestamp_is_stale(tmp_path, monkeypatch, observed):
     assert probes.probe("key", 10, lambda: "computed") == "computed"
 
 
+def test_fresh_probe_prunes_invalid_future_and_expired_rows_without_recomputing(
+    tmp_path, monkeypatch
+):
+    now = 2_000_000_000.0
+    state = tmp_path / "probes.json"
+    state.write_text(
+        json.dumps(
+            {
+                "active": {"at": now - 1, "val": "cached"},
+                "boundary": {"at": now - probes.MAX_CACHE_AGE_S, "val": "keep"},
+                "expired": {"at": now - probes.MAX_CACHE_AGE_S - 1, "val": "drop"},
+                "future": {"at": now + 1, "val": "drop"},
+                "malformed": [],
+            }
+        )
+    )
+    monkeypatch.setattr(probes, "STATE", str(state))
+    monkeypatch.setattr(probes.time, "time", lambda: now)
+    called = []
+
+    assert probes.probe("active", 10, lambda: called.append(True)) == "cached"
+
+    assert called == []
+    cache = json.loads(state.read_text())
+    assert set(cache) == {"active", "boundary"}
+
+
+def test_probe_cap_preserves_active_row_even_when_it_is_oldest(tmp_path, monkeypatch):
+    now = 2_000_000_000.0
+    state = tmp_path / "probes.json"
+    rows = {
+        "active": {"at": now - 100, "val": "cached"},
+        **{
+            f"recent:{index:03d}": {"at": now - index, "val": index}
+            for index in range(probes.MAX_CACHE_ENTRIES)
+        },
+    }
+    state.write_text(json.dumps(rows))
+    monkeypatch.setattr(probes, "STATE", str(state))
+    monkeypatch.setattr(probes.time, "time", lambda: now)
+
+    assert probes.probe("active", 200, lambda: "replacement") == "cached"
+
+    cache = json.loads(state.read_text())
+    assert len(cache) == probes.MAX_CACHE_ENTRIES
+    assert cache["active"]["val"] == "cached"
+    assert "recent:255" not in cache
+
+
+def test_probe_maintenance_failure_still_returns_fresh_cached_value(tmp_path, monkeypatch):
+    now = 2_000_000_000.0
+    state = tmp_path / "probes.json"
+    state.write_text(
+        json.dumps(
+            {
+                "active": {"at": now - 1, "val": "cached"},
+                "expired": {"at": 0, "val": "drop"},
+            }
+        )
+    )
+    monkeypatch.setattr(probes, "STATE", str(state))
+    monkeypatch.setattr(probes.time, "time", lambda: now)
+    monkeypatch.setattr(
+        probes,
+        "update_json",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("publish failed")),
+    )
+
+    assert probes.probe("active", 10, lambda: "replacement") == "cached"
+
+
 def test_probe_exception_is_cached_as_none(tmp_path, monkeypatch):
     state = tmp_path / "probes.json"
     monkeypatch.setattr(probes, "STATE", str(state))
@@ -189,3 +260,20 @@ print(result)
     assert returned[0] == returned[1] == cache["shared"]["val"]
     assert cache["shared"]["val"] in {"left", "right"}
     assert set(cache) == {"shared"}
+
+
+def test_waiting_probe_uses_transaction_time_to_recognize_the_winner(monkeypatch):
+    clock = iter((100.0, 102.0))
+    monkeypatch.setattr(probes.time, "time", lambda: next(clock))
+    monkeypatch.setattr(probes, "read_json", lambda _path, _default: {})
+
+    def publish_after_another_writer(_path, _default, updater):
+        cache = {"shared": {"at": 101.0, "val": "winner"}}
+        changed, result = updater(cache)
+        assert not changed
+        assert cache == {"shared": {"at": 101.0, "val": "winner"}}
+        return result
+
+    monkeypatch.setattr(probes, "update_json", publish_after_another_writer)
+
+    assert probes.probe("shared", 60, lambda: "waiting-writer") == "winner"

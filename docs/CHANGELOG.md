@@ -4,7 +4,24 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.2.6
+## Unreleased — 0.2.7
+
+Ephemeral observation state now has explicit lifecycle bounds
+([ADR 0025](adrs/0025-bound-ephemeral-observation-state.md)). Probe rows expire
+after seven days and the active row plus the 255 newest remaining observations
+are retained. Transcript rows expire after 35 days, are capped at 512 while
+preserving the active transcript, and update their access time no more than
+hourly. Legacy transcript rows receive a safe first-access timestamp so they
+can age out without being discarded during migration.
+
+The diagnostic rate-limit history is compacted at one MiB under its existing
+exclusive lock and atomic publication path. Compaction discards malformed rows
+and retains the newest whole valid records that fit, always preserving the
+newest observation. Unchanged histories below the boundary still inspect only
+the tail. Private modes, final-entry refusal, failure cleanup, transcript
+offset/totals coupling, all output rows, and accounting semantics are unchanged.
+
+## 0.2.6
 
 Process evidence on the `SYSTEM` row is now cached by the host's opaque session
 identifier, with a separately namespaced parent-PID fallback when the identifier
