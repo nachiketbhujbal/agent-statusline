@@ -34,13 +34,10 @@ old one rather than rewriting why the earlier choice was made.
 | [0026](0026-coordinate-one-owner-and-one-reviewer.md) | Coordinate one owner and one reviewer |
 | [0027](0027-measure-cells-and-sanitize-terminal-output.md) | Measure cells and sanitize terminal output |
 | [0028](0028-gate-the-installed-renderer-with-synthetic-evidence.md) | Gate the installed renderer with synthetic evidence |
+| [0029](0029-self-test-with-isolated-state-and-safe-failure-evidence.md) | Self-test with isolated state and safe failure evidence |
 | [0030](0030-ship-hardening-as-small-pre-one-patches.md) | Ship hardening as small pre-1.0 patches |
 | [0031](0031-practical-local-threat-model.md) | Practical local-tool threat model |
 | [0032](0032-normalize-malformed-host-input-at-the-boundary.md) | Normalize malformed host input at the boundary |
-
-ADR number 0029 is reserved for the planned v0.2.11 decision. It remains absent
-until that decision is accepted.
-Reserved but not yet accepted: 0029.
 
 ## Reading order
 

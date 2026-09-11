@@ -6,6 +6,7 @@ import os
 import shlex
 import shutil
 import stat
+import subprocess
 
 import pytest
 
@@ -35,6 +36,114 @@ class TestDispatch:
     def test_help(self, monkeypatch, capsys):
         assert run(["--help"], monkeypatch) == 0
         assert "agent-statusline install" in capsys.readouterr().out
+
+    def test_selftest_uses_an_isolated_renderer(self, monkeypatch, capsys):
+        assert run(["selftest"], monkeypatch) == 0
+        assert "all 10 approved rows with private state" in capsys.readouterr().out
+
+    def test_selftest_rejects_options(self, monkeypatch, capsys):
+        assert run(["selftest", "--live"], monkeypatch) == 2
+        assert "unknown option" in capsys.readouterr().err
+
+    def test_selftest_never_relays_child_output_on_failure(self, monkeypatch, capsys):
+        from agent_statusline import selftest
+
+        failed = subprocess.CompletedProcess(
+            ["python", "-m", "agent_statusline"],
+            1,
+            stdout="private rendered payload",
+            stderr="private traceback and path",
+        )
+        monkeypatch.setattr(selftest.subprocess, "run", lambda *args, **kwargs: failed)
+
+        assert run(["selftest"], monkeypatch) == 1
+        output = capsys.readouterr()
+        assert "isolated renderer exited non-zero" in output.err
+        assert "private" not in output.out + output.err
+
+    def test_selftest_rejects_missing_transcript_evidence(self, monkeypatch, capsys):
+        from agent_statusline import selftest
+
+        def incomplete(*args, **kwargs):
+            os.makedirs(kwargs["env"]["AGENT_STATUSLINE_STATE"], mode=0o700)
+            return subprocess.CompletedProcess(
+                args[0],
+                0,
+                stdout="\n".join(selftest.EXPECTED_ROWS),
+                stderr="private child stderr",
+            )
+
+        monkeypatch.setattr(selftest.subprocess, "run", incomplete)
+
+        assert run(["selftest"], monkeypatch) == 1
+        output = capsys.readouterr()
+        assert "approved transcript evidence" in output.err
+        assert "private" not in output.out + output.err
+
+    def test_selftest_isolates_home_state_config_and_working_directory(self, monkeypatch, capsys):
+        from agent_statusline import selftest
+
+        seen = {}
+
+        monkeypatch.setenv("COV_CORE_SOURCE", "private test instrumentation")
+        monkeypatch.setenv("COVERAGE_PROCESS_START", "/private/coverage/config")
+        monkeypatch.setenv("PYTHONPATH", "/private/unrelated/python/path")
+
+        def succeed(*args, **kwargs):
+            seen.update(kwargs)
+            os.makedirs(kwargs["env"]["AGENT_STATUSLINE_STATE"], mode=0o700)
+            rows = []
+            for label in selftest.EXPECTED_ROWS:
+                markers = selftest.TRANSCRIPT_EVIDENCE.get(label, ())
+                rows.append(f"{label} {' '.join(markers)}")
+            return subprocess.CompletedProcess(args[0], 0, stdout="\n".join(rows), stderr="")
+
+        monkeypatch.setattr(selftest.subprocess, "run", succeed)
+
+        assert run(["selftest"], monkeypatch) == 0
+        env = seen["env"]
+        assert env["HOME"] != os.environ["HOME"]
+        assert os.path.dirname(env["HOME"]) == os.path.dirname(env["AGENT_STATUSLINE_STATE"])
+        assert env["CLAUDE_CONFIG_DIR"] == os.path.join(env["HOME"], ".claude")
+        assert seen["cwd"] == os.path.dirname(env["HOME"])
+        assert "COV_CORE_SOURCE" not in env
+        assert "COVERAGE_PROCESS_START" not in env
+        assert env["PYTHONPATH"] == os.path.dirname(
+            os.path.dirname(os.path.realpath(selftest.__file__))
+        )
+        assert "selftest ok" in capsys.readouterr().out
+
+    def test_selftest_rejects_non_private_and_unsupported_state(self, tmp_path):
+        from agent_statusline import selftest
+
+        state = tmp_path / "state"
+        state.mkdir(mode=0o700)
+        private_file = state / "private.json"
+        private_file.write_text("{}")
+        private_file.chmod(0o600)
+        assert selftest._private_state(str(state))
+
+        state.chmod(0o755)
+        assert not selftest._private_state(str(state))
+        state.chmod(0o700)
+        private_file.chmod(0o644)
+        assert not selftest._private_state(str(state))
+        private_file.chmod(0o600)
+
+        linked_file = state / "linked.json"
+        linked_file.symlink_to(private_file)
+        assert not selftest._private_state(str(state))
+        linked_file.unlink()
+
+        linked_state = tmp_path / "linked-state"
+        linked_state.symlink_to(state, target_is_directory=True)
+        assert not selftest._private_state(str(linked_state))
+
+        private_directory = state / "nested"
+        private_directory.mkdir(mode=0o700)
+        linked_directory = state / "linked-directory"
+        linked_directory.symlink_to(private_directory, target_is_directory=True)
+        assert not selftest._private_state(str(state))
 
     def test_unknown_command_is_an_error(self, monkeypatch, capsys):
         assert run(["nonsense"], monkeypatch) == 2

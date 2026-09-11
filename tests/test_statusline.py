@@ -1,11 +1,14 @@
 """End-to-end rendering, against the real probes but an isolated state dir."""
 
+import datetime
 import io
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -196,6 +199,73 @@ class TestRobustness:
         monkeypatch.setattr("sys.stdin", io.StringIO("not json"))
         statusline.main()
         assert "claude" in ANSI.sub("", capsys.readouterr().out)
+
+    def test_malformed_input_does_not_create_a_failure_breadcrumb(self, monkeypatch, capsys):
+        from agent_statusline import diagnostics
+
+        breadcrumb = Path(diagnostics.LAST_RENDER_ERROR)
+        breadcrumb.unlink(missing_ok=True)
+        monkeypatch.setattr("sys.stdin", io.StringIO("not json"))
+
+        statusline.main()
+
+        assert "claude" in ANSI.sub("", capsys.readouterr().out)
+        assert not breadcrumb.exists()
+
+    def test_unexpected_failure_leaves_only_a_private_safe_breadcrumb(self, monkeypatch):
+        from agent_statusline import diagnostics
+
+        breadcrumb = Path(diagnostics.LAST_RENDER_ERROR)
+        breadcrumb.unlink(missing_ok=True)
+
+        def fail():
+            raise RuntimeError("sensitive /private/example/path and payload text")
+
+        monkeypatch.setattr(statusline, "_render", fail)
+        with pytest.raises(RuntimeError, match="sensitive"):
+            statusline.main()
+
+        text = breadcrumb.read_text(encoding="utf-8")
+        record = json.loads(text)
+        assert set(record) == {"schema", "occurred_at", "phase", "error_type"}
+        assert record["schema"] == 1
+        assert record["phase"] == "render"
+        assert record["error_type"] == "RuntimeError"
+        assert (
+            datetime.datetime.fromisoformat(record["occurred_at"]).utcoffset()
+            == datetime.timedelta()
+        )
+        assert "sensitive" not in text
+        assert "/private/example" not in text
+        assert stat.S_IMODE(breadcrumb.stat().st_mode) == 0o600
+
+    def test_breadcrumb_failure_never_masks_the_render_failure(self, monkeypatch):
+        from agent_statusline import diagnostics
+
+        def fail_render():
+            raise ValueError("original")
+
+        def fail_record(_error):
+            raise OSError("state unavailable")
+
+        monkeypatch.setattr(statusline, "_render", fail_render)
+        monkeypatch.setattr(diagnostics, "record_render_failure", fail_record)
+        with pytest.raises(ValueError, match="original"):
+            statusline.main()
+
+    def test_broken_pipe_is_not_recorded_as_a_renderer_failure(self, monkeypatch):
+        from agent_statusline import diagnostics
+
+        breadcrumb = Path(diagnostics.LAST_RENDER_ERROR)
+        breadcrumb.unlink(missing_ok=True)
+
+        def closed_pipe():
+            raise BrokenPipeError
+
+        monkeypatch.setattr(statusline, "_render", closed_pipe)
+        with pytest.raises(BrokenPipeError):
+            statusline.main()
+        assert not breadcrumb.exists()
 
     @pytest.mark.parametrize("state_shape", ["file", "child-of-file"])
     def test_unusable_state_root_does_not_abort_fresh_process(self, tmp_path, payload, state_shape):
