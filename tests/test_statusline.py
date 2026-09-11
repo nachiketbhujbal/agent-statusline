@@ -122,6 +122,38 @@ class TestContent:
         assert seen["accrued_at"] == last_ts
         assert seen["duration"] == payload["cost"]["total_duration_ms"] / 1000
 
+    @pytest.mark.parametrize("duration", [None, "invalid", -1, 0, 10**15])
+    def test_cost_attribution_rejects_unusable_session_duration(
+        self, payload, monkeypatch, capsys, duration
+    ):
+        seen = {}
+        payload["cost"]["total_duration_ms"] = duration
+
+        def fake_ledger_update(*_args, **kwargs):
+            seen.update(kwargs)
+            return {
+                "session": 1.25,
+                "base": 0.0,
+                "runs": 1,
+                "d1": 0.0,
+                "d1_complete": False,
+                "d7": 0.0,
+                "d7_complete": False,
+                "d30": 0.0,
+                "d30_complete": False,
+                "last5": 1.25,
+                "all": 1.25,
+                "convos": 1,
+                "n": 1,
+                "forks": 0,
+            }
+
+        monkeypatch.setattr(statusline, "ledger_update", fake_ledger_update)
+
+        draw(payload, monkeypatch, capsys)
+
+        assert seen["duration"] is None
+
     def test_permission_mode_uses_claude_codes_own_colours(self):
         assert statusline.MODES["auto"][0] == render.YEL
         assert statusline.MODES["plan"][0] == render.CYN
@@ -422,7 +454,13 @@ class TestSerializedRuntimeState:
         monkeypatch.setattr(statusline.ledger, "update", fail_update)
 
         aggregate = statusline.ledger_update(
-            "session-1", 2.5, "project", "name", root="conversation-1", pid=100
+            "session-1",
+            2.5,
+            "project",
+            "name",
+            root="conversation-1",
+            pid=100,
+            duration=600,
         )
 
         assert aggregate["session"] == 2.5
@@ -432,6 +470,39 @@ class TestSerializedRuntimeState:
         assert aggregate["d1"] == 2.5
         assert aggregate["d7"] == 2.5
         assert aggregate["d30"] == 2.5
+        assert not any(aggregate[key + "_complete"] for key in statusline.ledger.COST_WINDOWS)
+
+    def test_empty_session_identifier_remains_a_valid_opaque_journal_key(self, monkeypatch):
+        now = 1_800_000_000
+        data = {"sessions": {}}
+
+        monkeypatch.setattr(statusline.time, "time", lambda: now)
+        monkeypatch.setattr(statusline.ledger, "update", lambda updater: updater(data)[1])
+
+        aggregate = statusline.ledger_update("", 1.25, "project", "name", duration=600)
+
+        assert set(data["sessions"]) == {""}
+        assert [event["session"] for event in data["cost_events"]] == [""]
+        assert aggregate["d1"] == 1.25
+        assert aggregate["d1_complete"]
+
+    @pytest.mark.parametrize("duration", [None, "invalid", -1, 0, 10**12])
+    def test_unusable_duration_keeps_a_first_sighting_unattributed(self, monkeypatch, duration):
+        now = 1_800_000_000
+        data = {"sessions": {}}
+
+        monkeypatch.setattr(statusline.time, "time", lambda: now)
+        monkeypatch.setattr(statusline.ledger, "update", lambda updater: updater(data)[1])
+
+        aggregate = statusline.ledger_update(
+            "session-1", 100.0, "project", "name", duration=duration
+        )
+
+        assert data["cost_events"][0]["started_at"] is None
+        assert aggregate["session"] == 100.0
+        assert aggregate["all"] == 100.0
+        assert aggregate["d1"] == 0.0
+        assert aggregate["d1_unattributed"] == 100.0
         assert not any(aggregate[key + "_complete"] for key in statusline.ledger.COST_WINDOWS)
 
     def test_ledger_publish_failure_preserves_computed_exact_money(self, monkeypatch):

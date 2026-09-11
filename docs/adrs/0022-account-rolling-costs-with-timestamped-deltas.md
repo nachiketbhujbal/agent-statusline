@@ -20,7 +20,8 @@ Preserve all three fields and store a versioned stream of positive lifetime-
 cost deltas inside `cost-ledger.json`. Each ordinary event records observation
 time, the newest known assistant timestamp, session, delta, and resulting
 lifetime. Assistant time is preferred for attribution; missing or malformed
-evidence falls back to observation time, and future evidence is clamped to it.
+evidence falls back to observation time, future evidence is clamped to it, and
+a trailing-`Z` UTC suffix is normalized on every supported Python version.
 
 First sightings and migrated lifetime totals are non-accrual seeds. A seed is
 counted when its session provably began inside a window, excluded when lifecycle
@@ -30,6 +31,12 @@ its exact known amount. Each horizon makes that completeness decision
 independently, so a 24-hour figure may be a lower bound while 7-day and 30-day
 figures are complete.
 
+A new row receives a reconstructed start only from a positive host duration
+that fits between the local epoch and observation time. Missing, malformed,
+zero, negative, or unrepresentably large duration leaves the seed's start
+unknown. Session identifiers remain opaque strings, including legacy empty
+strings; non-string host values continue to use the established `?` fallback.
+
 Session mutation, seed migration, event append, and rolling calculation share
 the locked ledger transaction introduced by ADR 0021. Repeated sightings do not
 duplicate seeds, and only finite positive lifetime increases append ordinary
@@ -37,6 +44,10 @@ events. Event timestamps and amounts must be finite and internally consistent;
 invalid schemas or events contribute no amount and prevent a complete claim.
 Retain at least 35 days of valid events, and never prune malformed evidence merely
 to manufacture completeness.
+Observation and cutoff arithmetic use the ledger's whole-second storage
+precision, preserving inclusive boundaries. Every event observation must be at
+or after the journal start before the journal is complete or eligible for
+pruning; assistant accrual may legitimately predate that start.
 
 Journal-shaped fields without a recognized schema are preserved unchanged and
 treated as incomplete evidence. If ledger storage fails before the updater can
