@@ -20,13 +20,22 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0        # hatch-vcs reads the tag being built
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
       - run: pip install build pytest
+
+      - name: complete release ancestry is public-safe
+        run: python scripts/audit_reachable_history.py --ref HEAD
+
+      - name: documentation and public-readiness policy
+        run: |
+          python scripts/verify_docs.py
+          python scripts/verify_public_readiness.py
+          python scripts/verify_public_readiness.py --release-tag "${GITHUB_REF_NAME}"
 
       - name: tests must pass before anything is published
         run: python -m pytest tests
@@ -48,7 +57,7 @@ jobs:
           PY
 
       - name: publish a GitHub release with the artifacts
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           files: dist/*
           generate_release_notes: true

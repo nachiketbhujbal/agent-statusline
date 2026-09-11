@@ -7,14 +7,17 @@
 | **payload** | free | context, rate limits, cost, model, workspace — piped in as JSON on stdin |
 | **transcript** | cheap | cumulative session facts, parsed incrementally from a byte offset |
 | **probe** | a subprocess | git, `ps`, `vm_stat`, `sysctl`, `statvfs`, account flags — always cached |
-| **ledger** | a file read | spend history across sessions |
+| **ledger** | locked local state | spend history across sessions |
 
-**Redraw cost: ~30ms warm**, against a ~15ms floor for bare Python startup. It was 110ms
-and visibly flickering before the git probe was collapsed from four subprocesses into one.
+Historical measurements found a roughly 30ms warm redraw against a roughly
+15ms bare-interpreter floor, down from about 110ms before the Git probe was
+collapsed. These are observations from one machine, not a cross-platform
+performance guarantee; [RESEARCH.md](RESEARCH.md) carries the dated benchmark
+evidence and [ROADMAP.md](ROADMAP.md) scopes reproducible benchmarking to 0.3.1.
 
-Cold costs: `ps` ~29ms · git bundle ~35ms · `vm_stat` ~6ms · `sysctl` ~4ms ·
-`~/.claude.json` ~1ms · `statvfs` ~0ms. Cache TTLs: git 3s · processes/memory 8s ·
-disk 30s · account 30s.
+In that same historical measurement, cold costs were: `ps` ~29ms · Git bundle
+~35ms · `vm_stat` ~6ms · `sysctl` ~4ms · `~/.claude.json` ~1ms · `statvfs`
+~0ms. Cache TTLs remain: Git 3s · processes/memory 8s · disk 30s · account 30s.
 
 Probe observations are retained for seven days and capped at 256 rows. The
 active row survives count pruning. Transcript observations are retained for 35
@@ -33,7 +36,7 @@ then Python startup itself, which is the hard floor.
 transcript, so each redraw reads only the bytes appended since the last one. A partial
 trailing line is held back rather than parsed.
 
-`SCHEMA` in `statusline.py` versions the shape of those totals ([ADR 0007](adrs/0007-incremental-transcript-with-versioned-totals.md)).
+`SCHEMA` in `transcript.py` versions the shape of those totals ([ADR 0007](adrs/0007-incremental-transcript-with-versioned-totals.md)).
 **Bump it whenever you add or change an accumulated field** — without the bump, existing caches keep their old shape
 and the new field stays empty forever, with no error anywhere.
 
@@ -124,10 +127,17 @@ AGENT_STATUSLINE_STATE=$(mktemp -d) COLUMNS=180 \
   python3 ~/.claude/statusline/statusline.py < ~/.claude/statusline-last-payload.json
 ```
 
-The test suite does this for you and is the faster loop:
+The installed self-test is the safest complete check because it uses only
+synthetic evidence and fresh private state:
 
 ```bash
-.venv/bin/python -m pytest tests -v
+agent-statusline selftest
+```
+
+The test suite is the faster development loop:
+
+```bash
+uv run --locked pytest tests -v
 ```
 
 `tests/conftest.py` redirects `AGENT_STATUSLINE_STATE` **before** any package import,

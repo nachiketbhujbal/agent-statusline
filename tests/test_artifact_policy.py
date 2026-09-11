@@ -21,6 +21,15 @@ def write_tar(path, names):
             archive.addfile(info, io.BytesIO())
 
 
+def write_tar_content(path, members):
+    with tarfile.open(path, "w:gz") as archive:
+        for name, content in members.items():
+            payload = content.encode("utf-8")
+            info = tarfile.TarInfo(name)
+            info.size = len(payload)
+            archive.addfile(info, io.BytesIO(payload))
+
+
 def test_artifact_policy_accepts_expected_wheel_and_sdist_members(tmp_path):
     wheel = tmp_path / "package.whl"
     with zipfile.ZipFile(wheel, "w") as archive:
@@ -84,3 +93,41 @@ def test_artifact_policy_rejects_test_evidence_in_wheel(tmp_path):
 
     assert result.returncode == 1
     assert "test evidence leaked into wheel" in result.stderr
+
+
+def test_artifact_policy_rejects_private_billing_content(tmp_path):
+    archive_path = tmp_path / "package.tar.gz"
+    private_measurement = "The account used " + "2,000.3 Linux-equivalent" + " minutes.\n"
+    write_tar_content(
+        archive_path,
+        {
+            "agent_statusline-0.2.12/tests/fixture_payload.py": "",
+            "agent_statusline-0.2.12/tests/fixtures/statusline-payload.json": "",
+            "agent_statusline-0.2.12/tests/fixtures/statusline-transcript.jsonl": "",
+            "agent_statusline-0.2.12/docs/audit.md": private_measurement,
+        },
+    )
+
+    result = run_policy(archive_path)
+
+    assert result.returncode == 1
+    assert "private billing evidence" in result.stderr
+
+
+def test_artifact_policy_rejects_personal_email_content(tmp_path):
+    wheel = tmp_path / "package.whl"
+    with zipfile.ZipFile(wheel, "w") as archive:
+        archive.writestr("agent_statusline/metadata.txt", "owner@example.outlook.com")
+
+    result = run_policy(wheel)
+
+    assert result.returncode == 0, result.stderr
+
+    with zipfile.ZipFile(wheel, "w") as archive:
+        personal_email = "owner@" + "outlook.com"
+        archive.writestr("agent_statusline/metadata.txt", personal_email)
+
+    result = run_policy(wheel)
+
+    assert result.returncode == 1
+    assert "personal-provider email" in result.stderr
