@@ -257,9 +257,10 @@ Current release:
   authorized unsafe artifacts, and verify the remaining hosted surface.
 - Align the changelog, roadmap, handoff, review ledger, and public-readiness
   verdict with released v0.2.12 and the completed inventory.
-- Keep runtime behavior, Git history, release tags and assets, workflow runs and
-  logs, visibility, protections, live state, and the accepted ADR 0035 pull-ref
-  residue unchanged.
+- Establish public visibility and the active no-bypass `main` ruleset, with one
+  stable aggregate required CI result.
+- Keep runtime behavior, Git history, release tags and assets, existing workflow
+  runs and logs, live state, and the accepted ADR 0035 pull-ref residue unchanged.
 
 ## 0.3.0 — production-ready milestone
 
