@@ -5,6 +5,7 @@ cost-ledger.json
 statusline-transcript.json
 statusline-probe-cache.json
 statusline-last-payload.json
+statusline-last-error.json
 rate-limit-history.jsonl
 hook-lastrun.json
 *.tmp

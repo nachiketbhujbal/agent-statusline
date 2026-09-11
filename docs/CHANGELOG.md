@@ -4,7 +4,23 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.2.10
+## Unreleased — 0.2.11
+
+`agent-statusline selftest` now renders the v0.2.10 synthetic contract in a
+fresh child process with isolated private home, configuration, state, and
+working directories. It derives expected labels from authoritative `ORDER`,
+verifies all ten rows and private regular state entries, suppresses child output,
+and runs against the installed wheel in CI
+([ADR 0029](adrs/0029-self-test-with-isolated-state-and-safe-failure-evidence.md)).
+
+Unexpected renderer exceptions now leave a private atomic breadcrumb containing
+only schema, UTC time, fixed phase, and exception type before the original error
+continues. Messages, tracebacks, payloads, paths, commands, and filenames are
+excluded; malformed input and routine closed pipes create no breadcrumb, and a
+breadcrumb write failure cannot mask the renderer failure. Runtime dependencies
+remain empty.
+
+## 0.2.10
 
 A committed privacy-neutral payload and transcript now drive the same exact
 renderer contract in pytest and in CI's installed-wheel smoke. Runtime
