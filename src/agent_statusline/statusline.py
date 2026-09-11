@@ -193,7 +193,13 @@ def ledger_update(
         # when available rather than discarding already-read historical totals.
         if computed_result is not None:
             return computed_result
-        return mutate({"sessions": {}})[1]
+        fallback = mutate({"sessions": {}})[1]
+        # The current payload is still a useful lower bound, but a transaction
+        # that failed before the updater ran could have hidden any amount of
+        # historical spend. Never label that fallback as an exact window.
+        for key in ledger.COST_WINDOWS:
+            fallback[key + "_complete"] = False
+        return fallback
 
 
 def rl_log(node5, node7):

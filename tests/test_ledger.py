@@ -133,6 +133,24 @@ class TestRollingCosts:
         assert data["cost_events"][0]["seed"] is True
         assert data["cost_events"][0]["delta"] == 8.0
 
+    def test_partial_schemaless_journal_is_preserved_as_incomplete_evidence(self):
+        partial_journals = [
+            {"cost_event_schema": None},
+            {"cost_tracking_started": ledger.iso(self.NOW - 60)},
+            {"cost_events": [{"malformed": True}]},
+        ]
+
+        for partial in partial_journals:
+            data = {"sessions": {}, **partial}
+            before = json.loads(json.dumps(data))
+
+            assert not ledger.record_cost_delta(data, "paid", 0.0, 8.0, when=self.NOW)
+            assert data == before
+
+            rolling = ledger.rolling_costs(data, when=self.NOW)
+            assert all(rolling[key] == 0.0 for key in ledger.COST_WINDOWS)
+            assert not any(rolling[key + "_complete"] for key in ledger.COST_WINDOWS)
+
     def test_spanning_seed_is_a_lower_bound_but_wider_windows_are_exact(self):
         data = {
             "sessions": {

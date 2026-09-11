@@ -429,6 +429,10 @@ class TestSerializedRuntimeState:
         assert aggregate["all"] == 2.5
         assert aggregate["n"] == 1
         assert aggregate["convos"] == 1
+        assert aggregate["d1"] == 2.5
+        assert aggregate["d7"] == 2.5
+        assert aggregate["d30"] == 2.5
+        assert not any(aggregate[key + "_complete"] for key in statusline.ledger.COST_WINDOWS)
 
     def test_ledger_publish_failure_preserves_computed_exact_money(self, monkeypatch):
         stamp = statusline.ledger.iso()

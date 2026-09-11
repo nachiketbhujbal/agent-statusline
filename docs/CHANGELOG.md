@@ -15,6 +15,9 @@ exact `≥` lower bound. Assistant timestamps drive attribution when available,
 with observation fallback and a future-time clamp. Each horizon decides
 completeness independently, invalid or non-finite evidence cannot make an exact
 claim, and valid journal evidence is retained for 35 days.
+Schemaless partial journals are preserved as incomplete evidence rather than
+silently replaced, and a storage failure before the ledger updater runs marks
+current-payload-only rolling amounts as lower bounds.
 
 Lifetime session, resume/base/run, `last5`, `all`, row order, and every non-cost
 field remain compatible. Ledger mutation and event publication stay inside the

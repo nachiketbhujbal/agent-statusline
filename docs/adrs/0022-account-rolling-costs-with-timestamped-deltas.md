@@ -38,6 +38,11 @@ invalid schemas or events contribute no amount and prevent a complete claim.
 Retain at least 35 days of valid events, and never prune malformed evidence merely
 to manufacture completeness.
 
+Journal-shaped fields without a recognized schema are preserved unchanged and
+treated as incomplete evidence. If ledger storage fails before the updater can
+read history, the current payload remains renderable only as a lower bound; a
+failure after a complete aggregate was computed retains that aggregate.
+
 Lifetime session cost, resume/base/run behavior, `last5`, `all`, row order, and
 every non-cost field remain unchanged.
 
