@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail when a distribution archive contains local or private workspace state."""
+"""Verify distribution privacy and installed-renderer evidence placement."""
 
 import pathlib
 import sys
@@ -7,6 +7,11 @@ import tarfile
 import zipfile
 
 FORBIDDEN_PARTS = {".git", ".pvt", ".worktrees", "__pycache__"}
+EVIDENCE_SUFFIXES = (
+    "tests/fixture_payload.py",
+    "tests/fixtures/statusline-payload.json",
+    "tests/fixtures/statusline-transcript.jsonl",
+)
 
 
 def archive_names(path):
@@ -29,9 +34,22 @@ def unsafe_name(name):
 def verify(paths):
     failures = []
     for path in paths:
-        unsafe = sorted(name for name in archive_names(path) if unsafe_name(name))
+        names = archive_names(path)
+        unsafe = sorted(name for name in names if unsafe_name(name))
         if unsafe:
             failures.append(f"{path}: forbidden archive members: {unsafe}")
+        evidence = {
+            suffix: [name for name in names if name == suffix or name.endswith("/" + suffix)]
+            for suffix in EVIDENCE_SUFFIXES
+        }
+        if str(path).endswith(".whl"):
+            leaked = sorted(name for matches in evidence.values() for name in matches)
+            if leaked:
+                failures.append(f"{path}: test evidence leaked into wheel: {leaked}")
+        else:
+            missing = sorted(suffix for suffix, matches in evidence.items() if not matches)
+            if missing:
+                failures.append(f"{path}: source evidence missing: {missing}")
     if failures:
         raise ValueError("\n".join(failures))
 
@@ -46,7 +64,7 @@ def main(argv=None):
     except (OSError, ValueError, tarfile.TarError, zipfile.BadZipFile) as error:
         print(error, file=sys.stderr)
         return 1
-    print(f"artifact privacy verified: {', '.join(paths)}")
+    print(f"artifact evidence and privacy verified: {', '.join(paths)}")
     return 0
 
 

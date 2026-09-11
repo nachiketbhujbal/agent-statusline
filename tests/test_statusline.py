@@ -11,6 +11,7 @@ import pytest
 
 from agent_statusline import render, statusline, transcript
 from agent_statusline.hooks import context_guard, session_end
+from fixture_payload import verify_render_contract
 
 ANSI = re.compile(r"\033\[[0-9;]*m")
 
@@ -30,6 +31,12 @@ def labels(lines):
 
 
 class TestRowOrder:
+    def test_committed_fixture_exercises_exact_transcript_backed_contract(
+        self, payload, monkeypatch, capsys
+    ):
+        output = "\n".join(draw(payload, monkeypatch, capsys, cols=240))
+        verify_render_contract(output, statusline.ORDER)
+
     def test_rows_follow_the_declared_order(self, payload, monkeypatch, capsys):
         got = labels(draw(payload, monkeypatch, capsys))
         assert got == [k for k in statusline.ORDER if k in got]
@@ -39,6 +46,15 @@ class TestRowOrder:
 
     def test_the_declared_order_has_no_duplicates(self):
         assert len(statusline.ORDER) == len(set(statusline.ORDER))
+
+    def test_committed_fixture_is_independent_of_process_cwd(
+        self, payload, monkeypatch, capsys, tmp_path
+    ):
+        unrelated = tmp_path / "unrelated-cwd"
+        unrelated.mkdir()
+        monkeypatch.chdir(unrelated)
+        output = "\n".join(draw(payload, monkeypatch, capsys, cols=240))
+        verify_render_contract(output, statusline.ORDER)
 
 
 class TestWidth:
@@ -63,7 +79,7 @@ class TestWidth:
 
 class TestContent:
     def test_model_and_effort_are_shown(self, payload, monkeypatch, capsys):
-        assert "Opus 5" in ANSI.sub("", draw(payload, monkeypatch, capsys)[1])
+        assert "Synthetic Opus" in ANSI.sub("", draw(payload, monkeypatch, capsys)[1])
 
     def test_cost_comes_straight_from_the_payload(self, payload, monkeypatch, capsys):
         out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
@@ -356,10 +372,11 @@ class TestRobustness:
         payload["rate_limits"]["five_hour"]["used_percentage"] = 14.5
 
         out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
+        allowance = out.split("5h [", 1)[1].split("@", 1)[0]
 
         assert "5h [" in out
-        assert " 14%" in out
-        assert "14.5%" not in out
+        assert " 14%" in allowance
+        assert "14.5%" not in allowance
         assert "%/h" in out, "the burn-rate decimal remains present"
 
     def test_exact_package_sgr_in_untrusted_payload_text_is_removed(

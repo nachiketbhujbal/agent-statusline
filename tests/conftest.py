@@ -19,45 +19,10 @@ os.environ["AGENT_STATUSLINE_STATE"] = _STATE
 
 import pytest  # noqa: E402
 
+from fixture_payload import materialize_payload  # noqa: E402
+
 
 @pytest.fixture
-def payload():
+def payload(tmp_path):
     """A realistic Claude Code status-line payload."""
-    return {
-        "session_id": "test-session-0001",
-        "session_name": "A test session",
-        "transcript_path": "/nonexistent/transcript.jsonl",
-        "cwd": "/tmp/project",
-        "version": "2.1.246",
-        "effort": {"level": "high"},
-        "model": {"id": "claude-opus-5", "display_name": "Opus 5"},
-        "workspace": {
-            "current_dir": "/tmp/project",
-            "project_dir": "/tmp/project",
-            "added_dirs": [],
-        },
-        "output_style": {"name": "default"},
-        "thinking": {"enabled": True},
-        "fast_mode": False,
-        "cost": {
-            "total_cost_usd": 1.25,
-            "total_duration_ms": 600000,
-            "total_api_duration_ms": 120000,
-            "total_lines_added": 10,
-            "total_lines_removed": 2,
-        },
-        "context_window": {
-            "context_window_size": 1000000,
-            "used_percentage": 14,
-            "current_usage": {
-                "input_tokens": 2,
-                "output_tokens": 800,
-                "cache_creation_input_tokens": 700,
-                "cache_read_input_tokens": 70000,
-            },
-        },
-        "rate_limits": {
-            "five_hour": {"used_percentage": 15, "resets_at": 4102444800},
-            "seven_day": {"used_percentage": 49, "resets_at": 4102444800},
-        },
-    }
+    return materialize_payload(tmp_path / "synthetic-workspace")
