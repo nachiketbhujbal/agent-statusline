@@ -61,17 +61,41 @@ class TestDispatch:
         assert "isolated renderer exited non-zero" in output.err
         assert "private" not in output.out + output.err
 
+    def test_selftest_rejects_missing_transcript_evidence(self, monkeypatch, capsys):
+        from agent_statusline import selftest
+
+        def incomplete(*args, **kwargs):
+            os.makedirs(kwargs["env"]["AGENT_STATUSLINE_STATE"], mode=0o700)
+            return subprocess.CompletedProcess(
+                args[0],
+                0,
+                stdout="\n".join(selftest.EXPECTED_ROWS),
+                stderr="private child stderr",
+            )
+
+        monkeypatch.setattr(selftest.subprocess, "run", incomplete)
+
+        assert run(["selftest"], monkeypatch) == 1
+        output = capsys.readouterr()
+        assert "approved transcript evidence" in output.err
+        assert "private" not in output.out + output.err
+
     def test_selftest_isolates_home_state_config_and_working_directory(self, monkeypatch, capsys):
         from agent_statusline import selftest
 
         seen = {}
 
+        monkeypatch.setenv("COV_CORE_SOURCE", "private test instrumentation")
+        monkeypatch.setenv("COVERAGE_PROCESS_START", "/private/coverage/config")
+
         def succeed(*args, **kwargs):
             seen.update(kwargs)
             os.makedirs(kwargs["env"]["AGENT_STATUSLINE_STATE"], mode=0o700)
-            return subprocess.CompletedProcess(
-                args[0], 0, stdout="\n".join(selftest.EXPECTED_ROWS), stderr=""
-            )
+            rows = []
+            for label in selftest.EXPECTED_ROWS:
+                markers = selftest.TRANSCRIPT_EVIDENCE.get(label, ())
+                rows.append(f"{label} {' '.join(markers)}")
+            return subprocess.CompletedProcess(args[0], 0, stdout="\n".join(rows), stderr="")
 
         monkeypatch.setattr(selftest.subprocess, "run", succeed)
 
@@ -81,6 +105,8 @@ class TestDispatch:
         assert os.path.dirname(env["HOME"]) == os.path.dirname(env["AGENT_STATUSLINE_STATE"])
         assert env["CLAUDE_CONFIG_DIR"] == os.path.join(env["HOME"], ".claude")
         assert seen["cwd"] == os.path.dirname(env["HOME"])
+        assert "COV_CORE_SOURCE" not in env
+        assert "COVERAGE_PROCESS_START" not in env
         assert "selftest ok" in capsys.readouterr().out
 
     def test_selftest_rejects_non_private_and_unsupported_state(self, tmp_path):
