@@ -102,6 +102,67 @@ def test_jsonl_tail_skips_a_deeply_nested_valid_record(tmp_path):
     assert path.read_text().splitlines() == ['{"value":7,"at":1}', deep_record]
 
 
+def test_jsonl_size_compaction_keeps_newest_valid_suffix_and_discards_malformed(tmp_path):
+    path = tmp_path / "history.jsonl"
+    records = [{"value": number, "at": number} for number in range(1, 4)]
+    serialized = [json.dumps(record) + "\n" for record in records]
+    limit = len((serialized[1] + serialized[2]).encode("utf-8"))
+    path.write_bytes((serialized[0] + "not-json\n" + serialized[1] + '{"cut":').encode())
+
+    assert storage.append_json_if_changed(path, records[2], ("value",), max_bytes=limit)
+
+    assert path.stat().st_size == limit
+    assert [json.loads(line) for line in path.read_text().splitlines()] == records[1:]
+
+
+def test_jsonl_size_compaction_always_preserves_newest_oversized_record(tmp_path):
+    path = tmp_path / "history.jsonl"
+    path.write_text(json.dumps({"value": "old"}) + "\n")
+    newest = {"value": "x" * 100}
+
+    assert storage.append_json_if_changed(path, newest, ("value",), max_bytes=10)
+
+    assert [json.loads(line) for line in path.read_text().splitlines()] == [newest]
+
+
+def test_unchanged_below_bound_jsonl_check_remains_tail_only(tmp_path, monkeypatch):
+    path = tmp_path / "history.jsonl"
+    path.write_text(json.dumps({"value": 7, "at": 1}) + "\n")
+
+    def fail_full_read(_path):
+        raise AssertionError("unchanged hot path must not scan the history")
+
+    monkeypatch.setattr(storage, "_jsonl_records", fail_full_read)
+
+    assert not storage.append_json_if_changed(
+        path, {"value": 7, "at": 2}, ("value",), max_bytes=1024
+    )
+
+
+def test_jsonl_compaction_failure_preserves_old_bytes_and_cleans_temp(tmp_path, monkeypatch):
+    path = tmp_path / "history.jsonl"
+    path.write_text(json.dumps({"value": "old"}) + "\n" + "malformed\n")
+    old = path.read_bytes()
+
+    def fail_replace(_source, _target):
+        raise OSError("injected replace failure")
+
+    monkeypatch.setattr(storage.os, "replace", fail_replace)
+    with pytest.raises(OSError, match="injected replace failure"):
+        storage.append_json_if_changed(path, {"value": "new"}, ("value",), max_bytes=len(old))
+
+    assert path.read_bytes() == old
+    assert not list(tmp_path.glob(".history.jsonl.*"))
+
+
+@pytest.mark.parametrize("max_bytes", [0, -1, True, 1.5, "10"])
+def test_jsonl_bound_must_be_a_positive_integer(tmp_path, max_bytes):
+    with pytest.raises(ValueError, match="positive integer"):
+        storage.append_json_if_changed(
+            tmp_path / "history.jsonl", {"value": 1}, ("value",), max_bytes=max_bytes
+        )
+
+
 def test_concurrent_json_transactions_lose_no_updates(tmp_path):
     path = tmp_path / "counter.json"
     code = r"""

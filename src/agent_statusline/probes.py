@@ -17,18 +17,51 @@ from agent_statusline.paths import state
 from agent_statusline.storage import read_json, update_json
 
 STATE = state("statusline-probe-cache.json")
+MAX_CACHE_AGE_S = 7 * 24 * 60 * 60
+MAX_CACHE_ENTRIES = 256
+
+
+def _observed_at(row, now):
+    if not isinstance(row, Mapping):
+        return None
+    observed = row.get("at")
+    if isinstance(observed, bool) or not isinstance(observed, (int, float)):
+        return None
+    try:
+        if not math.isfinite(observed) or observed > now:
+            return None
+    except OverflowError:
+        return None
+    return observed
+
+
+def _prune(cache, now, active_key):
+    """Discard stale rows and retain the active row plus newest observations."""
+    changed = False
+    observed = {}
+    for key, row in list(cache.items()):
+        at = _observed_at(row, now)
+        if at is None or now - at > MAX_CACHE_AGE_S:
+            del cache[key]
+            changed = True
+        else:
+            observed[key] = at
+
+    if len(cache) > MAX_CACHE_ENTRIES:
+        remove = len(cache) - MAX_CACHE_ENTRIES
+        candidates = sorted(
+            (key for key in cache if key != active_key),
+            key=lambda key: (observed[key], str(key)),
+        )
+        for key in candidates[:remove]:
+            del cache[key]
+        changed = True
+    return changed
 
 
 def _fresh(row, now, ttl):
-    if not isinstance(row, Mapping):
-        return False
-    observed = row.get("at")
-    if isinstance(observed, bool) or not isinstance(observed, (int, float)):
-        return False
-    try:
-        return math.isfinite(observed) and now - observed < ttl
-    except OverflowError:
-        return False
+    observed = _observed_at(row, now)
+    return observed is not None and now - observed < ttl
 
 
 def probe(key, ttl, fn):
@@ -38,19 +71,26 @@ def probe(key, ttl, fn):
         cache = read_json(STATE, {})
     except Exception:
         cache = {}
+    maintenance_needed = _prune(cache, now, key)
     row = cache.get(key)
-    if _fresh(row, now, ttl):
+    cached = _fresh(row, now, ttl)
+    if cached and not maintenance_needed:
         return row.get("val")
-    try:
-        val = fn()
-    except Exception:
-        val = None
+    if cached:
+        val = row.get("val")
+    else:
+        try:
+            val = fn()
+        except Exception:
+            val = None
 
     def publish(current):
+        changed = _prune(current, now, key)
         existing = current.get(key)
         if _fresh(existing, now, ttl):
-            return False, existing.get("val")
+            return changed, existing.get("val")
         current[key] = {"at": now, "val": val}
+        _prune(current, now, key)
         return True, val
 
     try:

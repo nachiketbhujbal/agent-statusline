@@ -217,11 +217,84 @@ def _tail_record(path):
     return previous, not chunk or chunk.endswith(b"\n")
 
 
-def append_json_if_changed(path, record, keys):
+def _jsonl_records(path):
+    """Read valid JSON-object rows through a validated descriptor."""
+    records: list[Mapping] = []
+    try:
+        fd = _open_regular(path, os.O_RDONLY)
+    except FileNotFoundError:
+        return records
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "rb") as fh:
+            fd = None
+            for raw_line in fh:
+                try:
+                    candidate = json.loads(raw_line.decode("utf-8"))
+                except (UnicodeError, ValueError, RecursionError):
+                    continue
+                if isinstance(candidate, Mapping):
+                    records.append(candidate)
+    finally:
+        if fd is not None:
+            _close_after_error(fd)
+    return records
+
+
+def _bounded_jsonl_text(records, max_bytes):
+    """Serialize the newest contiguous records that fit, always keeping newest."""
+    retained: list[str] = []
+    retained_bytes = 0
+    for record in reversed(records):
+        line = json.dumps(record) + "\n"
+        line_bytes = len(line.encode("utf-8"))
+        if retained and retained_bytes + line_bytes > max_bytes:
+            break
+        retained.append(line)
+        retained_bytes += line_bytes
+    retained.reverse()
+    return "".join(retained)
+
+
+def append_json_if_changed(path, record, keys, max_bytes=None):
     """Append one serialized JSONL record unless selected facts are unchanged."""
+    if max_bytes is not None and (
+        isinstance(max_bytes, bool) or not isinstance(max_bytes, int) or max_bytes < 1
+    ):
+        raise ValueError("max_bytes must be a positive integer")
+
     with locked(path) as target:
         previous, ends_with_newline = _tail_record(target)
-        if previous is not None and all(previous.get(key) == record.get(key) for key in keys):
+        unchanged = previous is not None and all(
+            previous.get(key) == record.get(key) for key in keys
+        )
+        encoded = json.dumps(record) + "\n"
+
+        size = 0
+        if max_bytes is not None:
+            try:
+                fd = _open_regular(target, os.O_RDONLY)
+            except FileNotFoundError:
+                pass
+            else:
+                try:
+                    size = os.fstat(fd).st_size
+                finally:
+                    os.close(fd)
+            growth = 0 if unchanged else len(encoded.encode("utf-8")) + (not ends_with_newline)
+            if size + growth > max_bytes:
+                records = _jsonl_records(target)
+                previous = records[-1] if records else None
+                unchanged = previous is not None and all(
+                    previous.get(key) == record.get(key) for key in keys
+                )
+                if not unchanged:
+                    records.append(record)
+                text = _bounded_jsonl_text(records, max_bytes)
+                _atomic_publish_unlocked(target, lambda handle: handle.write(text))
+                return not unchanged
+
+        if unchanged:
             return False
 
         existed = _validate_entry(target)
@@ -232,7 +305,7 @@ def append_json_if_changed(path, record, keys):
                 fd = None
                 if not ends_with_newline:
                     fh.write("\n")
-                fh.write(json.dumps(record) + "\n")
+                fh.write(encoded)
                 fh.flush()
                 os.fsync(fh.fileno())
         finally:

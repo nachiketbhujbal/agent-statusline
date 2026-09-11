@@ -351,7 +351,8 @@ class TestCachedStateShape:
 
         assert transcript.transcript_totals(str(path))["in"] == 3
         cache = json.loads(state_path.read_text())
-        assert cache[str(other)] == {"keep": True}
+        assert cache[str(other)]["keep"] is True
+        assert isinstance(cache[str(other)]["accessed_at"], float)
         assert cache[str(path)]["totals"]["in"] == 3
 
     def test_non_mapping_totals_and_invalid_offset_are_normalized(self, tmp_path, monkeypatch):
@@ -405,7 +406,8 @@ class TestCachedStateShape:
         assert totals["turns"] == 1
         assert cache[str(path)]["offset"] == path.stat().st_size
         assert cache[str(path)]["root"] == "root-keep"
-        assert cache[str(other)] == {"keep": True}
+        assert cache[str(other)]["keep"] is True
+        assert isinstance(cache[str(other)]["accessed_at"], float)
 
     def test_nested_totals_containers_are_normalized_before_absorb(self, tmp_path, monkeypatch):
         path = tmp_path / "session.jsonl"
@@ -474,6 +476,116 @@ class TestCachedStateShape:
 
         assert transcript.conversation_root(str(path)) == "root-123"
         assert json.loads(state_path.read_text())[str(path)]["root"] == "root-123"
+
+
+def test_transcript_cache_retention_boundary_migration_and_invalid_rows(tmp_path, monkeypatch):
+    now = 2_000_000_000.0
+    path = tmp_path / "active.jsonl"
+    path.write_text("")
+    state_path = tmp_path / "state.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                str(path): {
+                    "schema": transcript.SCHEMA,
+                    "offset": 0,
+                    "totals": transcript._blank(),
+                    "accessed_at": now - 1,
+                },
+                "boundary": {"accessed_at": now - transcript.CACHE_RETENTION_S},
+                "expired": {"accessed_at": now - transcript.CACHE_RETENTION_S - 1},
+                "legacy": {"root": "legacy-root"},
+                "future": {"accessed_at": now + 1},
+                "malformed": [],
+            }
+        )
+    )
+    monkeypatch.setattr(transcript, "TSTATE", str(state_path))
+    monkeypatch.setattr(transcript.time, "time", lambda: now)
+
+    assert transcript.transcript_totals(str(path)) == transcript._blank()
+
+    cache = json.loads(state_path.read_text())
+    assert "boundary" in cache
+    assert "expired" not in cache
+    assert cache["legacy"]["accessed_at"] == now
+    assert cache["future"]["accessed_at"] == now
+    assert "malformed" not in cache
+
+
+def test_transcript_cache_cap_preserves_active_row_and_totals(tmp_path, monkeypatch):
+    now = 2_000_000_000.0
+    path = tmp_path / "active.jsonl"
+    path.write_text('{"type":"assistant","message":{"usage":{"input_tokens":5}}}\n')
+    cached_totals = transcript._blank()
+    cached_totals.update({"in": 5, "turns": 1})
+    state_path = tmp_path / "state.json"
+    rows = {
+        str(path): {
+            "schema": transcript.SCHEMA,
+            "offset": path.stat().st_size,
+            "totals": cached_totals,
+            "accessed_at": now - transcript.CACHE_TOUCH_S,
+        },
+        **{
+            f"other:{index:03d}": {"accessed_at": now - index}
+            for index in range(transcript.MAX_CACHED_TRANSCRIPTS)
+        },
+    }
+    state_path.write_text(json.dumps(rows))
+    monkeypatch.setattr(transcript, "TSTATE", str(state_path))
+    monkeypatch.setattr(transcript.time, "time", lambda: now)
+
+    totals = transcript.transcript_totals(str(path))
+
+    cache = json.loads(state_path.read_text())
+    assert totals["in"] == 5
+    assert totals["turns"] == 1
+    assert cache[str(path)]["offset"] == path.stat().st_size
+    assert len(cache) == transcript.MAX_CACHED_TRANSCRIPTS
+    assert "other:511" not in cache
+
+
+def test_unchanged_transcript_row_is_touched_no_more_than_hourly(tmp_path, monkeypatch):
+    clock = [2_000_000_000.0]
+    path = tmp_path / "active.jsonl"
+    path.write_text("")
+    state_path = tmp_path / "state.json"
+    monkeypatch.setattr(transcript, "TSTATE", str(state_path))
+    monkeypatch.setattr(transcript.time, "time", lambda: clock[0])
+
+    transcript.transcript_totals(str(path))
+    initial = state_path.read_bytes()
+    initial_access = json.loads(initial)[str(path)]["accessed_at"]
+
+    clock[0] += transcript.CACHE_TOUCH_S - 1
+    transcript.transcript_totals(str(path))
+    assert state_path.read_bytes() == initial
+
+    clock[0] += 1
+    transcript.transcript_totals(str(path))
+    touched = json.loads(state_path.read_text())[str(path)]["accessed_at"]
+    assert touched == initial_access + transcript.CACHE_TOUCH_S
+
+
+def test_cached_conversation_root_also_runs_retention_maintenance(tmp_path, monkeypatch):
+    now = 2_000_000_000.0
+    path = tmp_path / "active.jsonl"
+    path.write_text('{"type":"user","uuid":"root-123"}\n')
+    state_path = tmp_path / "state.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                str(path): {"root": "root-123", "accessed_at": now - 1},
+                "expired": {"accessed_at": now - transcript.CACHE_RETENTION_S - 1},
+            }
+        )
+    )
+    monkeypatch.setattr(transcript, "TSTATE", str(state_path))
+    monkeypatch.setattr(transcript.time, "time", lambda: now)
+
+    assert transcript.conversation_root(str(path)) == "root-123"
+    assert "expired" not in json.loads(state_path.read_text())
 
 
 def test_transcript_cache_read_failure_uses_established_fallbacks(tmp_path, monkeypatch):
