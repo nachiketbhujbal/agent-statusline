@@ -21,7 +21,7 @@ PERSONAL_EMAIL_RE = re.compile(
 )
 FORBIDDEN_PATH_PARTS = {".claude", ".pvt", ".worktrees"}
 PRIVATE_BILLING_PATH = "docs/adrs/0018-budget-hosted-ci.md"
-MAX_TEXT_BLOB = 2 * 1024 * 1024
+MAX_AUDITED_BLOB = 2 * 1024 * 1024
 
 
 def _git(root: Path, *args: str, input_text: str = "") -> str:
@@ -130,12 +130,17 @@ def check_reachable_objects(root: Path, refs: Sequence[str]) -> list[str]:
                 errors.append(f"reachable path {path}: contains private component {forbidden[0]}")
 
     for object_id, object_type, content in _batch_objects(root, sorted(paths_by_object)):
-        if object_type != "blob" or len(content) > MAX_TEXT_BLOB:
-            continue
-        if b"\x00" in content:
+        if object_type != "blob":
             continue
         paths = paths_by_object[object_id]
         locations = ", ".join(sorted(paths)) or "unknown path"
+        if len(content) > MAX_AUDITED_BLOB:
+            errors.append(
+                f"blob {object_id} ({locations}): exceeds " f"{MAX_AUDITED_BLOB}-byte audit limit"
+            )
+            continue
+        if b"\x00" in content:
+            continue
         if PERSONAL_EMAIL_RE.search(content):
             errors.append(f"blob {object_id} ({locations}): contains a personal-provider email")
         text = content.decode("utf-8", "replace")

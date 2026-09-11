@@ -90,6 +90,18 @@ def test_reachable_history_audit_rejects_private_path(tmp_path):
     assert "contains private component .pvt" in result.stderr
 
 
+def test_reachable_history_audit_rejects_oversized_blob_instead_of_skipping_it(tmp_path):
+    root = repository(tmp_path)
+    write(root / "oversized.txt", "x" * (2 * 1024 * 1024 + 1))
+    git(root, "add", "oversized.txt")
+    git(root, "commit", "-m", "oversized evidence")
+
+    result = run_audit(root)
+
+    assert result.returncode == 1
+    assert "exceeds 2097152-byte audit limit" in result.stderr
+
+
 def test_reachable_history_audit_ignores_unreferenced_commit_objects(tmp_path):
     root = repository(tmp_path)
     tree = git(root, "write-tree").stdout.strip()
