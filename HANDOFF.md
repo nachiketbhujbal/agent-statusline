@@ -6,8 +6,8 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.2.9, deterministic rendering safety.
-- Preceding release: v0.2.8, the immutable base for this slice.
+- Current release target: 0.2.10, hermetic installed-renderer evidence.
+- Preceding release: v0.2.9, the immutable base for this slice.
 - Branch owner: Codex; only the owner changes the release branch.
 - Reviewer role: one independent read-only reviewer, assigned after the exact
   candidate SHA is frozen. No second reviewer or delegated worker runs beside it.
@@ -15,10 +15,11 @@ the roadmap, or accepted ADRs.
   opt-in, and redundant runs are not dispatched while the repository is private.
 - Runtime dependencies remain empty and versions remain Git-tag-derived.
 
-The v0.2.9 release changes terminal-cell fitting, untrusted terminal-control
-sanitization, continuation alignment, nested-Git disk binding, and the approved
-floored integer 5h/7d allowance display. It does not change installation,
-accounting, storage, live configuration, workflows, or repository visibility.
+The v0.2.10 release adds shared, privacy-neutral payload and transcript
+templates; runtime materialization into disposable absolute paths and current
+clocks; and one exact transcript-backed renderer contract consumed by pytest and
+the installed-wheel CI smoke. It changes no runtime behavior, dependencies,
+live configuration, or repository visibility.
 
 ## Stable product boundary
 
@@ -34,15 +35,13 @@ widget-based host; [PORTING.md](docs/PORTING.md) records the verified boundary.
 
 ## Release train
 
-Released slices through v0.2.8 cover ownership-safe installation, the locked
+Released slices through v0.2.9 cover ownership-safe installation, the locked
 quality gate, malformed-input resilience, private serialized state, exact
 rolling-cost attribution, session-scoped process evidence, and bounded
-observation state. The released governance slice makes project authority,
-research, review findings, and release ownership recoverable from tracked files.
+observation state, tracked governance, and deterministic rendering safety.
 
 Later v0.2.x slices remain independently reviewable and releasable:
 
-- v0.2.10: hermetic installed-renderer evidence.
 - v0.2.11: isolated self-test and privacy-safe diagnostics.
 - v0.2.12: documentation, immutable workflow pins, and public-readiness closure.
 
