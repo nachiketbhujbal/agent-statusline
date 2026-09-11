@@ -4,6 +4,16 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
+## Unreleased — 0.2.6
+
+Process evidence on the `SYSTEM` row is now cached by the host's opaque session
+identifier, with a separately namespaced parent-PID fallback when the identifier
+is unavailable ([ADR 0024](adrs/0024-scope-process-probes-by-session.md)). Two
+concurrent sessions can no longer display each other's PID, process count, or
+resident memory during the probe TTL. Per-session and machine-wide values still
+come from one process snapshot, the existing eight-second reuse remains intact,
+and cache-retention limits remain the separate v0.2.7 boundary.
+
 ## 0.2.5
 
 Rolling `24h`, `7d`, and `30d` costs now use timestamped positive lifetime

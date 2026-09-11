@@ -17,8 +17,8 @@ installed-artifact evidence.
 | 0.2.2 | Locked local quality gate | **Released** |
 | 0.2.3 | Malformed host-input resilience | **Released** |
 | 0.2.4 | Private, serialized runtime state | **Released** |
-| 0.2.5 | Exact rolling-cost attribution | **Current** |
-| 0.2.6 | Session-scoped process evidence | Planned |
+| 0.2.5 | Exact rolling-cost attribution | **Released** |
+| 0.2.6 | Session-scoped process evidence | **Current** |
 | 0.2.7 | Bounded observation state | Planned |
 | 0.2.8 | Tracked governance and review records | Planned |
 | 0.2.9 | Width-safe, sanitized rendering | Planned |
@@ -27,10 +27,10 @@ installed-artifact evidence.
 | 0.2.12 | Documentation, pinned workflow, and public-readiness closure | Planned |
 | 0.3.0 | Production-ready milestone | Planned after the patch train |
 
-0.2.1 through 0.2.4 are tagged and released. The current 0.2.5 boundary replaces
-whole-session rolling-window attribution with timestamped positive lifetime
-deltas and honest lower bounds; later releases remain absent. Every release's
-review, hosted CI, tag, and artifact evidence must stand on its own.
+0.2.1 through 0.2.5 are tagged and released. The current 0.2.6 boundary scopes
+mixed process evidence to the session that produced it while retaining one
+internally consistent process snapshot; later releases remain absent. Every
+release's review, hosted CI, tag, and artifact evidence must stand on its own.
 
 ## 0.2.1 — ownership-safe installation
 
@@ -119,3 +119,16 @@ Current release:
   manufacture completeness.
 - Preserve lifetime session, resume/base/run, `last5`, `all`, row order, all
   non-cost fields, private storage, and the zero-runtime-dependency boundary.
+
+## 0.2.6 — session-scoped process evidence
+
+Current release:
+
+- Cache the combined process snapshot under the host's opaque string session
+  identifier, with a separately namespaced parent-PID fallback.
+- Prevent concurrent sessions from borrowing each other's PID, process count,
+  or resident-memory evidence during the cache TTL.
+- Preserve one internally consistent snapshot for both per-session and
+  machine-wide totals without adding a second cold-render subprocess.
+- Keep the existing eight-second TTL; retention and entry-count limits remain
+  the v0.2.7 boundary.
