@@ -24,13 +24,15 @@ installed-artifact evidence.
 | 0.2.9 | Width-safe, sanitized rendering | **Released** |
 | 0.2.10 | Hermetic installed-renderer evidence | **Released** |
 | 0.2.11 | Isolated self-test and safe diagnostics | **Released** |
-| 0.2.12 | Documentation, pinned workflow, and public-readiness closure | **Current** |
+| 0.2.12 | Documentation, pinned workflow, and public-readiness closure | **Released** |
+| 0.2.13 | Oversized-audit and hosted-exposure closure | **Current** |
 | 0.3.0 | Production-ready milestone | Planned after the patch train |
 
-0.2.1 through 0.2.11 are tagged and released. The current 0.2.12 boundary closes
-tracked documentation, workflow-integrity, private-boundary, and visibility-
-readiness work without changing runtime or repository visibility. Every
-release's review, hosted CI, tag, and artifact evidence must stand on its own.
+0.2.1 through 0.2.12 are tagged and released. The current 0.2.13 boundary closes
+the oversized privacy-audit bypass, inventories the retained Actions exposure,
+and corrects post-release records without changing runtime or repository
+visibility. Every release's review, hosted CI, tag, and artifact evidence must
+stand on its own.
 
 ## 0.2.1 — ownership-safe installation
 
@@ -222,7 +224,7 @@ Released:
 
 ## 0.2.12 — public-readiness closure
 
-Current release:
+Released:
 
 - Align README, internals, porting guidance, release records, and handoff state
   with the source and tags shipped through v0.2.11.
@@ -242,6 +244,22 @@ Current release:
 - Release under the current private process. Present a direct visibility
   recommendation before any conversion; visibility and repository protection
   changes remain separately authorized operations.
+
+## 0.2.13 — oversized-audit and hosted-exposure closure
+
+Current release:
+
+- Reject every distribution member and reachable blob above the bounded
+  privacy-audit size instead of silently skipping it.
+- Prove the old bypass with synthetic archive and Git-history regressions, then
+  rerun the strict audit over the ordinary reachable graph.
+- Inventory every retained Actions log and artifact, remove only the explicitly
+  authorized unsafe artifacts, and verify the remaining hosted surface.
+- Align the changelog, roadmap, handoff, review ledger, and public-readiness
+  verdict with released v0.2.12 and the completed inventory.
+- Keep runtime behavior, Git history, release tags and assets, workflow runs and
+  logs, visibility, protections, live state, and the accepted ADR 0035 pull-ref
+  residue unchanged.
 
 ## 0.3.0 — production-ready milestone
 

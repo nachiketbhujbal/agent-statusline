@@ -4,7 +4,26 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.2.12
+## Unreleased — 0.2.13
+
+Artifact and reachable-history privacy checks now fail closed on every regular
+member or blob above the two-MiB audit boundary instead of silently skipping
+it. Synthetic regressions cover both paths, and a renewed strict scan confirms
+that the ordinary reachable graph contains no oversized blob.
+
+The historical Actions exposure inventory downloaded and scanned all retained
+run logs and artifacts. Sixteen unsafe CI source-distribution artifacts carrying
+the superseded ADR 0018 billing phrase were deleted with explicit authorization.
+The post-deletion snapshot verified all 41 then-retained logs and all ten
+remaining artifacts in a complete second scan. Current tracked records now
+reflect the released v0.2.12 boundary and the conditional recommendation for a
+separately authorized public conversion.
+
+Runtime behavior, dependencies, Git history, release tags and assets, workflow
+runs and logs, repository visibility, protection settings, and live state are
+unchanged.
+
+## 0.2.12
 
 Public documentation now matches the released package boundary, including the
 installer's conditional timestamp hooks, isolated self-test, failure breadcrumb,

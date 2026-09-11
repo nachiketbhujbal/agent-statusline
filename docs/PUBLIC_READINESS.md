@@ -7,9 +7,14 @@ identifier.
 
 ## Current verdict
 
-**No-go for public visibility. The ordinary reachable history rewrite is
-complete, but v0.2.12 remains no-go until the renewed prevention candidate is
-independently reviewed and passes its normal private hosted release sequence.**
+**Conditional go for a separately authorized public conversion. The ordinary
+reachable history, released artifacts, retained Actions surface, and prospective
+privacy gates now satisfy the pre-conversion technical boundary.**
+
+This verdict is a recommendation, not authorization to change visibility or
+repository settings. It retains the accepted historical pull-ref exposure below
+and requires `main` protection to be enabled and API-verified immediately after
+conversion before the public baseline is called complete.
 
 The ADR 0034 cutover atomically rewrote all 21 intended ordinary branch and tag
 refs. A fresh fetch limited to ordinary heads and tags passes the complete
@@ -46,10 +51,12 @@ separately. No GitHub Support request is planned.
   mutable workflow action refs, the undefined dependency prefix, drift from the
   lean workflow boundary, and exact billing evidence in the current ADR.
 - `scripts/verify_artifacts.py` rejects private paths and private textual
-  evidence from wheel and source-distribution contents.
+  evidence from wheel and source-distribution contents, and fails closed rather
+  than skipping a regular member above the bounded audit size.
 - `scripts/audit_reachable_history.py` audits local, `origin`, and tag refs—or
   an explicitly selected ref and its ancestry—for private paths, exact billing
-  evidence, personal-provider email content, and non-no-reply identities.
+  evidence, personal-provider email content, non-no-reply identities, and any
+  blob above the bounded audit size.
 
 ## Completed rewrite evidence
 
@@ -84,14 +91,24 @@ pull refs were separately required to retain their exact inventoried values.
 The existing Releases were reconciled against their rewritten tags from private
 rollback-backed artifacts before workflow restoration.
 
-Historical Actions logs and artifacts must be inventoried before public
-conversion because GitHub makes private-repository Actions history visible when
-the repository becomes public. Public conversion, ruleset activation, and any
-orphan-object work remain separate from the v0.2.12 history cleanup.
+The [historical Actions exposure inventory](ACTIONS_EXPOSURE_INVENTORY.md)
+downloaded and scanned all 41 retained log archives and all 26 then-retained
+artifacts. No log matched the private-evidence policy. Sixteen source-
+distribution artifacts contained the superseded ADR 0018 billing phrase and
+were deleted with explicit maintainer authorization. A complete second pass
+found all 41 logs available and clean and all ten remaining artifacts available
+and clean. Workflow runs and logs, GitHub Releases, release assets, refs, and
+tags were not deleted or rewritten.
+
+Public conversion, ruleset activation, and any orphan-object work remain
+separate from the v0.2.12 history cleanup.
 
 ## Final public decision
 
-After renewed exact-SHA review, fresh hosted evidence, and the private v0.2.12
-release all pass, present a new visibility recommendation that explicitly
-retains the ADR 0035 pull-ref caveat. A passing repository does not itself
-authorize changing visibility.
+The direct recommendation is to permit a separately authorized public
+conversion while explicitly accepting the ADR 0035 pull-ref caveat. Immediately
+after conversion, enable a no-bypass `main` ruleset with the intended required
+checks and verify it through the GitHub API. Until that post-conversion check
+passes, describe the repository as technically ready but not as a protected
+public baseline. A passing repository does not itself authorize changing
+visibility.

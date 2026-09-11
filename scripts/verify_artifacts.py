@@ -13,7 +13,7 @@ EVIDENCE_SUFFIXES = (
     "tests/fixtures/statusline-payload.json",
     "tests/fixtures/statusline-transcript.jsonl",
 )
-MAX_TEXT_MEMBER = 2 * 1024 * 1024
+MAX_AUDITED_MEMBER = 2 * 1024 * 1024
 PRIVATE_CONTENT_PATTERNS = (
     (
         re.compile(rb"\b\d+(?:[.,]\d+)?\s+Linux-equivalent minutes\b", re.IGNORECASE),
@@ -51,8 +51,12 @@ def archive_text_members(path):
     if zipfile.is_zipfile(path):
         with zipfile.ZipFile(path) as archive:
             for info in archive.infolist():
-                if info.is_dir() or info.file_size > MAX_TEXT_MEMBER:
+                if info.is_dir():
                     continue
+                if info.file_size > MAX_AUDITED_MEMBER:
+                    raise ValueError(
+                        f"{path}: {info.filename} exceeds " f"{MAX_AUDITED_MEMBER}-byte audit limit"
+                    )
                 content = archive.read(info)
                 if b"\x00" not in content:
                     yield info.filename, content
@@ -60,8 +64,12 @@ def archive_text_members(path):
     if tarfile.is_tarfile(path):
         with tarfile.open(path, "r:*") as archive:
             for member in archive.getmembers():
-                if not member.isfile() or member.size > MAX_TEXT_MEMBER:
+                if not member.isfile():
                     continue
+                if member.size > MAX_AUDITED_MEMBER:
+                    raise ValueError(
+                        f"{path}: {member.name} exceeds " f"{MAX_AUDITED_MEMBER}-byte audit limit"
+                    )
                 source = archive.extractfile(member)
                 if source is None:
                     continue
