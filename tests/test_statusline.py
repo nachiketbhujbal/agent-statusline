@@ -228,6 +228,75 @@ class TestRobustness:
         payload.pop("rate_limits")
         assert "USAGE" not in labels(draw(payload, monkeypatch, capsys))
 
+    def test_process_probe_is_scoped_to_each_session(self, payload, monkeypatch, capsys):
+        keys = []
+
+        def capture(key, _ttl, fn):
+            if key.startswith("procs:"):
+                keys.append(key)
+                return fn()
+            return {}
+
+        snapshots = iter(
+            [
+                {"mine_pid": 101, "mine_rss": 1024, "mine_procs": 1, "all_rss": 1024},
+                {"mine_pid": 202, "mine_rss": 2048, "mine_procs": 2, "all_rss": 4096},
+            ]
+        )
+        monkeypatch.setattr(statusline.pr, "probe", capture)
+        monkeypatch.setattr(statusline.pr, "processes", lambda: next(snapshots))
+
+        payload["session_id"] = "session-a"
+        first = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
+        payload["session_id"] = "session-b"
+        second = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
+
+        assert keys == ["procs:session:session-a", "procs:session:session-b"]
+        assert "pid 101" in first
+        assert "pid 202" in second
+
+    def test_missing_process_session_uses_noncolliding_parent_scope(
+        self, payload, monkeypatch, capsys
+    ):
+        keys = []
+
+        def capture(key, _ttl, _fn):
+            if key.startswith("procs:"):
+                keys.append(key)
+            return {}
+
+        monkeypatch.setattr(statusline.pr, "probe", capture)
+        monkeypatch.setattr(statusline.os, "getppid", lambda: 4242)
+
+        payload.pop("session_id")
+        draw(payload, monkeypatch, capsys)
+        draw(payload, monkeypatch, capsys)
+        payload["session_id"] = "parent:4242"
+        draw(payload, monkeypatch, capsys)
+
+        assert keys == [
+            "procs:parent:4242",
+            "procs:parent:4242",
+            "procs:session:parent:4242",
+        ]
+
+    def test_empty_process_session_remains_an_opaque_session_scope(
+        self, payload, monkeypatch, capsys
+    ):
+        keys = []
+
+        def capture(key, _ttl, _fn):
+            if key.startswith("procs:"):
+                keys.append(key)
+            return {}
+
+        monkeypatch.setattr(statusline.pr, "probe", capture)
+        payload["session_id"] = ""
+
+        draw(payload, monkeypatch, capsys)
+
+        assert keys == ["procs:session:"]
+
     def test_malformed_numeric_payload_values_use_safe_defaults(self, payload, monkeypatch, capsys):
         payload["context_window"]["context_window_size"] = float("inf")
         payload["context_window"]["used_percentage"] = "not-a-number"

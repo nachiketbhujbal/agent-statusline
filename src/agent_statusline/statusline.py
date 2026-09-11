@@ -528,7 +528,16 @@ def main():
     rows["TIMING"] = row("TIMING", r6)
 
     # ---------- row 7: machine pressure ----------
-    procs = pr.probe("procs", 8, pr.processes) or {}
+    # Process results mix machine-wide totals with this session's PID and RSS.
+    # Keep host-supplied identifiers opaque and namespace the parent fallback so
+    # the two forms cannot collide inside the shared cache.
+    process_session = d.get("session_id")
+    process_scope = (
+        f"session:{process_session}"
+        if isinstance(process_session, str)
+        else f"parent:{os.getppid()}"
+    )
+    procs = pr.probe(f"procs:{process_scope}", 8, pr.processes) or {}
     mem = pr.probe("mem", 8, pr.memory) or {}
     dsk = pr.probe(f"disk:{cwd}", 30, lambda c=cwd: pr.disk(c)) or {}
     # Ordered so the two figures people compare -- this session's footprint and
