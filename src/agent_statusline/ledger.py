@@ -104,6 +104,10 @@ def record_cost_delta(data, sid, previous_cost, current_cost, when=None, accrued
         data["cost_tracking_started"] = iso(now)
         data["cost_events"] = []
         for session, row in data.get("sessions", {}).items():
+            if isinstance(row, dict):
+                # A seed marker has meaning only with its matching journal
+                # schema. Ignore a stale marker from malformed/partial state.
+                row.pop("cost_journal_seeded", None)
             changed = _seed_cost_row(data, session, row, now) or changed
         return True
     if schema != COST_EVENT_SCHEMA or not isinstance(data.get("cost_events"), list):
