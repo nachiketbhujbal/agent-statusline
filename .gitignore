@@ -27,7 +27,12 @@ dist/
 # Private session handoff and local Claude project state. Kept out of Git on
 # purpose: it records account details, spend figures and session history that
 # must not enter a repository that may become public.
-.claude/
+/.claude/
+
+# Local private workspace state and linked worktrees. Keep all three root
+# boundaries even when only one is currently present.
+/.pvt/
+/.worktrees/
 
 # Coverage output from a local test run.
 .coverage

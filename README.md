@@ -10,6 +10,9 @@ reports what the session is doing, what it is costing, how well the prompt cache
 working, and how much machine it is using — all from data the agent already has, with **no
 telemetry, no network calls, and no dependencies**.
 
+This is an independent project and is not affiliated with or endorsed by
+Anthropic.
+
 ```
 PROJECT acme-web/services │ feature/ingest* ↑2 stash1 │ "Rewrite the importer"
 MODEL   Opus 5:high │ think │ fast off │ auto │ v2.1.246
@@ -45,10 +48,11 @@ Rows are ordered by how often they answer a question worth asking — `PROJECT` 
 | [docs/CHANGELOG.md](docs/CHANGELOG.md) | what changed in each release, and what is queued for the next one |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | the 0.2.x release sequence and what each one is for |
 | [docs/CODE_REVIEW.md](docs/CODE_REVIEW.md) | review findings, with the release that resolved each |
+| [docs/PUBLIC_READINESS.md](docs/PUBLIC_READINESS.md) | the reproducible privacy and repository-visibility audit |
 
 ## Requirements
 
-- **Python 3.9+**, standard library only. There is nothing to `pip install`.
+- **Python 3.9+**, with no runtime packages beyond the standard library.
 - **Claude Code** (developed against v2.1.246).
 - macOS or Linux. The `SYSTEM` row's memory probe is macOS-specific (`vm_stat`, `sysctl`);
   every other row is portable, and the row degrades to disk-only elsewhere rather than failing.
@@ -61,15 +65,19 @@ uv tool install git+https://github.com/nachiketbhujbal/agent-statusline
 agent-statusline install
 ```
 
-Then restart Claude Code. `pipx install` and `pip install` work identically, and
-once the repository is public the `git+ssh://` URL becomes just the package name.
+Then restart Claude Code. `pipx install` and `pip install` can install from the
+same Git URL. Making the repository public removes the authentication
+requirement; installing by package name would still require a separate PyPI
+publication.
 
-`agent-statusline install` writes the `statusLine` entry and the four hook entries
-into `~/.claude/settings.json`, pointing them at the installed executable. It backs the
-file up first, preserves every unrelated setting and hook, and renders your last real
-payload so you can see it working before restarting. Add `--dry-run` to see exactly what
-it would touch — a dry run creates nothing, not even the configuration directory — and
-`agent-statusline uninstall` to reverse it.
+`agent-statusline install` writes its `statusLine` entry and two always-on hooks
+into `~/.claude/settings.json`; while Claude's native timestamp feature remains
+unavailable, it also adds two temporary timestamp hooks. It points every entry
+at the installed executable, backs the file up first, preserves every unrelated
+setting and hook, and renders your last real payload against throwaway state so
+you can see it working before restarting. Add `--dry-run` to see exactly what it
+would touch — a dry run creates nothing, not even the configuration directory —
+and `agent-statusline uninstall` to reverse it.
 
 It only ever touches configuration it owns, and ownership means the exact command this
 installation wrote — not a familiar-looking filename or interpreter. Unrelated top-level
@@ -135,6 +143,7 @@ two shapes it is in; you do not tell it.
 | `agent-statusline uninstall` | remove the settings entries and the symlink |
 | `agent-statusline hook <name>` | run one hook: `session-end`, `context-guard`, `timestamp-user`, `timestamp-stop` |
 | `agent-statusline ledger show` | print the cost ledger; `ledger close <id>` seals a row by hand |
+| `agent-statusline selftest` | verify all ten rows in a child process using isolated synthetic state |
 | `agent-statusline version` | print the version |
 
 ### Code here, state there
@@ -149,12 +158,36 @@ the caches, the rate-limit log — is machine-local and stays in `~/.claude/`:
 | `statusline-probe-cache.json` | cached probe results |
 | `rate-limit-history.jsonl` | append-on-change rate-limit log |
 | `statusline-last-payload.json` | last payload; **load-bearing**, the context-guard hook reads it |
+| `statusline-last-error.json` | last unexpected render failure's time and type only; no message, path, or payload |
 
 Override the location with `AGENT_STATUSLINE_STATE=/some/dir` — useful for testing against
 a throwaway directory, which is the *only* safe way to exercise cost paths (see
 [ADR 0014](docs/adrs/0014-never-exercise-cost-paths-against-the-live-ledger.md)).
 
+### Privacy and trust boundary
+
+Normal rendering is local-only: it makes no network request, sends no
+telemetry, and has no cloud fallback. It reads the JSON supplied by Claude, the
+payload-selected transcript, local Git/process/memory/disk state, and
+`~/.claude.json` for local account flags. Installation additionally reads and
+writes `~/.claude/settings.json` and checks the local native-timestamp feature
+flag. Those sources can contain sensitive paths, titles, costs, and commands.
+
+Mutable state stays outside the repository, is serialized under sidecar locks,
+and is atomically replaced. Newly created state directories use `0700`; state
+files and locks use `0600`. The last-payload file intentionally contains the
+host payload; do not publish, attach, or commit it. Tests and `selftest` set
+`AGENT_STATUSLINE_STATE` before package import and use only synthetic evidence.
+
 ## Verify it works
+
+The safe first check is fully synthetic and never touches the live ledger:
+
+```bash
+agent-statusline selftest
+```
+
+For a visual preview of your own last payload, isolate the state explicitly:
 
 ```bash
 # render from your last real payload without touching any live state
@@ -186,10 +219,13 @@ agent-statusline/
 │   ├── cli.py              the `agent-statusline` entry point and its subcommands
 │   ├── installer.py        settings.json wiring for both install shapes
 │   ├── statusline.py       the status line itself: ORDER, rows, main()
+│   ├── selftest.py         isolated synthetic installed-renderer check
+│   ├── diagnostics.py      allowlisted last-error breadcrumb
 │   ├── render.py           colours, units, bars, width fitting  (host-agnostic)
 │   ├── transcript.py       incremental .jsonl parsing
 │   ├── probes.py           cached subprocess/file probes        (host-agnostic)
 │   ├── ledger.py           cost ledger + `close` / `show` CLI   (host-agnostic)
+│   ├── storage.py          locked, atomic, private persistence
 │   ├── paths.py            the one place that knows where state lives
 │   └── hooks/
 │       ├── session_end.py     seals the ledger row on exit
@@ -203,11 +239,15 @@ agent-statusline/
     ├── INTERNALS.md        data sources, adding a field, how signals were discovered
     ├── adrs/               architecture decision records, one per decision, with an index
     ├── DEFERRED.md         ideas considered and consciously not built
-    └── PORTING.md          adapting this to Codex or another agent
+    ├── PORTING.md          adapting this to Codex or another agent
+    ├── ROADMAP.md          promoted release sequence
+    └── PUBLIC_READINESS.md privacy and visibility audit
 ```
 
-Only `statusline.py` and `transcript.py` know what a Claude payload looks like; the modules
-marked host-agnostic are reusable as-is. See [docs/PORTING.md](docs/PORTING.md).
+`statusline.py`, `transcript.py`, the hooks, and the installer know about
+Claude-specific contracts. The modules marked host-agnostic provide reusable
+primitives, but no second-host adapter ships today. See
+[docs/PORTING.md](docs/PORTING.md).
 
 ## Updating
 
@@ -265,8 +305,12 @@ times a Linux one and Actions minutes are shared across every private repository
 
 ## Troubleshooting
 
-**Nothing appears.** Claude Code silently swallows a status line that errors. Run the
-verify command above; a traceback there is the answer.
+**Nothing appears.** Claude Code silently swallows a status line that errors. Run
+`agent-statusline selftest` first; it verifies the installed renderer without reading or
+mutating live accounting. An unexpected renderer failure also leaves only its time and
+exception type in `~/.claude/statusline-last-error.json`. If the self-test passes, use the
+isolated visual-preview command above to inspect your real payload without touching the
+live ledger.
 
 **`ModuleNotFoundError: No module named 'agent_statusline'`.** In a checkout, the symlink
 is missing or points somewhere stale — re-run `python3 install.py`. If installed, the tool

@@ -23,14 +23,14 @@ installed-artifact evidence.
 | 0.2.8 | Tracked governance and review records | **Released** |
 | 0.2.9 | Width-safe, sanitized rendering | **Released** |
 | 0.2.10 | Hermetic installed-renderer evidence | **Released** |
-| 0.2.11 | Isolated self-test and safe diagnostics | **Current** |
-| 0.2.12 | Documentation, pinned workflow, and public-readiness closure | Planned |
+| 0.2.11 | Isolated self-test and safe diagnostics | **Released** |
+| 0.2.12 | Documentation, pinned workflow, and public-readiness closure | **Current** |
 | 0.3.0 | Production-ready milestone | Planned after the patch train |
 
-0.2.1 through 0.2.10 are tagged and released. The current 0.2.11 boundary adds
-an isolated installed self-test and tightly allowlisted private renderer-failure
-evidence without touching live state. Every release's review, hosted CI, tag,
-and artifact evidence must stand on its own.
+0.2.1 through 0.2.11 are tagged and released. The current 0.2.12 boundary closes
+tracked documentation, workflow-integrity, private-boundary, and visibility-
+readiness work without changing runtime or repository visibility. Every
+release's review, hosted CI, tag, and artifact evidence must stand on its own.
 
 ## 0.2.1 — ownership-safe installation
 
@@ -206,7 +206,7 @@ Released:
 
 ## 0.2.11 — isolated self-test and safe diagnostics
 
-Current release:
+Released:
 
 - Add `agent-statusline selftest` using the v0.2.10 synthetic contract in a
   fresh child with isolated private home, configuration, state, and cwd.
@@ -220,13 +220,25 @@ Current release:
 - Keep v0.2.12 workflow/public-readiness work, live installation, performance,
   and repository visibility unchanged.
 
-## 0.2.12
+## 0.2.12 — public-readiness closure
 
-Planned:
+Current release:
 
-- Close documentation findings, replace moving workflow action tags with
-  immutable commits, audit history and workflow logs, and present the maintainer
-  with a direct public-visibility recommendation before any visibility change.
+- Align README, internals, porting guidance, release records, and handoff state
+  with the source and tags shipped through v0.2.11.
+- Pin every third-party action to a reviewed full commit SHA with a readable
+  release comment and enforce that policy locally and in hosted workflows.
+- Track `/.claude/`, `/.pvt/`, and `/.worktrees/` as permanent private
+  boundaries; reject an undefined dependency-guard prefix.
+- Generalize private billing evidence from ADR 0018 and supersede it with the
+  public-safe lean-CI and conversion boundary in ADR 0033.
+- Prevent future personal merge/tag identities and execute the recoverable,
+  one-time reachable-history migration in ADR 0034 before tagging v0.2.12.
+- Record a reproducible history/ref, artifact, secret/environment, workflow, and
+  repository-setting audit in [PUBLIC_READINESS.md](PUBLIC_READINESS.md).
+- Release under the current private process. Present a direct visibility
+  recommendation before any conversion; visibility and repository protection
+  changes remain separately authorized operations.
 
 ## 0.3.0 — production-ready milestone
 

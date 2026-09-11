@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-26
+- One-time exception: [ADR 0034](0034-rewrite-reachable-pre-public-history-once.md)
 
 ## Context
 
@@ -18,6 +19,10 @@ carried the removed content. That purge is complete and closed.
 
 Once pushed, a version tag is never moved, deleted, or reused. A mistake in a
 released version is corrected by a new patch version.
+
+ADR 0034 authorizes one enumerated, recoverable pre-public privacy rewrite of
+reachable v0.2.1 through v0.2.11 tags. That exception does not weaken the rule
+for later releases.
 
 A tag is created only on a commit that has already been verified, so the tag
 workflow is post-tag evidence rather than the thing that decides whether the

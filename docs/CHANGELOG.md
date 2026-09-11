@@ -4,7 +4,34 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.2.11
+## Unreleased — 0.2.12
+
+Public documentation now matches the released package boundary, including the
+installer's conditional timestamp hooks, isolated self-test, failure breadcrumb,
+state guarantees, and current Codex footer limitations. A tracked public-
+readiness record covers history and refs, artifacts, repository settings,
+secrets and environments, hosted evidence, and the separately authorized
+visibility/protection sequence.
+
+Every third-party workflow action is pinned to a reviewed full commit SHA with
+a readable release comment. A dependency-free policy check enforces immutable
+action refs, the lean CI trigger/permission boundary, absence of the undefined
+dependency prefix, root ignores for `/.claude/`, `/.pvt/`, and `/.worktrees/`,
+and removal of exact private billing evidence from the current tree. ADR 0033
+supersedes the earlier private-billing record while retaining conservative
+private CI and explicit authorization for visibility or repository-setting
+changes.
+
+GitHub and repository-local no-reply controls now prevent another maintainer
+merge from exposing a personal address. Automatic `main` CI validates the
+generated merge identity, Release validates the annotated tagger and peeled
+commit before publication, artifact policy scans archive contents, and a
+deterministic audit covers only reachable branches and tags. ADR 0034 defines a
+recoverable one-time in-place rewrite; v0.2.12 remains unreleased until that
+audit passes on rewritten history. Runtime behavior and dependencies are
+unchanged.
+
+## 0.2.11
 
 `agent-statusline selftest` now renders the v0.2.10 synthetic contract in a
 fresh child process with isolated private home, configuration, state, and

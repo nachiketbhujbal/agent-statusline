@@ -17,6 +17,12 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: public-readiness-policy
+        name: Public-readiness boundaries
+        entry: uv run --locked python scripts/verify_public_readiness.py
+        language: system
+        pass_filenames: false
+        always_run: true
       - id: ruff
         name: Ruff lint
         entry: uv run --locked ruff check --force-exclude
