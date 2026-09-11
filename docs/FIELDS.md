@@ -115,6 +115,7 @@ that number, and it may be pinned rather than climbing. See
 | `$2.10 session` | ledger | **lifetime** cost of this session across every resume |
 | `(run $X · N runs)` | ledger | shown only after a resume: this run's own spend, and the run count |
 | `24h / 7d / 30d` | ledger | spend across all sessions in those windows |
+| `≥` before a rolling cost | ledger | historical timing is not fully attributable for that horizon; the displayed amount is the exact known lower bound |
 | `last5 · all` | ledger | the five most recently updated rows, and everything |
 | `(5 convos · 6 sess · 1 fork)` | ledger | conversations, real sessions, forks |
 | `+174/-0 lines` | payload | lines added/removed this session |
@@ -123,9 +124,13 @@ that number, and it may be pinned rather than climbing. See
 | `overage included for <model>` | probe | past the limit, but this model is exempt from drawing |
 | `credits OFF (reason)` | probe | credits unavailable — red |
 
-Cost is the payload's `total_cost_usd` **passed straight through**, never recomputed from
-tokens × a price table, which would drift silently when prices change. The credit *balance*
-is not obtainable locally at all — see [ADR 0001](adrs/0001-exactly-accountable-money.md).
+Session lifetime cost begins with the payload's `total_cost_usd` **passed straight
+through**, never recomputed from tokens × a price table, which would drift silently when
+prices change. Rolling windows use timestamped positive lifetime deltas. A migrated
+lifetime is included only when its lifecycle proves that all of it belongs in the window;
+otherwise `≥` makes the exact one-sided lower bound explicit. The credit *balance* is not
+obtainable locally at all — see [ADR 0001](adrs/0001-exactly-accountable-money.md) and
+[ADR 0022](adrs/0022-account-rolling-costs-with-timestamped-deltas.md).
 
 ## SYSTEM
 

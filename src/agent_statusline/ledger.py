@@ -13,6 +13,7 @@ crash, lost daemon):
 """
 import argparse
 import datetime
+import math
 import os
 import sys
 from collections.abc import Mapping
@@ -24,6 +25,9 @@ from agent_statusline.paths import state
 from agent_statusline.storage import read_json, update_json
 
 LEDGER = state("cost-ledger.json")
+COST_EVENT_SCHEMA = 1
+COST_EVENT_RETENTION_SECONDS = 35 * 86400
+COST_WINDOWS = {"d1": 86400, "d7": 7 * 86400, "d30": 30 * 86400}
 
 # Statuses written into a row's `reason`. Anything Claude Code reports via the
 # SessionEnd payload passes through as-is; these are the ones we write ourselves.
@@ -90,6 +94,212 @@ def apply_cost(row, payload_cost, pid=None):
     return row["cost"]
 
 
+def record_cost_delta(data, sid, previous_cost, current_cost, when=None, accrued_at=None):
+    """Seed or append one positive lifetime-cost delta."""
+    now = _observation_epoch(when)
+    changed = False
+    schema = data.get("cost_event_schema")
+    if schema is None:
+        if any(
+            key in data for key in ("cost_event_schema", "cost_tracking_started", "cost_events")
+        ):
+            # Journal-shaped state without a recognized schema may contain
+            # evidence we do not understand. Preserve it and fail closed rather
+            # than erasing it to manufacture an apparently complete history.
+            return False
+        data["cost_event_schema"] = COST_EVENT_SCHEMA
+        data["cost_tracking_started"] = iso(now)
+        data["cost_events"] = []
+        for session, row in data.get("sessions", {}).items():
+            if isinstance(row, dict):
+                # A seed marker has meaning only with its matching journal
+                # schema. Ignore a stale marker from malformed/partial state.
+                row.pop("cost_journal_seeded", None)
+            changed = _seed_cost_row(data, session, row, now) or changed
+        return True
+    if schema != COST_EVENT_SCHEMA or not isinstance(data.get("cost_events"), list):
+        return False
+
+    events = data["cost_events"]
+    cutoff = now - COST_EVENT_RETENTION_SECONDS
+    valid_events = [event for event in events if _valid_cost_event(event)]
+    tracking_started = epoch(data.get("cost_tracking_started"))
+    journal_order_ok = 0 < tracking_started <= now and all(
+        epoch(event["at"]) >= tracking_started for event in valid_events
+    )
+    if len(valid_events) == len(events) and journal_order_ok:
+        retained = [event for event in valid_events if epoch(event["at"]) >= cutoff]
+        if retained != events:
+            data["cost_events"] = events = retained
+            changed = True
+
+    row = data.get("sessions", {}).get(sid, {})
+    if not isinstance(row, Mapping) or not row.get("cost_journal_seeded"):
+        return _seed_cost_row(data, sid, row, now) or changed
+
+    previous = _finite_number(previous_cost)
+    current = _finite_number(current_cost)
+    if previous is None or previous < 0 or current is None or current < 0:
+        return changed
+    delta = current - previous
+    if math.isfinite(delta) and delta > 1e-9:
+        evidence = epoch(accrued_at)
+        accrued = min(evidence, now) if evidence > 0 else now
+        events.append(
+            {
+                "at": iso(now),
+                "accrued_at": iso(accrued),
+                "session": sid,
+                "delta": delta,
+                "lifetime": current,
+                "seed": False,
+            }
+        )
+        changed = True
+    return changed
+
+
+def rolling_costs(data, when=None):
+    """Return exact sums or proven lower bounds for every displayed horizon."""
+    now = _observation_epoch(when)
+    result = {}
+    schema_ok = data.get("cost_event_schema") == COST_EVENT_SCHEMA
+    events = data.get("cost_events")
+    events_ok = isinstance(events, list)
+    event_rows = events if isinstance(events, list) else []
+    valid_events = [
+        event for event in event_rows if _valid_cost_event(event) and epoch(event["at"]) <= now
+    ]
+    if len(valid_events) != len(event_rows):
+        events_ok = False
+    tracking_started = epoch(data.get("cost_tracking_started"))
+    tracking_ok = 0 < tracking_started <= now
+    if tracking_ok and any(epoch(event["at"]) < tracking_started for event in valid_events):
+        events_ok = False
+    for key, seconds in COST_WINDOWS.items():
+        cutoff = now - seconds
+        amount = 0.0
+        unattributed = 0.0
+        open_sessions = set()
+        complete = bool(schema_ok and events_ok and tracking_ok)
+        if schema_ok:
+            for event in valid_events:
+                delta = float(event["delta"])
+                accrued = epoch(event["accrued_at"])
+                if not event["seed"]:
+                    if accrued >= cutoff:
+                        candidate = amount + delta
+                        if math.isfinite(candidate):
+                            amount = candidate
+                        else:
+                            complete = False
+                    continue
+                started = epoch(event.get("started_at"))
+                if started >= cutoff:
+                    candidate = amount + delta
+                    if math.isfinite(candidate):
+                        amount = candidate
+                    else:
+                        complete = False
+                elif accrued >= cutoff:
+                    candidate = unattributed + delta
+                    if math.isfinite(candidate):
+                        unattributed = candidate
+                    else:
+                        complete = False
+                    open_sessions.add(event["session"])
+                    complete = False
+        result[key] = amount
+        result[key + "_complete"] = complete
+        result[key + "_unattributed"] = unattributed
+        result[key + "_open_rows"] = len(open_sessions)
+    return result
+
+
+def _valid_cost_event(event):
+    if not isinstance(event, Mapping):
+        return False
+    session = event.get("session")
+    if not isinstance(session, str):
+        return False
+    observed = epoch(event.get("at"))
+    accrued = epoch(event.get("accrued_at"))
+    if observed <= 0 or accrued <= 0 or accrued > observed:
+        return False
+    if type(event.get("seed")) is not bool:
+        return False
+    delta_value = event.get("delta")
+    lifetime_value = event.get("lifetime")
+    if isinstance(delta_value, bool) or not isinstance(delta_value, (int, float)):
+        return False
+    if isinstance(lifetime_value, bool) or not isinstance(lifetime_value, (int, float)):
+        return False
+    delta = _finite_number(delta_value)
+    lifetime = _finite_number(lifetime_value)
+    if delta is None or delta < 0 or lifetime is None or lifetime < 0 or delta > lifetime + 1e-9:
+        return False
+    if event["seed"]:
+        if "started_at" not in event:
+            return False
+        started = event.get("started_at")
+        if started is not None:
+            started_epoch = epoch(started)
+            if started_epoch <= 0 or started_epoch > accrued:
+                return False
+    return True
+
+
+def _seed_cost_row(data, sid, row, when):
+    """Record a non-accrual baseline once for one session."""
+    if not isinstance(sid, str) or not isinstance(row, dict):
+        return False
+    if row.get("cost_journal_seeded"):
+        return False
+    row["cost_journal_seeded"] = True
+    amount = _finite_number(row.get("cost", 0.0))
+    if amount is None or amount <= 1e-9:
+        return True
+    started = epoch(row.get("started"))
+    if row.get("state") == "closed":
+        through = max(epoch(row.get("closed")), epoch(row.get("updated")))
+    else:
+        through = epoch(row.get("updated"))
+    through = min(through, when) if through > 0 else when
+    if started <= 0 or started > through:
+        started = 0.0
+    data["cost_events"].append(
+        {
+            "at": iso(when),
+            "accrued_at": iso(through),
+            "started_at": iso(started) if started else None,
+            "session": sid,
+            "delta": amount,
+            "lifetime": amount,
+            "seed": True,
+        }
+    )
+    return True
+
+
+def _finite_number(value):
+    if isinstance(value, bool):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return number if math.isfinite(number) else None
+
+
+def _observation_epoch(when):
+    if when is None:
+        return float(math.floor(datetime.datetime.now().astimezone().timestamp()))
+    observed = epoch(when)
+    if observed > 0:
+        return float(math.floor(observed))
+    return float(math.floor(datetime.datetime.now().astimezone().timestamp()))
+
+
 def iso(when=None):
     """ISO 8601 local time with offset, to the second."""
     if when is None:
@@ -103,12 +313,16 @@ def iso(when=None):
 
 def epoch(value):
     """Epoch seconds from an ISO string or a legacy numeric stamp. 0 if unparseable."""
-    if value is None:
+    if value is None or isinstance(value, bool):
         return 0.0
     if isinstance(value, (int, float)):
-        return float(value)
+        number = float(value)
+        return number if math.isfinite(number) else 0.0
     try:
-        return datetime.datetime.fromisoformat(value).timestamp()
+        if isinstance(value, str) and value.endswith("Z"):
+            value = value[:-1] + "+00:00"
+        number = datetime.datetime.fromisoformat(value).timestamp()
+        return number if math.isfinite(number) else 0.0
     except Exception:
         return 0.0
 
