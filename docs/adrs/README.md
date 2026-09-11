@@ -42,6 +42,7 @@ old one rather than rewriting why the earlier choice was made.
 | [0034](0034-rewrite-reachable-pre-public-history-once.md) | Rewrite reachable pre-public history once for privacy |
 | [0035](0035-accept-historical-pull-refs-and-gate-future-ancestry.md) | Accept historical pull refs and gate future ancestry |
 | [0036](0036-fail-closed-on-oversized-public-evidence.md) | Fail closed on oversized public evidence |
+| [0037](0037-require-one-aggregate-public-ci-result.md) | Require one aggregate public CI result |
 
 ## Reading order
 

@@ -30,9 +30,9 @@ installed-artifact evidence.
 
 0.2.1 through 0.2.12 are tagged and released. The current 0.2.13 boundary closes
 the oversized privacy-audit bypass, inventories the retained Actions exposure,
-and corrects post-release records without changing runtime or repository
-visibility. Every release's review, hosted CI, tag, and artifact evidence must
-stand on its own.
+and establishes the active no-bypass protected public baseline without changing
+runtime. Every release's review, hosted CI, tag, and artifact evidence must
+stand on its own; 0.2.13 remains unreleased.
 
 ## 0.2.1 — ownership-safe installation
 
