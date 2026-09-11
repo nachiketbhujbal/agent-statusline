@@ -100,6 +100,13 @@ def record_cost_delta(data, sid, previous_cost, current_cost, when=None, accrued
     changed = False
     schema = data.get("cost_event_schema")
     if schema is None:
+        if any(
+            key in data for key in ("cost_event_schema", "cost_tracking_started", "cost_events")
+        ):
+            # Journal-shaped state without a recognized schema may contain
+            # evidence we do not understand. Preserve it and fail closed rather
+            # than erasing it to manufacture an apparently complete history.
+            return False
         data["cost_event_schema"] = COST_EVENT_SCHEMA
         data["cost_tracking_started"] = iso(now)
         data["cost_events"] = []
