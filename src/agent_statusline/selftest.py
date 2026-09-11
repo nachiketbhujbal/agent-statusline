@@ -185,6 +185,7 @@ def run():
         env["CLAUDE_CONFIG_DIR"] = os.path.join(home_dir, ".claude")
         env["AGENT_STATUSLINE_STATE"] = state_dir
         env["COLUMNS"] = "240"
+        env["PYTHONPATH"] = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
         try:
             process = subprocess.run(
                 [sys.executable, "-m", "agent_statusline"],

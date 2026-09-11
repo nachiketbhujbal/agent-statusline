@@ -87,6 +87,7 @@ class TestDispatch:
 
         monkeypatch.setenv("COV_CORE_SOURCE", "private test instrumentation")
         monkeypatch.setenv("COVERAGE_PROCESS_START", "/private/coverage/config")
+        monkeypatch.setenv("PYTHONPATH", "/private/unrelated/python/path")
 
         def succeed(*args, **kwargs):
             seen.update(kwargs)
@@ -107,6 +108,9 @@ class TestDispatch:
         assert seen["cwd"] == os.path.dirname(env["HOME"])
         assert "COV_CORE_SOURCE" not in env
         assert "COVERAGE_PROCESS_START" not in env
+        assert env["PYTHONPATH"] == os.path.dirname(
+            os.path.dirname(os.path.realpath(selftest.__file__))
+        )
         assert "selftest ok" in capsys.readouterr().out
 
     def test_selftest_rejects_non_private_and_unsupported_state(self, tmp_path):
