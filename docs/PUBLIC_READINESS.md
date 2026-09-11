@@ -1,20 +1,20 @@
 # Public-readiness audit
 
-This document records the reproducible boundary between a private release and
-an authorized public conversion. It contains no machine-local evidence, exact
+This document records the reproducible boundary for the protected public
+repository. It contains no machine-local evidence, exact
 private billing measurements, personal email address, or unreachable-object
 identifier.
 
 ## Current verdict
 
-**Conditional go for a separately authorized public conversion. The ordinary
-reachable history, released artifacts, retained Actions surface, and prospective
-privacy gates now satisfy the pre-conversion technical boundary.**
+**Complete: the repository is public and `main` is protected by an active,
+API-verified no-bypass ruleset.**
 
-This verdict is a recommendation, not authorization to change visibility or
-repository settings. It retains the accepted historical pull-ref exposure below
-and requires `main` protection to be enabled and API-verified immediately after
-conversion before the public baseline is called complete.
+The completed baseline retains the accepted historical pull-ref exposure below.
+Repository ruleset `22966865` targets only `refs/heads/main`, is active, has no
+bypass actors, requires pull requests and resolved review threads, requires the
+strict GitHub Actions `required` result, and blocks deletion and non-fast-forward
+updates. The API reports the repository as public and `main` as protected.
 
 The ADR 0034 cutover atomically rewrote all 21 intended ordinary branch and tag
 refs. A fresh fetch limited to ordinary heads and tags passes the complete
@@ -43,6 +43,10 @@ separately. No GitHub Support request is planned.
 - Every pull request and `main` push audits the complete ancestry of `HEAD`,
   including documentation-only changes. Only the minimal ancestry job runs for
   documentation-only refs; the full gate remains conservatively skipped.
+- One stable `required` job waits for the always-on policy job and requires the
+  Python matrix when the scope is full; it accepts only the deliberate matrix
+  skip for documentation-only changes. The `main` ruleset requires that result
+  from the GitHub Actions application against current `main`.
 - Automatic `main` CI also validates the generated release-spine commit
   identity when the full gate applies.
 - Release validates the annotated tagger and peeled commit identities before
@@ -100,15 +104,14 @@ found all 41 logs available and clean and all ten remaining artifacts available
 and clean. Workflow runs and logs, GitHub Releases, release assets, refs, and
 tags were not deleted or rewritten.
 
-Public conversion, ruleset activation, and any orphan-object work remain
-separate from the v0.2.12 history cleanup.
+Public conversion and ruleset activation were completed as the final v0.2.13
+public-baseline operation. Any orphan-object work remains separate.
 
-## Final public decision
+## Completed public baseline
 
-The direct recommendation is to permit a separately authorized public
-conversion while explicitly accepting the ADR 0035 pull-ref caveat. Immediately
-after conversion, enable a no-bypass `main` ruleset with the intended required
-checks and verify it through the GitHub API. Until that post-conversion check
-passes, describe the repository as technically ready but not as a protected
-public baseline. A passing repository does not itself authorize changing
-visibility.
+The maintainer explicitly authorized public conversion and `main` protection.
+GitHub reports the repository as public, ruleset `22966865` as active with no
+bypass actors, and `main` as protected. The ruleset requires pull requests,
+resolved review threads, and the strict `required` GitHub Actions context while
+blocking branch deletion and force-push. The accepted ADR 0035 pull-ref caveat
+and the separately deferred unreachable-object boundary remain unchanged.
