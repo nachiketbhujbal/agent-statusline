@@ -68,6 +68,60 @@ class TestContent:
         out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
         assert "$1.25" in out, "cost must be passed through, never recomputed"
 
+    def test_spanning_legacy_cost_renders_as_a_lower_bound(self, payload, monkeypatch, capsys):
+        now = 1_800_000_000
+        monkeypatch.setattr(statusline.time, "time", lambda: now)
+        statusline.ledger.save(
+            {
+                "sessions": {
+                    "legacy": {
+                        "cost": 10.0,
+                        "started": statusline.ledger.iso(now - 2 * 86400),
+                        "updated": statusline.ledger.iso(now),
+                    }
+                }
+            }
+        )
+
+        out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
+
+        assert "24h ≥$1.25" in out
+        assert "7d $11.25" in out
+        assert "30d $11.25" in out
+
+    def test_cost_attribution_receives_assistant_time_and_wall_duration(
+        self, payload, monkeypatch, capsys
+    ):
+        seen = {}
+        last_ts = "2026-09-11T03:00:00Z"
+        monkeypatch.setattr(statusline, "transcript_totals", lambda _path: _totals(last_ts=last_ts))
+
+        def fake_ledger_update(*_args, **kwargs):
+            seen.update(kwargs)
+            return {
+                "session": 1.25,
+                "base": 0.0,
+                "runs": 1,
+                "d1": 1.25,
+                "d1_complete": True,
+                "d7": 1.25,
+                "d7_complete": True,
+                "d30": 1.25,
+                "d30_complete": True,
+                "last5": 1.25,
+                "all": 1.25,
+                "convos": 1,
+                "n": 1,
+                "forks": 0,
+            }
+
+        monkeypatch.setattr(statusline, "ledger_update", fake_ledger_update)
+
+        draw(payload, monkeypatch, capsys)
+
+        assert seen["accrued_at"] == last_ts
+        assert seen["duration"] == payload["cost"]["total_duration_ms"] / 1000
+
     def test_permission_mode_uses_claude_codes_own_colours(self):
         assert statusline.MODES["auto"][0] == render.YEL
         assert statusline.MODES["plan"][0] == render.CYN
@@ -214,8 +268,11 @@ class TestRobustness:
                 "base": 0.0,
                 "runs": 1,
                 "d1": 0.0,
+                "d1_complete": False,
                 "d7": 0.0,
+                "d7_complete": False,
                 "d30": 0.0,
+                "d30_complete": False,
                 "last5": 0.0,
                 "all": 0.0,
                 "convos": 0,
@@ -415,9 +472,45 @@ class TestSerializedRuntimeState:
         assert aggregate["runs"] == 2
         assert aggregate["all"] == 17.0
         assert aggregate["last5"] == 17.0
-        assert aggregate["d1"] == 17.0
-        assert aggregate["d7"] == 17.0
-        assert aggregate["d30"] == 17.0
+        assert aggregate["d1"] == 2.0
+        assert aggregate["d7"] == 2.0
+        assert aggregate["d30"] == 2.0
+        assert aggregate["d30_unattributed"] == 15.0
+        assert not aggregate["d30_complete"]
+
+    def test_existing_lifetime_is_seeded_before_a_new_delta_is_attributed(self, monkeypatch):
+        now = 1_800_000_000
+        accrued = statusline.ledger.iso(now - 60)
+        data = {
+            "sessions": {
+                "session-1": {
+                    "cost": 10.0,
+                    "cost_base": 0.0,
+                    "cost_run": 10.0,
+                    "runs": 1,
+                    "pid": 100,
+                    "started": statusline.ledger.iso(now - 2 * 86400),
+                    "updated": statusline.ledger.iso(now - 120),
+                    "state": "live",
+                }
+            }
+        }
+
+        monkeypatch.setattr(statusline.time, "time", lambda: now)
+        monkeypatch.setattr(statusline.ledger, "update", lambda updater: updater(data)[1])
+
+        aggregate = statusline.ledger_update(
+            "session-1", 12.0, "project", "name", pid=100, accrued_at=accrued
+        )
+
+        assert [event["seed"] for event in data["cost_events"]] == [True, False]
+        assert data["cost_events"][0]["delta"] == 10.0
+        assert data["cost_events"][1]["delta"] == 2.0
+        assert data["cost_events"][1]["accrued_at"] == accrued
+        assert aggregate["session"] == 12.0
+        assert aggregate["d1"] == 2.0
+        assert aggregate["d1_unattributed"] == 10.0
+        assert not aggregate["d1_complete"]
 
     def test_concurrent_statusline_writers_preserve_every_session(self, tmp_path):
         state_dir = tmp_path / "state"
@@ -450,6 +543,9 @@ ledger_update(
         sessions = json.loads((state_dir / "cost-ledger.json").read_text())["sessions"]
         assert set(sessions) == {f"session-{number}" for number in range(8)}
         assert sum(row["cost"] for row in sessions.values()) == 36.0
+        events = json.loads((state_dir / "cost-ledger.json").read_text())["cost_events"]
+        assert len(events) == 8
+        assert all(event["seed"] for event in events)
 
     def test_concurrent_rate_history_writers_deduplicate_same_facts(self, tmp_path):
         state_dir = tmp_path / "state"
