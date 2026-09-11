@@ -115,6 +115,24 @@ class TestRollingCosts:
         assert not ledger.record_cost_delta(data, "paid", 8.0, 8.0, when=self.NOW + 1)
         assert len(data["cost_events"]) == 1
 
+    def test_initialization_ignores_a_seed_marker_without_its_schema(self):
+        data = {
+            "sessions": {
+                "stale": {
+                    "cost": 8.0,
+                    "started": ledger.iso(self.NOW - 3600),
+                    "updated": ledger.iso(self.NOW),
+                    "cost_journal_seeded": True,
+                }
+            }
+        }
+
+        assert ledger.record_cost_delta(data, "stale", 8.0, 8.0, when=self.NOW)
+
+        assert len(data["cost_events"]) == 1
+        assert data["cost_events"][0]["seed"] is True
+        assert data["cost_events"][0]["delta"] == 8.0
+
     def test_spanning_seed_is_a_lower_bound_but_wider_windows_are_exact(self):
         data = {
             "sessions": {
