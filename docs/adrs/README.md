@@ -30,6 +30,7 @@ old one rather than rewriting why the earlier choice was made.
 | [0022](0022-account-rolling-costs-with-timestamped-deltas.md) | Account rolling costs with timestamped deltas |
 | [0023](0023-use-a-locked-local-quality-gate.md) | Use a locked local quality gate |
 | [0024](0024-scope-process-probes-by-session.md) | Scope process probes by session |
+| [0025](0025-bound-ephemeral-observation-state.md) | Bound ephemeral observation state |
 | [0030](0030-ship-hardening-as-small-pre-one-patches.md) | Ship hardening as small pre-1.0 patches |
 | [0031](0031-practical-local-threat-model.md) | Practical local-tool threat model |
 | [0032](0032-normalize-malformed-host-input-at-the-boundary.md) | Normalize malformed host input at the boundary |

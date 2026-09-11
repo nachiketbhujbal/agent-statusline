@@ -18,8 +18,8 @@ installed-artifact evidence.
 | 0.2.3 | Malformed host-input resilience | **Released** |
 | 0.2.4 | Private, serialized runtime state | **Released** |
 | 0.2.5 | Exact rolling-cost attribution | **Released** |
-| 0.2.6 | Session-scoped process evidence | **Current** |
-| 0.2.7 | Bounded observation state | Planned |
+| 0.2.6 | Session-scoped process evidence | **Released** |
+| 0.2.7 | Bounded observation state | **Current** |
 | 0.2.8 | Tracked governance and review records | Planned |
 | 0.2.9 | Width-safe, sanitized rendering | Planned |
 | 0.2.10 | Hermetic installed-renderer evidence | Planned |
@@ -27,10 +27,11 @@ installed-artifact evidence.
 | 0.2.12 | Documentation, pinned workflow, and public-readiness closure | Planned |
 | 0.3.0 | Production-ready milestone | Planned after the patch train |
 
-0.2.1 through 0.2.5 are tagged and released. The current 0.2.6 boundary scopes
-mixed process evidence to the session that produced it while retaining one
-internally consistent process snapshot; later releases remain absent. Every
-release's review, hosted CI, tag, and artifact evidence must stand on its own.
+0.2.1 through 0.2.6 are tagged and released. The current 0.2.7 boundary limits
+only ephemeral probe, transcript, and rate-limit observation state while
+preserving the active or newest evidence and the v0.2.4 storage guarantees;
+later releases remain absent. Every release's review, hosted CI, tag, and
+artifact evidence must stand on its own.
 
 ## 0.2.1 — ownership-safe installation
 
@@ -104,7 +105,7 @@ Released:
 
 ## 0.2.5 — exact rolling-cost attribution
 
-Current release:
+Released:
 
 - Journal finite positive lifetime-cost deltas with observation and assistant
   timestamps inside the existing locked ledger transaction.
@@ -122,7 +123,7 @@ Current release:
 
 ## 0.2.6 — session-scoped process evidence
 
-Current release:
+Released:
 
 - Cache the combined process snapshot under the host's opaque string session
   identifier, with a separately namespaced parent-PID fallback.
@@ -132,3 +133,19 @@ Current release:
   machine-wide totals without adding a second cold-render subprocess.
 - Keep the existing eight-second TTL; retention and entry-count limits remain
   the v0.2.7 boundary.
+
+## 0.2.7 — bounded observation state
+
+Current release:
+
+- Expire probe rows older than seven days and retain at most 256, always
+  preserving the active observation while evicting the oldest remaining rows.
+- Expire transcript rows older than 35 days and retain at most 512, always
+  preserving the active transcript and its coupled offset/totals evidence.
+- Touch an unchanged active transcript row no more than hourly; stamp legacy
+  rows once so they acquire a real retirement boundary.
+- Compact rate-limit history at one MiB under the existing lock and atomic
+  publication path, retaining the newest valid whole-record suffix and
+  discarding malformed rows during compaction.
+- Keep unchanged below-bound rate observations tail-only and preserve private
+  modes, final-entry refusal, failure cleanup, output, and accounting behavior.

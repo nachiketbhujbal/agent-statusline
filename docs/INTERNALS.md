@@ -16,6 +16,14 @@ Cold costs: `ps` ~29ms · git bundle ~35ms · `vm_stat` ~6ms · `sysctl` ~4ms ·
 `~/.claude.json` ~1ms · `statvfs` ~0ms. Cache TTLs: git 3s · processes/memory 8s ·
 disk 30s · account 30s.
 
+Probe observations are retained for seven days and capped at 256 rows. The
+active row survives count pruning. Transcript observations are retained for 35
+days and capped at 512 rows while preserving the active transcript; its access
+time is touched at most hourly. The diagnostic rate-limit JSONL is compacted at
+one MiB. Ordinary unchanged rate-limit renders still read only the last four
+KiB; full scanning happens only at the compaction boundary. See
+[ADR 0025](adrs/0025-bound-ephemeral-observation-state.md).
+
 If flicker ever returns, the next lever is the `ps` sweep (raise its TTL or narrow it),
 then Python startup itself, which is the hard floor.
 
