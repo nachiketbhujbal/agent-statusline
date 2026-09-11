@@ -114,6 +114,35 @@ def test_artifact_policy_rejects_private_billing_content(tmp_path):
     assert "private billing evidence" in result.stderr
 
 
+def test_artifact_policy_rejects_oversized_tar_member_instead_of_skipping_it(tmp_path):
+    archive_path = tmp_path / "package.tar.gz"
+    write_tar_content(
+        archive_path,
+        {
+            "agent_statusline-0.2.13/tests/fixture_payload.py": "",
+            "agent_statusline-0.2.13/tests/fixtures/statusline-payload.json": "",
+            "agent_statusline-0.2.13/tests/fixtures/statusline-transcript.jsonl": "",
+            "agent_statusline-0.2.13/docs/oversized.txt": "x" * (2 * 1024 * 1024 + 1),
+        },
+    )
+
+    result = run_policy(archive_path)
+
+    assert result.returncode == 1
+    assert "exceeds 2097152-byte audit limit" in result.stderr
+
+
+def test_artifact_policy_rejects_oversized_zip_member_instead_of_skipping_it(tmp_path):
+    wheel = tmp_path / "package.whl"
+    with zipfile.ZipFile(wheel, "w") as archive:
+        archive.writestr("agent_statusline/oversized.txt", b"x" * (2 * 1024 * 1024 + 1))
+
+    result = run_policy(wheel)
+
+    assert result.returncode == 1
+    assert "exceeds 2097152-byte audit limit" in result.stderr
+
+
 def test_artifact_policy_rejects_personal_email_content(tmp_path):
     wheel = tmp_path / "package.whl"
     with zipfile.ZipFile(wheel, "w") as archive:
