@@ -92,6 +92,10 @@ def check_lean_policy(root: Path) -> list[str]:
         "CHECKS_RESULT: ${{ needs.checks.result }}",
         "TEST_RESULT: ${{ needs.test.result }}",
         "FULL_RUN: ${{ needs.checks.outputs.full }}",
+        'test "${CHECKS_RESULT}" = "success"',
+        'if [ "${FULL_RUN}" = "true" ]; then',
+        'test "${TEST_RESULT}" = "success"',
+        'test "${TEST_RESULT}" = "skipped"',
     )
     required_release = (
         'tags: ["v*"]',
