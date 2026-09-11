@@ -45,7 +45,7 @@ class TestWidth:
     @pytest.mark.parametrize("cols", [240, 200, 160, 120, 100, 80, 60, 40])
     def test_no_line_ever_exceeds_the_terminal(self, payload, monkeypatch, capsys, cols):
         lines = draw(payload, monkeypatch, capsys, cols=cols)
-        assert max(len(ANSI.sub("", ln)) for ln in lines) <= cols
+        assert max(render.vis(ln) for ln in lines) <= cols
 
     def test_narrow_terminals_wrap_rather_than_lose_rows(self, payload, monkeypatch, capsys):
         wide = labels(draw(payload, monkeypatch, capsys, cols=240))
@@ -56,7 +56,8 @@ class TestWidth:
         lines = draw(payload, monkeypatch, capsys, cols=60)
         run = 0
         for line in lines:
-            run = run + 1 if line.startswith(" " * render.LABEL) else 0
+            visible = ANSI.sub("", line)
+            run = run + 1 if visible.startswith(" " * render.LABEL) else 0
             assert run < render.MAXLINES
 
 
@@ -351,12 +352,76 @@ class TestRobustness:
         assert "PROJECT" in out
         assert "MODEL" in out
 
-    def test_fractional_rate_limit_percentage_is_preserved(self, payload, monkeypatch, capsys):
+    def test_fractional_rate_limit_percentage_is_floored(self, payload, monkeypatch, capsys):
         payload["rate_limits"]["five_hour"]["used_percentage"] = 14.5
 
         out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
 
-        assert "14.5%" in out
+        assert "5h [" in out
+        assert " 14%" in out
+        assert "14.5%" not in out
+        assert "%/h" in out, "the burn-rate decimal remains present"
+
+    def test_exact_package_sgr_in_untrusted_payload_text_is_removed(
+        self, payload, monkeypatch, capsys
+    ):
+        payload["model"]["display_name"] = f"safe{render.RED}model"
+        payload["session_name"] = f"safe{render.RED}session"
+
+        out = "\n".join(draw(payload, monkeypatch, capsys))
+
+        assert f"safe{render.RED}model" not in out
+        assert f"safe{render.RED}session" not in out
+        assert "safemodel" in ANSI.sub("", out)
+        assert "safesession" in ANSI.sub("", out)
+
+    @pytest.mark.parametrize(
+        ("percentage", "shown"),
+        [(99.5, " 99%"), (99.999, " 99%"), (100.0, "100%"), (100.1, "100%")],
+    )
+    def test_allowance_floor_never_claims_early_exhaustion(
+        self, payload, monkeypatch, capsys, percentage, shown
+    ):
+        payload["rate_limits"]["five_hour"]["used_percentage"] = percentage
+
+        out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
+
+        assert shown in out
+        assert ("OVERAGE" in out) is (percentage >= 100)
+
+    def test_nested_git_display_does_not_rebind_disk_probe(
+        self, payload, monkeypatch, capsys, tmp_path
+    ):
+        child = tmp_path / "synthetic-child"
+        (child / ".git").mkdir(parents=True)
+        payload["cwd"] = str(tmp_path)
+        payload["workspace"]["current_dir"] = str(tmp_path)
+        payload["workspace"]["project_dir"] = str(tmp_path)
+        keys = []
+
+        def probe(key, _ttl, _function):
+            keys.append(key)
+            if key == f"git:{tmp_path}":
+                return None
+            if key == f"git:{child}":
+                return {
+                    "branch": "synthetic",
+                    "dirty": False,
+                    "ahead": 0,
+                    "behind": 0,
+                    "upstream": None,
+                    "worktree": False,
+                    "stash": 0,
+                }
+            return {}
+
+        monkeypatch.setattr(statusline.pr, "probe", probe)
+
+        out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
+
+        assert "↳synthetic-child synthetic" in out
+        assert f"disk:{tmp_path}" in keys
+        assert f"disk:{child}" not in keys
 
     def test_absent_cost_remains_distinct_from_zero(self, payload, monkeypatch, capsys):
         payload["cost"].pop("total_cost_usd")

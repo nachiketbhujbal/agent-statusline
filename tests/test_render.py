@@ -28,6 +28,51 @@ class TestVis:
     def test_plain_text_is_its_own_length(self):
         assert render.vis("abcde") == 5
 
+    def test_counts_wide_and_combining_unicode_as_terminal_cells(self):
+        assert render.vis("界") == 2
+        assert render.vis("e\u0301") == 1
+        assert render.vis("A界e\u0301") == 4
+
+    def test_sanitize_preserves_only_package_sgr(self):
+        text = f"{render.RED}safe{render.R}\033[38;5;196mvalue"
+
+        cleaned = render.sanitize(text)
+
+        assert render.RED in cleaned
+        assert render.R in cleaned
+        assert "\033[38;5;196m" not in cleaned
+        assert render.ANSI.sub("", cleaned) == "safevalue"
+
+    def test_plain_removes_even_an_exact_package_sgr_from_untrusted_text(self):
+        assert render.plain(f"safe{render.RED}value") == "safevalue"
+
+    @pytest.mark.parametrize(
+        "control",
+        [
+            "\n\r\t\0\u202e\u2066",
+            "\033[2J",
+            "\033]0;title\x07",
+            "\033]8;;https://example.invalid\033\\",
+            "\033Pprivate\033\\",
+        ],
+    )
+    def test_sanitize_removes_control_and_escape_inputs(self, control):
+        cleaned = render.sanitize(f"safe{control}value")
+
+        assert "\033" not in cleaned
+        assert "\n" not in cleaned
+        assert "\r" not in cleaned
+        assert "\t" not in cleaned
+        assert "\u202e" not in cleaned
+        assert "\u2066" not in cleaned
+        assert "safe" in cleaned
+        assert "value" in cleaned
+
+    def test_sanitize_discards_a_trailing_malformed_escape(self):
+        cleaned = render.sanitize("safevalue\033[31")
+
+        assert cleaned == "safevalue"
+
 
 class TestRow:
     def test_fitting_content_stays_on_one_line(self, wide):
@@ -42,7 +87,8 @@ class TestRow:
 
     def test_continuation_is_indented_under_the_label(self, narrow):
         second = render.row("TEST", ["a" * 20, "b" * 20]).split("\n")[1]
-        assert second.startswith(" " * render.LABEL)
+        assert second.startswith(render.D), "an SGR prefix prevents host whitespace trimming"
+        assert render.ANSI.sub("", second).startswith(" " * render.LABEL)
 
     def test_truncates_only_after_maxlines(self, narrow):
         out = render.row("TEST", ["a" * 20, "b" * 20, "c" * 20, "d" * 20])
@@ -69,6 +115,34 @@ class TestRow:
         out = render.row("TEST", ["x" * 100])
         assert render.vis(out) <= 40
         assert "x" in out
+
+    def test_untrusted_fields_cannot_inject_lines_or_terminal_commands(self, wide):
+        out = render.row(
+            f"TEST{render.RED}\nFAKE",
+            ["safe\r\nFAKE\033[2J\u202evalue"],
+            sep=f"\n{render.RED}\033]0;title\x07",
+        )
+
+        assert len(out.splitlines()) == 1
+        assert "\033[2J" not in out
+        assert "\033]" not in out
+        assert "\u202e" not in out
+        assert out.count(render.RED) == 0
+
+    @pytest.mark.parametrize("columns", [1, 5, 9, 10, 40])
+    def test_every_physical_line_fits_even_at_extreme_widths(self, monkeypatch, columns):
+        monkeypatch.setattr(render, "width", lambda: columns)
+
+        out = render.row("TEST", ["界" * 100, "e\u0301" * 100, "tail"], maxlines=2)
+
+        assert out
+        assert all(render.vis(line) <= columns for line in out.splitlines())
+
+    def test_dropped_marker_is_reserved_inside_the_width(self, narrow):
+        out = render.row("TEST", ["a" * 30, "b" * 30, "c" * 30])
+
+        assert out.endswith(f" {render.D}…{render.R}")
+        assert max(widths(out)) <= 40
 
 
 class TestPack:
@@ -157,6 +231,13 @@ class TestClip:
 
     def test_truncates_to_the_budget(self):
         assert render.vis(render.clip("x" * 100, 20)) == 20
+
+    def test_zero_budget_returns_empty_output(self):
+        assert render.clip("visible", 0) == ""
+
+    @pytest.mark.parametrize("budget", [1, 2, 3, 10])
+    def test_never_splits_a_wide_character_across_the_budget(self, budget):
+        assert render.vis(render.clip("界" * 20, budget)) <= budget
 
     def test_preserves_colour_escapes_while_counting_only_text(self):
         clipped = render.clip(f"{render.RED}{'x' * 50}{render.R}", 10)

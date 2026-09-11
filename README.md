@@ -14,7 +14,7 @@ telemetry, no network calls, and no dependencies**.
 PROJECT acme-web/services │ feature/ingest* ↑2 stash1 │ "Rewrite the importer"
 MODEL   Opus 5:high │ think │ fast off │ auto │ v2.1.246
 CONTEXT ctx[██░░░░░░░░]  19% 189k/1M │ session 25.7M in · 311k out · 107k thinking · 189 api turns · avg 136k/1.65k per turn
-USAGE   5h [███░░░░░░░] 26.0% @19.7%/h ▸ 98% (reset Wed 19:30 | 3h40m) │ 7d [█████░░░░░] 50.0% @0.3%/h ▸ 50% (reset Wed 17:00 | 1h10m)
+USAGE   5h [███░░░░░░░] 26% @19.7%/h ▸ 98% (reset Wed 19:30 | 3h40m) │ 7d [█████░░░░░] 50% @0.3%/h ▸ 50% (reset Wed 17:00 | 1h10m)
 COST    $2.10 session │ 24h $9.40 · 7d $31.20 · 30d $88.60 │ last5 $9.40 · all $88.60 (5 convos · 6 sess · 1 fork) │ +174/-12 lines │ credits on
 SYSTEM  this session 540M · 5 proc · pid 4821 │ all claude 512M · 1 proc · 3.1% of ram │ ram[██████░░] 62% of 32.0G · 4.2G compressed │ disk[████░░░░] 48% · 210G free
 TOOLS   82 calls │ Bash81 Edit12 Read8 │ 2 tool errors │ 6 files edited · 14 read │ 0 subagents │ 0 compactions

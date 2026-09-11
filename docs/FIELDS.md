@@ -96,7 +96,7 @@ token *served across every turn*, and cache reads dominate it.
 
 | field | source | meaning |
 | --- | --- | --- |
-| `5h [███] 15.0%` | payload | 5-hour window used. **Over 100% is normal** if you have credits |
+| `5h [███] 15%` | payload | floored 5-hour window used; 99.5 displays 99, never early 100. **Over 100% is normal** if you have credits |
 | `@20.0%/h` | derived | burn rate, back-computed from `resets_at`. **Hidden once past 100%** |
 | `▸ 100%` | derived | projected usage at reset if the rate holds. Red ≥100%. **Hidden once past 100%** |
 | `+2% over` | payload | how far past the included allowance, shown instead of the projection |
