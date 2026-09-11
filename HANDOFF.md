@@ -13,16 +13,19 @@ the roadmap, or accepted ADRs.
   candidate SHA is frozen. No second reviewer or delegated worker runs beside it.
 - Both hosted workflows are active. Every pull request and `main` push runs one
   complete-ancestry audit; documentation-only refs skip the full Linux gate,
-  hosted macOS remains opt-in, and redundant runs are not dispatched while the
-  repository is private.
+  hosted macOS remains opt-in, and one stable aggregate job reports whether all
+  required work passed or was deliberately skipped.
+- The repository is public. Active no-bypass ruleset `22966865` protects
+  `main`: pull requests and resolved review threads are required, the aggregate
+  GitHub Actions result must pass against current `main`, and deletion and
+  force-push are blocked.
 - Runtime dependencies remain empty and versions remain Git-tag-derived.
 
 The v0.2.13 correction fails closed on distribution members and reachable blobs
 above the bounded privacy-audit size, records the complete retained Actions
-exposure inventory and authorized artifact cleanup, and aligns post-v0.2.12
-release records. It changes no renderer, display contract, runtime dependency,
-Git history, release tag or asset, workflow run or log, live configuration, or
-repository visibility.
+exposure inventory and authorized artifact cleanup, and establishes the
+protected public baseline. It changes no renderer, display contract, runtime
+dependency, Git history, release tag or asset, or live configuration.
 
 ## Stable product boundary
 
@@ -47,9 +50,9 @@ They also cover pinned lean workflows, the ordinary reachable-history rewrite,
 accepted historical pull-ref boundary, and prospective ancestry protection.
 
 v0.2.13 is the narrow correction required after the final v0.2.12 audit exposed
-an oversized-evidence bypass and retained unsafe Actions artifacts. The later
-v0.3.0 milestone remains a separate boundary after an explicitly authorized
-public conversion and verified repository protections.
+an oversized-evidence bypass and retained unsafe Actions artifacts. Its public
+conversion and verified `main` ruleset satisfy the infrastructure prerequisite
+for the later v0.3.0 milestone without starting that milestone.
 
 The complete sequence and exclusions are authoritative in
 [ROADMAP.md](docs/ROADMAP.md). Do not merge the historical hardening branch as
@@ -64,12 +67,11 @@ snapshot, all 41 then-retained logs and all ten remaining artifacts passed a
 complete second scan. Twelve GitHub-managed historical pull heads remain as the
 explicitly accepted ADR 0035 residue.
 
-Complete v0.2.13 only through the release-equivalent local gate, one independent
-exact-SHA review, and the automatic documentation-only PR and `main` ancestry
-jobs. This handoff authorizes no tag, GitHub Release, visibility, protection,
-or live-state change. [PUBLIC_READINESS.md](docs/PUBLIC_READINESS.md) records the
-conditional conversion recommendation and required post-conversion protection
-verification.
+The protected public baseline is complete through active ruleset `22966865` and
+its stable required CI result. v0.2.13 remains untagged and unreleased. Any tag,
+GitHub Release, live upgrade, orphan cleanup, accepted pull-ref change, or v0.3.0
+work requires a separate authorized objective. [PUBLIC_READINESS.md](docs/PUBLIC_READINESS.md)
+records the exact completed boundary.
 
 Durable decisions live in [ADRs](docs/adrs/README.md), completed behavior in the
 [changelog](docs/CHANGELOG.md), review evidence in

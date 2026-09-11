@@ -30,9 +30,9 @@ installed-artifact evidence.
 
 0.2.1 through 0.2.12 are tagged and released. The current 0.2.13 boundary closes
 the oversized privacy-audit bypass, inventories the retained Actions exposure,
-and corrects post-release records without changing runtime or repository
-visibility. Every release's review, hosted CI, tag, and artifact evidence must
-stand on its own.
+and establishes the active no-bypass protected public baseline without changing
+runtime. Every release's review, hosted CI, tag, and artifact evidence must
+stand on its own; 0.2.13 remains unreleased.
 
 ## 0.2.1 — ownership-safe installation
 
@@ -257,9 +257,10 @@ Current release:
   authorized unsafe artifacts, and verify the remaining hosted surface.
 - Align the changelog, roadmap, handoff, review ledger, and public-readiness
   verdict with released v0.2.12 and the completed inventory.
-- Keep runtime behavior, Git history, release tags and assets, workflow runs and
-  logs, visibility, protections, live state, and the accepted ADR 0035 pull-ref
-  residue unchanged.
+- Establish public visibility and the active no-bypass `main` ruleset, with one
+  stable aggregate required CI result.
+- Keep runtime behavior, Git history, release tags and assets, existing workflow
+  runs and logs, live state, and the accepted ADR 0035 pull-ref residue unchanged.
 
 ## 0.3.0 — production-ready milestone
 

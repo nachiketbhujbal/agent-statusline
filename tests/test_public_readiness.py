@@ -2,6 +2,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 VERIFY = Path(__file__).parents[1] / "scripts" / "verify_public_readiness.py"
 PIN = "a" * 40
 NO_REPLY = "17068914+nachiketbhujbal@users.noreply.github.com"
@@ -41,6 +43,21 @@ jobs:
   test:
     needs: checks
     if: needs.checks.outputs.full == 'true'
+  required:
+    if: always()
+    needs: [checks, test]
+    env:
+      CHECKS_RESULT: ${{{{ needs.checks.result }}}}
+      TEST_RESULT: ${{{{ needs.test.result }}}}
+      FULL_RUN: ${{{{ needs.checks.outputs.full }}}}
+    steps:
+      - run: |
+          test "${{CHECKS_RESULT}}" = "success"
+          if [ "${{FULL_RUN}}" = "true" ]; then
+            test "${{TEST_RESULT}}" = "success"
+          else
+            test "${{TEST_RESULT}}" = "skipped"
+          fi
   macos:
     if: github.event_name == 'workflow_dispatch' && inputs.hosted_macos
 """,
@@ -183,6 +200,52 @@ def test_public_readiness_policy_requires_ci_ancestry_audit(tmp_path):
 
     assert result.returncode == 1
     assert "missing lean-policy fragment" in result.stderr
+
+
+def test_public_readiness_policy_requires_aggregate_ci_gate(tmp_path):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "ci.yml"
+    write(
+        workflow,
+        workflow.read_text().replace("needs: [checks, test]", "needs: checks"),
+    )
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert "missing lean-policy fragment: needs: [checks, test]" in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("fragment", "replacement"),
+    (
+        (
+            'test "${CHECKS_RESULT}" = "success"',
+            'test "${CHECKS_RESULT}" = "failure"',
+        ),
+        (
+            'if [ "${FULL_RUN}" = "true" ]; then',
+            'if [ "${FULL_RUN}" = "false" ]; then',
+        ),
+        (
+            'test "${TEST_RESULT}" = "success"',
+            'test "${TEST_RESULT}" = "failure"',
+        ),
+        (
+            'test "${TEST_RESULT}" = "skipped"',
+            'test "${TEST_RESULT}" = "success"',
+        ),
+    ),
+)
+def test_public_readiness_policy_requires_aggregate_ci_enforcement(tmp_path, fragment, replacement):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "ci.yml"
+    write(workflow, workflow.read_text().replace(fragment, replacement))
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert f"missing lean-policy fragment: {fragment}" in result.stderr
 
 
 def test_public_readiness_policy_requires_release_ancestry_audit(tmp_path):

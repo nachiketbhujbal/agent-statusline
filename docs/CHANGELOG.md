@@ -16,12 +16,15 @@ run logs and artifacts. Sixteen unsafe CI source-distribution artifacts carrying
 the superseded ADR 0018 billing phrase were deleted with explicit authorization.
 The post-deletion snapshot verified all 41 then-retained logs and all ten
 remaining artifacts in a complete second scan. Current tracked records now
-reflect the released v0.2.12 boundary and the conditional recommendation for a
-separately authorized public conversion.
+reflect the released v0.2.12 boundary and the completed public baseline.
 
-Runtime behavior, dependencies, Git history, release tags and assets, workflow
-runs and logs, repository visibility, protection settings, and live state are
-unchanged.
+The repository is public. Active no-bypass ruleset `22966865` protects `main`
+with mandatory pull requests and resolved review threads, a strict required
+GitHub Actions result, and blocked deletion and force-push. CI exposes one
+stable aggregate result that requires the always-on policy job and either the
+complete Python matrix or its deliberate documentation-only skip. Runtime
+behavior, dependencies, Git history, release tags and assets, and live state
+are unchanged.
 
 ## 0.2.12
 

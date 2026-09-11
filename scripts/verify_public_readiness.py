@@ -86,6 +86,16 @@ def check_lean_policy(root: Path) -> list[str]:
         "python scripts/audit_reachable_history.py --ref HEAD",
         'git diff --quiet "${BASE_SHA}" HEAD --',
         "if: needs.checks.outputs.full == 'true'",
+        "required:",
+        "if: always()",
+        "needs: [checks, test]",
+        "CHECKS_RESULT: ${{ needs.checks.result }}",
+        "TEST_RESULT: ${{ needs.test.result }}",
+        "FULL_RUN: ${{ needs.checks.outputs.full }}",
+        'test "${CHECKS_RESULT}" = "success"',
+        'if [ "${FULL_RUN}" = "true" ]; then',
+        'test "${TEST_RESULT}" = "success"',
+        'test "${TEST_RESULT}" = "skipped"',
     )
     required_release = (
         'tags: ["v*"]',

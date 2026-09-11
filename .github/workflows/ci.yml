@@ -194,6 +194,28 @@ jobs:
       - run: pip install pytest
       - run: python -m pytest tests -v
 
+  # One stable branch-protection context. It succeeds only when the always-on
+  # policy job passed and the version matrix either passed or was deliberately
+  # skipped for a documentation-only change.
+  required:
+    if: always()
+    needs: [checks, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: enforce the complete required CI result
+        env:
+          CHECKS_RESULT: ${{ needs.checks.result }}
+          TEST_RESULT: ${{ needs.test.result }}
+          FULL_RUN: ${{ needs.checks.outputs.full }}
+        run: |
+          test "${CHECKS_RESULT}" = "success"
+          if [ "${FULL_RUN}" = "true" ]; then
+            test "${TEST_RESULT}" = "success"
+          else
+            test "${TEST_RESULT}" = "skipped"
+          fi
+
   # Hosted macOS certification. Off by default -- one job here costs the same
   # allowance as ten Linux jobs. Request it before a vX.Y.0 release, or for a
   # change to the macOS-specific probes in probes.py (vm_stat, sysctl, ps).
