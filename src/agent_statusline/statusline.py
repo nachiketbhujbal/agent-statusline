@@ -89,7 +89,16 @@ ORDER = [
 ]
 
 
-def ledger_update(sid, cost, project, name, root=None, pid=None):
+def ledger_update(
+    sid,
+    cost,
+    project,
+    name,
+    root=None,
+    pid=None,
+    accrued_at=None,
+    duration=None,
+):
     # Timestamps are ISO 8601 local-with-offset (see ledger.py); every comparison
     # goes through ledger.epoch so legacy numeric rows still sort correctly.
     computed_result = None
@@ -100,14 +109,25 @@ def ledger_update(sid, cost, project, name, root=None, pid=None):
         now = time.time()
         stamp = ledger.iso(now)
         previous = sessions.get(sid, {})
-        session_cost = previous.get("cost", 0.0)
+        previous_cost = previous.get("cost", 0.0)
+        session_cost = previous_cost
         changed = False
         if cost is not None:
+            # Seed every lifetime that predates the journal before applying the
+            # current payload increase. This keeps historical money non-accrual
+            # without losing a newly observed, timestamped positive delta.
+            changed = (
+                ledger.record_cost_delta(
+                    data, sid, previous_cost, previous_cost, now, accrued_at=accrued_at
+                )
+                or changed
+            )
+            elapsed = finite_number(duration)
             entry = {
                 **previous,
                 "updated": stamp,
                 "state": "live",
-                "started": previous.get("started", stamp),
+                "started": previous.get("started", ledger.iso(now - max(0.0, elapsed or 0.0))),
                 "project": project,
                 "name": name,
                 **({"root": root} if root else {}),
@@ -121,16 +141,23 @@ def ledger_update(sid, cost, project, name, root=None, pid=None):
             changed = (
                 abs(previous.get("cost", -1) - session_cost) > 1e-9
                 or previous.get("state") != "live"
+                or changed
+            )
+            changed = (
+                ledger.record_cost_delta(
+                    data,
+                    sid,
+                    previous_cost,
+                    session_cost,
+                    now,
+                    accrued_at=accrued_at,
+                )
+                or changed
             )
         rows = sorted(
             sessions.values(), key=lambda row: ledger.epoch(row.get("updated")), reverse=True
         )
-
-        def since(days):
-            cut = now - days * 86400
-            return sum(
-                row.get("cost", 0) for row in rows if ledger.epoch(row.get("updated")) >= cut
-            )
+        rolling = ledger.rolling_costs(data, now)
 
         # A row counts as a real session only if it produced something: a cost, or a
         # readable transcript (its conversation root).
@@ -149,12 +176,10 @@ def ledger_update(sid, cost, project, name, root=None, pid=None):
             "convos": len(conversations),
             "forks": max(0, len(real) - len(conversations)),
             "last5": sum(row.get("cost", 0) for row in rows[:5]),
-            "d1": since(1),
-            "d7": since(7),
-            "d30": since(30),
             "session": session_cost,
             "base": sessions.get(sid, {}).get("cost_base", 0.0),
             "runs": sessions.get(sid, {}).get("runs", 1),
+            **rolling,
         }
         computed_result = result
         return changed, result
@@ -543,6 +568,8 @@ def main():
         dig(d, "session_name"),
         conversation_root(transcript_path),
         pid=procs.get("mine_pid"),
+        accrued_at=t.get("last_ts"),
+        duration=wall,
     )
     p8 = []
     if usd is not None:
@@ -556,9 +583,14 @@ def main():
             )
         else:
             p8.append(f"{CYN}${life:.2f}{R}{D} session{R}")
+
+    def rolling_amount(label, key):
+        marker = "" if agg[key + "_complete"] else f"{D}≥{R}"
+        return f"{D}{label}{R} {marker}${agg[key]:.2f}"
+
     p8.append(
-        f"{D}24h{R} ${agg['d1']:.2f} {D}·{R} {D}7d{R} ${agg['d7']:.2f} {D}·{R} "
-        f"{D}30d{R} ${agg['d30']:.2f}"
+        f"{rolling_amount('24h', 'd1')} {D}·{R} "
+        f"{rolling_amount('7d', 'd7')} {D}·{R} {rolling_amount('30d', 'd30')}"
     )
     p8.append(
         f"{D}last5{R} ${agg['last5']:.2f} {D}·{R} {D}all{R} ${agg['all']:.2f} "
