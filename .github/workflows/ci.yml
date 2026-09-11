@@ -80,13 +80,23 @@ jobs:
           PY
           python3 install.py --uninstall
 
+      - name: build
+        run: python -m build
+
       - name: install smoke -- installed shape
         env:
           CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-installed
           AGENT_STATUSLINE_STATE: ${{ runner.temp }}/state
-          COLUMNS: "200"
+          HOME: ${{ runner.temp }}/statusline-home
+          COLUMNS: "240"
         run: |
-          pip install .
+          mkdir -p "$HOME"
+          pip install --no-deps --force-reinstall dist/*.whl
+          python tests/fixture_payload.py \
+            --workspace "${RUNNER_TEMP}/statusline-workspace" \
+            --output "${RUNNER_TEMP}/statusline-payload.json"
+          mkdir -p "${RUNNER_TEMP}/statusline-cwd"
+          cd "${RUNNER_TEMP}/statusline-cwd"
           agent-statusline install
           python - <<'PY'
           import json, os
@@ -101,16 +111,27 @@ jobs:
           PY
           agent-statusline version
           agent-statusline --help > /dev/null
-          echo '{}' | agent-statusline
+          agent-statusline < "${RUNNER_TEMP}/statusline-payload.json" \
+            > "${RUNNER_TEMP}/statusline-render.txt"
+          python - <<'PY'
+          import os, sys
+          sys.path.insert(0, os.path.join(os.environ["GITHUB_WORKSPACE"], "tests"))
+          from fixture_payload import verify_render_contract
+          from agent_statusline.statusline import ORDER
+          output = open(
+              os.path.join(os.environ["RUNNER_TEMP"], "statusline-render.txt"),
+              encoding="utf-8",
+          ).read()
+          verify_render_contract(output, ORDER)
+          print("installed wheel emitted the exact transcript-backed renderer contract")
+          PY
           for h in session-end context-guard timestamp-user timestamp-stop; do
             echo '{"session_id":"ci"}' | agent-statusline hook "$h" > /dev/null
           done
           agent-statusline ledger show
           agent-statusline uninstall
 
-      - name: build
-        run: python -m build
-      - name: distribution archives exclude private workspace state
+      - name: distribution archives satisfy evidence and privacy policy
         run: python scripts/verify_artifacts.py dist/*
       - uses: actions/upload-artifact@v7
         with:

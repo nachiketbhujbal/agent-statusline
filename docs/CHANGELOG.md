@@ -4,7 +4,22 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.2.9
+## Unreleased — 0.2.10
+
+A committed privacy-neutral payload and transcript now drive the same exact
+renderer contract in pytest and in CI's installed-wheel smoke. Runtime
+materialization replaces template paths and assistant/reset clocks with current,
+absolute values inside a disposable workspace. Both environments isolate
+`HOME` and `AGENT_STATUSLINE_STATE`, render from an unrelated working directory,
+and require all ten labels in `ORDER` plus transcript-derived cache, token, tool,
+and timing evidence ([ADR 0028](adrs/0028-gate-the-installed-renderer-with-synthetic-evidence.md)).
+
+CI now builds once and installs that wheel without dependencies before the
+installed-shape smoke. Artifact policy requires the evidence in the source
+distribution and excludes it from the runtime wheel. Runtime behavior and
+dependencies are unchanged.
+
+## 0.2.9
 
 Rendering now measures printable terminal cells rather than code-point count,
 so wide and combining Unicode remain within the physical width budget. Every

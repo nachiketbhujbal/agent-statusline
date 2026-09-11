@@ -1,0 +1,5 @@
+{"type":"user","uuid":"synthetic-root-0001","permissionMode":"plan","message":{"content":"Synthetic prompt"}}
+{"type":"assistant","timestamp":"__MATERIALIZED_NOW__","message":{"model":"claude-opus-synthetic","content":[{"type":"tool_use","name":"Read","input":{"file_path":"__WORKSPACE__/README.md"}},{"type":"tool_use","name":"Edit","input":{"file_path":"__WORKSPACE__/example.py"}}],"usage":{"input_tokens":20,"output_tokens":80,"cache_creation_input_tokens":200,"cache_read_input_tokens":2000,"output_tokens_details":{"thinking_tokens":25},"cache_creation":{"ephemeral_1h_input_tokens":200},"service_tier":"standard"}}}
+{"type":"user","message":{"content":[{"type":"tool_result","is_error":false}]}}
+{"type":"system","subtype":"turn_duration","durationMs":1234}
+{"type":"system","subtype":"stop_hook_summary","hookInfos":[{"durationMs":12}],"hookErrors":[]}

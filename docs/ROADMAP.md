@@ -21,17 +21,16 @@ installed-artifact evidence.
 | 0.2.6 | Session-scoped process evidence | **Released** |
 | 0.2.7 | Bounded observation state | **Released** |
 | 0.2.8 | Tracked governance and review records | **Released** |
-| 0.2.9 | Width-safe, sanitized rendering | **Current** |
-| 0.2.10 | Hermetic installed-renderer evidence | Planned |
+| 0.2.9 | Width-safe, sanitized rendering | **Released** |
+| 0.2.10 | Hermetic installed-renderer evidence | **Current** |
 | 0.2.11 | Isolated self-test and safe diagnostics | Planned |
 | 0.2.12 | Documentation, pinned workflow, and public-readiness closure | Planned |
 | 0.3.0 | Production-ready milestone | Planned after the patch train |
 
-0.2.1 through 0.2.8 are tagged and released. The current 0.2.9 boundary makes
-terminal fitting cell-aware, sanitizes untrusted terminal controls, preserves
-continuation alignment, keeps nested-Git display separate from disk evidence,
-and floors displayed allowance percentages. Every release's review, hosted CI,
-tag, and artifact evidence must stand on its own.
+0.2.1 through 0.2.9 are tagged and released. The current 0.2.10 boundary makes
+source pytest and the installed wheel consume the same privacy-neutral,
+transcript-backed ten-row evidence without touching live state. Every release's
+review, hosted CI, tag, and artifact evidence must stand on its own.
 
 ## 0.2.1 — ownership-safe installation
 
@@ -172,7 +171,7 @@ Released:
 
 ## 0.2.9 — width-safe, sanitized rendering
 
-Current release:
+Released:
 
 - Measure printable terminal cells for wide, full-width, and combining Unicode.
 - Sanitize labels, separators, and segments while preserving only package-owned
@@ -187,12 +186,28 @@ Current release:
 - Keep v0.2.10 installed evidence, v0.2.11 diagnostics, v0.2.12 workflow/public-
   readiness work, live configuration, and repository visibility unchanged.
 
-## 0.2.10 through 0.2.12
+## 0.2.10 — hermetic installed-renderer evidence
+
+Current release:
+
+- Commit privacy-neutral payload and transcript templates with no host paths,
+  identifiers, or captured live state.
+- Materialize current assistant/reset clocks and disposable absolute project,
+  transcript, and tool paths at runtime.
+- Make source pytest and the installed-wheel smoke consume one resolved contract
+  requiring exact `ORDER` and transcript-backed cache, token, tool, and timing
+  evidence from an unrelated working directory.
+- Isolate `HOME` and `AGENT_STATUSLINE_STATE`; build once and install the actual
+  wheel without dependencies.
+- Require the evidence in the source distribution and exclude it from the
+  runtime wheel.
+- Keep v0.2.11 diagnostics, v0.2.12 workflow/public-readiness work, runtime
+  behavior, live configuration, and repository visibility unchanged.
+
+## 0.2.11 through 0.2.12
 
 Planned, in dependency order:
 
-- **0.2.10:** add hermetic synthetic end-to-end evidence for the installed
-  renderer and every approved row without reading live state.
 - **0.2.11:** add an isolated self-test and field-allowlisted, privacy-safe
   failure evidence that cannot suppress normal rendering.
 - **0.2.12:** close documentation findings, replace moving workflow action tags
