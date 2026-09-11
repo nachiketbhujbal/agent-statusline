@@ -260,3 +260,20 @@ print(result)
     assert returned[0] == returned[1] == cache["shared"]["val"]
     assert cache["shared"]["val"] in {"left", "right"}
     assert set(cache) == {"shared"}
+
+
+def test_waiting_probe_uses_transaction_time_to_recognize_the_winner(monkeypatch):
+    clock = iter((100.0, 102.0))
+    monkeypatch.setattr(probes.time, "time", lambda: next(clock))
+    monkeypatch.setattr(probes, "read_json", lambda _path, _default: {})
+
+    def publish_after_another_writer(_path, _default, updater):
+        cache = {"shared": {"at": 101.0, "val": "winner"}}
+        changed, result = updater(cache)
+        assert not changed
+        assert cache == {"shared": {"at": 101.0, "val": "winner"}}
+        return result
+
+    monkeypatch.setattr(probes, "update_json", publish_after_another_writer)
+
+    assert probes.probe("shared", 60, lambda: "waiting-writer") == "winner"

@@ -85,12 +85,13 @@ def probe(key, ttl, fn):
             val = None
 
     def publish(current):
-        changed = _prune(current, now, key)
+        transaction_now = time.time()
+        changed = _prune(current, transaction_now, key)
         existing = current.get(key)
-        if _fresh(existing, now, ttl):
+        if _fresh(existing, transaction_now, ttl):
             return changed, existing.get("val")
-        current[key] = {"at": now, "val": val}
-        _prune(current, now, key)
+        current[key] = {"at": transaction_now, "val": val}
+        _prune(current, transaction_now, key)
         return True, val
 
     try:
