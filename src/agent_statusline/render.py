@@ -6,6 +6,7 @@ layer any host can reuse (see docs/PORTING.md).
 
 import re
 import shutil
+import unicodedata
 
 from agent_statusline.coerce import finite_integer, finite_number
 
@@ -28,6 +29,71 @@ MAXLINES = 2
 FALLBACK_WIDTH = 120
 
 ANSI = re.compile(r"\033\[[0-9;]*m")
+CONTROL_STRING = re.compile(r"\033(?:\]|P|X|\^|_)(?:[^\033\x07]|\033(?!\\))*(?:\x07|\033\\|$)")
+CSI = re.compile(r"\033\[[0-?]*[ -/]*[@-~]")
+INCOMPLETE_CSI = re.compile(r"\033\[[0-?]*[ -/]*\Z")
+ESCAPE = re.compile(r"\033(?:[ -/]*[@-~]|.)")
+SAFE_SGR = frozenset((R, D, B, RED, GRN, YEL, BLU, MAG, CYN, GRY))
+
+
+def sanitize(s, preserve_sgr=True):
+    """Remove terminal controls, optionally preserving package-owned SGR styles."""
+    text = str(s)
+    out = []
+    index = 0
+    while index < len(text):
+        sgr = ANSI.match(text, index)
+        if sgr:
+            if preserve_sgr and sgr.group() in SAFE_SGR:
+                out.append(sgr.group())
+            index = sgr.end()
+            continue
+        if text[index] == "\033":
+            control = (
+                CONTROL_STRING.match(text, index)
+                or CSI.match(text, index)
+                or INCOMPLETE_CSI.match(text, index)
+                or ESCAPE.match(text, index)
+            )
+            index = control.end() if control else index + 1
+            continue
+        if unicodedata.category(text[index]) in {"Cc", "Cf", "Cs"}:
+            index += 1
+            continue
+        out.append(text[index])
+        index += 1
+    return "".join(out)
+
+
+def plain(s):
+    """Return untrusted display text with every terminal control removed."""
+    return sanitize(s, preserve_sgr=False)
+
+
+def _cell_width(char):
+    if unicodedata.combining(char):
+        return 0
+    return 2 if unicodedata.east_asian_width(char) in {"W", "F"} else 1
+
+
+def _take_cells(text, budget):
+    """Return a sanitized whole-code-point prefix within a cell budget."""
+    out = []
+    seen = 0
+    index = 0
+    while index < len(text):
+        sgr = ANSI.match(text, index)
+        if sgr:
+            out.append(sgr.group())
+            index = sgr.end()
+            continue
+        cells = _cell_width(text[index])
+        if seen + cells > budget:
+            break
+        out.append(text[index])
+        seen += cells
+        index += 1
+    return "".join(out)
 
 
 def vis(s):
@@ -37,7 +103,7 @@ def vis(s):
     budget -- measuring len(s) directly makes every coloured row look roughly
     twice as wide as it is and truncates almost everything.
     """
-    return len(ANSI.sub("", s))
+    return sum(_cell_width(char) for char in ANSI.sub("", sanitize(s)))
 
 
 def width():
@@ -63,20 +129,13 @@ def clip(s, budget):
     counted, and a reset is appended so a cut inside a coloured run cannot leak
     its colour into the rest of the line.
     """
-    if budget <= 0 or vis(s) <= budget:
+    s = sanitize(s)
+    if budget <= 0:
+        return ""
+    if vis(s) <= budget:
         return s
-    out, seen, i = [], 0, 0
-    keep = max(1, budget - 1)  # leave a column for the ellipsis
-    while i < len(s) and seen < keep:
-        m = ANSI.match(s, i)
-        if m:
-            out.append(m.group())
-            i = m.end()
-            continue
-        out.append(s[i])
-        seen += 1
-        i += 1
-    return "".join(out) + f"{R}{D}…{R}"
+    keep = max(0, budget - 1)  # leave one cell for the ellipsis
+    return _take_cells(s, keep) + f"{R}{D}…{R}"
 
 
 def pack(segs, sep, budget, maxlines=MAXLINES):
@@ -112,19 +171,31 @@ def row(label, segs, sep=None, maxlines=MAXLINES):
     the content genuinely does not fit the current terminal. Continuation lines
     are indented under the label so the row still reads as one block.
     """
-    sep = f" {D}│{R} " if sep is None else sep
-    segs = [s for s in segs if s]
+    total_width = max(0, width())
+    if total_width == 0:
+        return ""
+    sep = sanitize(f" {D}│{R} ") if sep is None else plain(sep)
+    label = plain(label)
+    segs = [sanitize(s) for s in segs if s]
     if not segs:
         return ""
-    budget = width() - LABEL - 2
+    budget = max(0, total_width - LABEL - 2)
     segs = [clip(s, budget) for s in segs]
     lines, dropped = pack(segs, sep, budget, maxlines)
+    label_text = _take_cells(label, LABEL)
+    label_text += " " * max(0, LABEL - vis(label_text))
+    # Keep an SGR prefix on continuation lines. Claude Code was observed to
+    # trim raw leading whitespace from multiline status-line output while
+    # preserving spaces after an escape sequence. Re-verify if the host changes.
     out = [
-        (f"{D}{label:<{LABEL}}{R}" if i == 0 else " " * LABEL) + sep.join(ln)
+        (f"{D}{label_text}{R}" if i == 0 else f"{D}{'':<{LABEL}}{R}") + sep.join(ln)
         for i, ln in enumerate(lines)
     ]
     if dropped:
-        out[-1] += f" {D}…{R}"
+        marker = f" {D}…{R}"
+        available = max(0, total_width - vis(marker))
+        out[-1] = _take_cells(out[-1], available) + marker
+    out = [clip(line, total_width) if vis(line) > total_width else line for line in out]
     return "\n".join(out)
 
 

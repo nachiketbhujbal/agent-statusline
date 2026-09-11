@@ -4,7 +4,22 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.2.8
+## Unreleased — 0.2.9
+
+Rendering now measures printable terminal cells rather than code-point count,
+so wide and combining Unicode remain within the physical width budget. Every
+label, separator, and segment is sanitized before fitting: only the package's
+exact SGR styles survive, while other escapes, line controls, format controls,
+and bidirectional controls are removed. Clipping stays on complete code-point
+boundaries, and continuation indentation is retained under the host's observed
+leading-whitespace behavior ([ADR 0027](adrs/0027-measure-cells-and-sanitize-terminal-output.md)).
+
+Nested Git branch discovery no longer changes the current-workspace path used
+by the `SYSTEM` disk probe. The 5h/7d allowance value is now a floored integer,
+preventing a fractional value below 100 from displaying early exhaustion; the
+burn-rate decimal and numeric overage boundary are unchanged.
+
+## 0.2.8
 
 Project authority and continuation state are now recoverable from tracked,
 public-safe files. `AGENTS.md` is the authoritative instruction record,

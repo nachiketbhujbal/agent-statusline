@@ -10,6 +10,7 @@ Run directly; no install step is required:
     python3 -m agent_statusline.statusline < payload.json
 """
 import json
+import math
 import os
 import sys
 import time
@@ -37,6 +38,7 @@ from agent_statusline.render import (
     dur,
     gb,
     grade,
+    plain,
     row,
     tok,
 )
@@ -239,7 +241,8 @@ def limit_seg(label, node, window_h):
     pct = finite_number(dig(node, "used_percentage", default=0) or 0)
     reset_value = dig(node, "resets_at")
     resets = None if reset_value is None else finite_number(reset_value)
-    s = f"{D}{label:<3}{R}{bar(pct)} {grade(pct)}{pct:4.1f}%{R}"
+    shown_pct = math.floor(pct)
+    s = f"{D}{label:<3}{R}{bar(pct)} {grade(pct)}{shown_pct:3d}%{R}"
     if resets:
         try:
             clock = time.strftime("%a %H:%M", time.localtime(resets))
@@ -286,7 +289,7 @@ def main():
     p1 = []
     model = dig(d, "model", "display_name") or dig(d, "model", "id") or "claude"
     eff = dig(d, "effort", "level")
-    p1.append(f"{MAG}{B}{model}{R}" + (f"{D}:{eff}{R}" if eff else ""))
+    p1.append(f"{MAG}{B}{plain(model)}{R}" + (f"{D}:{plain(eff)}{R}" if eff else ""))
     p1.append(
         f"{GRN}think{R}" if dig(d, "thinking", "enabled", default=False) else f"{YEL}no-think{R}"
     )
@@ -297,15 +300,15 @@ def main():
     perm = perm_value if isinstance(perm_value, str) else None
     if perm:
         pc, plab = MODES.get(perm, (D, perm))
-        p1.append(f"{pc}{plab}{R}" if perm == "default" else f"{pc}{B}{plab}{R}")
+        p1.append(f"{pc}{plain(plab)}{R}" if perm == "default" else f"{pc}{B}{plain(plab)}{R}")
     style = dig(d, "output_style", "name")
     if style and style != "default":
-        p1.append(f"{CYN}{style}{R}")
+        p1.append(f"{CYN}{plain(style)}{R}")
     if t.get("tier") and t["tier"] != "standard":
-        p1.append(f"{YEL}{t['tier']}{R}")
+        p1.append(f"{YEL}{plain(t['tier'])}{R}")
     ver = dig(d, "version")
     if ver:
-        p1.append(f"{D}v{ver}{R}")
+        p1.append(f"{D}v{plain(ver)}{R}")
 
     cwd_value = dig(d, "workspace", "current_dir") or dig(d, "cwd")
     cwd = cwd_value if isinstance(cwd_value, str) else os.getcwd()
@@ -313,7 +316,11 @@ def main():
     project_path = project_value if isinstance(project_value, str) else cwd
     proj = os.path.basename(project_path)
     here = os.path.basename(cwd)
-    pj.append(f"{BLU}{B}{proj}{R}" if here == proj else f"{BLU}{B}{proj}{R}{D}/{R}{BLU}{here}{R}")
+    pj.append(
+        f"{BLU}{B}{plain(proj)}{R}"
+        if here == proj
+        else f"{BLU}{B}{plain(proj)}{R}{D}/{R}{BLU}{plain(here)}{R}"
+    )
     extra = dig(d, "workspace", "added_dirs") or []
     extra = extra if isinstance(extra, list) else []
     if extra:
@@ -322,6 +329,7 @@ def main():
     # One cached probe covers branch, dirtiness, ahead/behind, worktree and stash.
     gs = pr.probe(f"git:{cwd}", 3, lambda c=cwd: pr.git_state(c))
     nested = False
+    git_cwd = cwd
     if not gs:
         # cwd is not a repo: if exactly one child directory is one, show its branch
         # marked with an arrow so it cannot be mistaken for the current directory's.
@@ -336,13 +344,13 @@ def main():
         if len(cands) == 1:
             gs = pr.probe(f"git:{cands[0]}", 3, lambda c=cands[0]: pr.git_state(c))
             if gs:
-                cwd = cands[0]
+                git_cwd = cands[0]
                 nested = True
     if gs:
         br = gs["branch"]
         g = (
-            f"{D}↳{os.path.basename(cwd)} {R}" if nested else ""
-        ) + f"{RED if br in ('main','master') else GRN}{br}{R}"
+            f"{D}↳{plain(os.path.basename(git_cwd))} {R}" if nested else ""
+        ) + f"{RED if br in ('main','master') else GRN}{plain(br)}{R}"
         if gs.get("dirty"):
             g += f"{YEL}*{R}"
         if gs.get("worktree"):
@@ -363,7 +371,7 @@ def main():
         pj.append(f"{D}no git{R}")
     nm = dig(d, "session_name")
     if nm:
-        pj.append(f"{D}“{nm}”{R}")
+        pj.append(f"{D}“{plain(nm)}”{R}")
     rows["PROJECT"] = row("PROJECT", pj)
     rows["MODEL"] = row("MODEL", p1)
 
@@ -482,7 +490,7 @@ def main():
     r5 = [f"{B}{ntool}{R}{D} calls{R}"]
     if tools:
         top = sorted(tools.items(), key=lambda kv: -kv[1])[:4]
-        r5.append(" ".join(f"{D}{n}{R}{CYN}{c}{R}" for n, c in top))
+        r5.append(" ".join(f"{D}{plain(n)}{R}{CYN}{c}{R}" for n, c in top))
     ec_ = RED if t["errors"] else D
     r5.append(f"{ec_}{t['errors']}{R}{D} tool errors{R}")
     if t["synth"]:
@@ -500,7 +508,7 @@ def main():
         r5.append(
             f"{D}cmds{R} "
             + " ".join(
-                f"{D}{k}{R}{CYN}{v}{R}"
+                f"{D}{plain(k)}{R}{CYN}{v}{R}"
                 for k, v in sorted(t["cmds"].items(), key=lambda kv: -kv[1])[:3]
             )
         )
@@ -634,13 +642,13 @@ def main():
     if acct:
         inc = [str(x).lower() for x in (acct.get("included_models") or [])]
         if acct.get("disabled_reason"):
-            p8.append(f"{RED}{B}credits OFF{R}{D} ({acct['disabled_reason']}){R}")
+            p8.append(f"{RED}{B}credits OFF{R}{D} ({plain(acct['disabled_reason'])}){R}")
         elif not acct.get("enabled"):
             p8.append(f"{YEL}credits off{R}")
         elif over_active and str(model).lower() not in inc:
             p8.append(f"{RED}{B}on credits{R}{D} · balance only via /usage-credits{R}")
         elif over_active:
-            p8.append(f"{GRN}overage included{R}{D} for {model}{R}")
+            p8.append(f"{GRN}overage included{R}{D} for {plain(model)}{R}")
         else:
             p8.append(f"{D}credits on{R}")
     rows["COST"] = row("COST", p8)
