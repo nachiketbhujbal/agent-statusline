@@ -122,16 +122,18 @@ def ledger_update(
                 )
                 or changed
             )
-            elapsed = finite_number(duration)
             entry = {
                 **previous,
                 "updated": stamp,
                 "state": "live",
-                "started": previous.get("started", ledger.iso(now - max(0.0, elapsed or 0.0))),
                 "project": project,
                 "name": name,
                 **({"root": root} if root else {}),
             }
+            if "started" not in previous:
+                elapsed = finite_number(duration) if duration is not None else 0.0
+                if 0 < elapsed <= now:
+                    entry["started"] = ledger.iso(now - elapsed)
             if not isinstance(entry.get("root"), str):
                 entry.pop("root", None)
             # Lifetime cost, carried across runs. Resuming a closed row makes it live
@@ -575,7 +577,7 @@ def main():
         conversation_root(transcript_path),
         pid=procs.get("mine_pid"),
         accrued_at=t.get("last_ts"),
-        duration=wall,
+        duration=wall if 0 < wall <= time.time() else None,
     )
     p8 = []
     if usd is not None:

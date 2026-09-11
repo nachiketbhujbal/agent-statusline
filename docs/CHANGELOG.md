@@ -18,6 +18,15 @@ claim, and valid journal evidence is retained for 35 days.
 Schemaless partial journals are preserved as incomplete evidence rather than
 silently replaced, and a storage failure before the ledger updater runs marks
 current-payload-only rolling amounts as lower bounds.
+String session identifiers remain opaque and backward compatible, including a
+legacy empty-string key. A first-sighting seed receives a start time only from
+a positive, representable host duration; missing or unusable duration remains
+explicitly unattributed.
+UTC assistant timestamps ending in `Z` are normalized for consistent
+attribution on every supported Python version.
+Journal clocks use their documented whole-second precision for inclusive
+cutoffs, and an event observed before its journal start keeps every window
+incomplete and cannot be pruned as valid history.
 
 Lifetime session, resume/base/run, `last5`, `all`, row order, and every non-cost
 field remain compatible. Ledger mutation and event publication stay inside the

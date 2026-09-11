@@ -123,7 +123,11 @@ def record_cost_delta(data, sid, previous_cost, current_cost, when=None, accrued
     events = data["cost_events"]
     cutoff = now - COST_EVENT_RETENTION_SECONDS
     valid_events = [event for event in events if _valid_cost_event(event)]
-    if len(valid_events) == len(events):
+    tracking_started = epoch(data.get("cost_tracking_started"))
+    journal_order_ok = 0 < tracking_started <= now and all(
+        epoch(event["at"]) >= tracking_started for event in valid_events
+    )
+    if len(valid_events) == len(events) and journal_order_ok:
         retained = [event for event in valid_events if epoch(event["at"]) >= cutoff]
         if retained != events:
             data["cost_events"] = events = retained
@@ -170,6 +174,8 @@ def rolling_costs(data, when=None):
         events_ok = False
     tracking_started = epoch(data.get("cost_tracking_started"))
     tracking_ok = 0 < tracking_started <= now
+    if tracking_ok and any(epoch(event["at"]) < tracking_started for event in valid_events):
+        events_ok = False
     for key, seconds in COST_WINDOWS.items():
         cutoff = now - seconds
         amount = 0.0
@@ -214,7 +220,7 @@ def _valid_cost_event(event):
     if not isinstance(event, Mapping):
         return False
     session = event.get("session")
-    if not isinstance(session, str) or not session:
+    if not isinstance(session, str):
         return False
     observed = epoch(event.get("at"))
     accrued = epoch(event.get("accrued_at"))
@@ -245,7 +251,7 @@ def _valid_cost_event(event):
 
 def _seed_cost_row(data, sid, row, when):
     """Record a non-accrual baseline once for one session."""
-    if not isinstance(sid, str) or not sid or not isinstance(row, dict):
+    if not isinstance(sid, str) or not isinstance(row, dict):
         return False
     if row.get("cost_journal_seeded"):
         return False
@@ -287,11 +293,11 @@ def _finite_number(value):
 
 def _observation_epoch(when):
     if when is None:
-        return datetime.datetime.now().astimezone().timestamp()
+        return float(math.floor(datetime.datetime.now().astimezone().timestamp()))
     observed = epoch(when)
     if observed > 0:
-        return observed
-    return datetime.datetime.now().astimezone().timestamp()
+        return float(math.floor(observed))
+    return float(math.floor(datetime.datetime.now().astimezone().timestamp()))
 
 
 def iso(when=None):
@@ -313,6 +319,8 @@ def epoch(value):
         number = float(value)
         return number if math.isfinite(number) else 0.0
     try:
+        if isinstance(value, str) and value.endswith("Z"):
+            value = value[:-1] + "+00:00"
         number = datetime.datetime.fromisoformat(value).timestamp()
         return number if math.isfinite(number) else 0.0
     except Exception:

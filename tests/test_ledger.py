@@ -64,6 +64,9 @@ class TestTimestamps:
         stamp = ledger.iso(1700000000)
         assert ledger.epoch(stamp) == 1700000000
 
+    def test_epoch_accepts_trailing_z_on_every_supported_python(self):
+        assert ledger.epoch("2026-09-11T03:00:00Z") == ledger.epoch("2026-09-11T03:00:00+00:00")
+
     def test_epoch_accepts_legacy_numeric_stamps(self):
         assert ledger.epoch(1700000000.0) == 1700000000.0
 
@@ -249,6 +252,29 @@ class TestRollingCosts:
         assert rolling["d30"] == 7.0
         assert all(rolling[key + "_complete"] for key in ledger.COST_WINDOWS)
 
+    def test_fractional_observation_keeps_the_whole_second_boundary_inclusive(self):
+        now = self.NOW + 0.5
+        boundary = ledger.iso(self.NOW - 86400)
+        data = {
+            "cost_event_schema": ledger.COST_EVENT_SCHEMA,
+            "cost_tracking_started": ledger.iso(self.NOW - 40 * 86400),
+            "cost_events": [
+                {
+                    "at": boundary,
+                    "accrued_at": boundary,
+                    "session": "boundary",
+                    "delta": 1.0,
+                    "lifetime": 1.0,
+                    "seed": False,
+                }
+            ],
+        }
+
+        rolling = ledger.rolling_costs(data, when=now)
+
+        assert rolling["d1"] == 1.0
+        assert rolling["d1_complete"]
+
     def test_subsequent_delta_prefers_assistant_time_and_clamps_the_future(self):
         data = {
             "cost_event_schema": ledger.COST_EVENT_SCHEMA,
@@ -323,6 +349,28 @@ class TestRollingCosts:
         assert unknown_rolling["d30"] == 0.0
         assert not any(unknown_rolling[key + "_complete"] for key in ledger.COST_WINDOWS)
         assert not any(future_rolling[key + "_complete"] for key in ledger.COST_WINDOWS)
+
+    def test_event_before_tracking_start_is_incomplete_and_never_pruned(self):
+        event = {
+            "at": ledger.iso(self.NOW - 40 * 86400),
+            "accrued_at": ledger.iso(self.NOW - 40 * 86400),
+            "session": "a",
+            "delta": 10.0,
+            "lifetime": 10.0,
+            "seed": False,
+        }
+        data = {
+            "cost_event_schema": ledger.COST_EVENT_SCHEMA,
+            "cost_tracking_started": ledger.iso(self.NOW - 30 * 86400),
+            "cost_events": [event],
+            "sessions": {"a": {"cost_journal_seeded": True}},
+        }
+
+        rolling = ledger.rolling_costs(data, when=self.NOW)
+
+        assert not any(rolling[key + "_complete"] for key in ledger.COST_WINDOWS)
+        assert not ledger.record_cost_delta(data, "a", 10.0, 10.0, when=self.NOW)
+        assert data["cost_events"] == [event]
 
     def test_finite_events_cannot_overflow_a_window_total(self):
         events = [
@@ -404,7 +452,7 @@ class TestRollingCosts:
             "seed": False,
         }
         mutations = (
-            {**valid, "session": ""},
+            {**valid, "session": 7},
             {**valid, "at": float("inf")},
             {**valid, "accrued_at": ledger.iso(self.NOW + 1)},
             {**valid, "seed": 1},
@@ -417,6 +465,7 @@ class TestRollingCosts:
         )
 
         assert ledger._valid_cost_event(valid)
+        assert ledger._valid_cost_event({**valid, "session": ""})
         assert all(not ledger._valid_cost_event(event) for event in mutations)
 
     def test_retention_keeps_35_day_boundary_and_never_prunes_poison(self):
