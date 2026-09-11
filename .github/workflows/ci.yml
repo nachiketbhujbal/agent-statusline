@@ -50,7 +50,7 @@ jobs:
       - run: pip install ruff build
 
       - name: lint
-        run: ruff check src tests install.py
+        run: ruff check src tests scripts install.py
 
       - name: no runtime dependencies (ADR 0004)
         run: |
@@ -110,6 +110,8 @@ jobs:
 
       - name: build
         run: python -m build
+      - name: distribution archives exclude private workspace state
+        run: python scripts/verify_artifacts.py dist/*
       - uses: actions/upload-artifact@v7
         with:
           name: dist

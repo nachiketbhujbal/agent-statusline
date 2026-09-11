@@ -33,6 +33,9 @@ jobs:
 
       - run: python -m build
 
+      - name: distribution archives exclude private workspace state
+        run: python scripts/verify_artifacts.py dist/*
+
       - name: the built artifacts carry the tagged version
         run: |
           python - <<'PY'

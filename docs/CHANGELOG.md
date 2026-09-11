@@ -18,7 +18,9 @@ claim, and valid journal evidence is retained for 35 days.
 
 Lifetime session, resume/base/run, `last5`, `all`, row order, and every non-cost
 field remain compatible. Ledger mutation and event publication stay inside the
-v0.2.4 locked atomic transaction; no runtime dependency is added.
+v0.2.4 locked atomic transaction; no runtime dependency is added. Source-
+distribution paths are now root-anchored, and both CI and Release reject
+archives containing private Relay views, local worktrees, or repository state.
 
 ## 0.2.4
 
