@@ -22,15 +22,15 @@ installed-artifact evidence.
 | 0.2.7 | Bounded observation state | **Released** |
 | 0.2.8 | Tracked governance and review records | **Released** |
 | 0.2.9 | Width-safe, sanitized rendering | **Released** |
-| 0.2.10 | Hermetic installed-renderer evidence | **Current** |
-| 0.2.11 | Isolated self-test and safe diagnostics | Planned |
+| 0.2.10 | Hermetic installed-renderer evidence | **Released** |
+| 0.2.11 | Isolated self-test and safe diagnostics | **Current** |
 | 0.2.12 | Documentation, pinned workflow, and public-readiness closure | Planned |
 | 0.3.0 | Production-ready milestone | Planned after the patch train |
 
-0.2.1 through 0.2.9 are tagged and released. The current 0.2.10 boundary makes
-source pytest and the installed wheel consume the same privacy-neutral,
-transcript-backed ten-row evidence without touching live state. Every release's
-review, hosted CI, tag, and artifact evidence must stand on its own.
+0.2.1 through 0.2.10 are tagged and released. The current 0.2.11 boundary adds
+an isolated installed self-test and tightly allowlisted private renderer-failure
+evidence without touching live state. Every release's review, hosted CI, tag,
+and artifact evidence must stand on its own.
 
 ## 0.2.1 — ownership-safe installation
 
@@ -188,7 +188,7 @@ Released:
 
 ## 0.2.10 — hermetic installed-renderer evidence
 
-Current release:
+Released:
 
 - Commit privacy-neutral payload and transcript templates with no host paths,
   identifiers, or captured live state.
@@ -204,16 +204,29 @@ Current release:
 - Keep v0.2.11 diagnostics, v0.2.12 workflow/public-readiness work, runtime
   behavior, live configuration, and repository visibility unchanged.
 
-## 0.2.11 through 0.2.12
+## 0.2.11 — isolated self-test and safe diagnostics
 
-Planned, in dependency order:
+Current release:
 
-- **0.2.11:** add an isolated self-test and field-allowlisted, privacy-safe
-  failure evidence that cannot suppress normal rendering.
-- **0.2.12:** close documentation findings, replace moving workflow action tags
-  with immutable commits, audit history and workflow logs, and present the
-  maintainer with a direct public-visibility recommendation before any
-  visibility change.
+- Add `agent-statusline selftest` using the v0.2.10 synthetic contract in a
+  fresh child with isolated private home, configuration, state, and cwd.
+- Derive expected labels from `ORDER`, require all ten rows, suppress child
+  output, and reject public, symlinked, or non-regular private state.
+- On unexpected renderer failure, atomically publish only schema, UTC time,
+  fixed phase, and exception type to a private breadcrumb before preserving the
+  original exception.
+- Never record messages, tracebacks, payloads, transcripts, paths, commands, or
+  filenames; malformed input and broken pipes create no breadcrumb.
+- Keep v0.2.12 workflow/public-readiness work, live installation, performance,
+  and repository visibility unchanged.
+
+## 0.2.12
+
+Planned:
+
+- Close documentation findings, replace moving workflow action tags with
+  immutable commits, audit history and workflow logs, and present the maintainer
+  with a direct public-visibility recommendation before any visibility change.
 
 ## 0.3.0 — production-ready milestone
 

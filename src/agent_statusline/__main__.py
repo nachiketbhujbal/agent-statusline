@@ -1,6 +1,8 @@
-"""`python -m agent_statusline` renders the status line from stdin."""
+"""Expose the console-script interface through ``python -m``."""
 
-from agent_statusline.statusline import main
+import sys
+
+from agent_statusline.cli import main
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

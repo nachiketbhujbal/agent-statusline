@@ -1,0 +1,182 @@
+"""An isolated installed-renderer health check."""
+
+import datetime
+import json
+import os
+import re
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+
+from agent_statusline.statusline import ORDER
+
+EXPECTED_ROWS = tuple(ORDER)
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _write_transcript(path, workspace, now):
+    entries = [
+        {
+            "type": "user",
+            "uuid": "synthetic-root-0001",
+            "permissionMode": "plan",
+            "message": {"content": "Synthetic prompt"},
+        },
+        {
+            "type": "assistant",
+            "timestamp": datetime.datetime.fromtimestamp(now, datetime.timezone.utc).isoformat(),
+            "message": {
+                "model": "claude-opus-synthetic",
+                "content": [
+                    {
+                        "type": "tool_use",
+                        "name": "Read",
+                        "input": {"file_path": os.path.join(workspace, "README.md")},
+                    },
+                    {
+                        "type": "tool_use",
+                        "name": "Edit",
+                        "input": {"file_path": os.path.join(workspace, "example.py")},
+                    },
+                ],
+                "usage": {
+                    "input_tokens": 20,
+                    "output_tokens": 80,
+                    "cache_creation_input_tokens": 200,
+                    "cache_read_input_tokens": 2000,
+                    "output_tokens_details": {"thinking_tokens": 25},
+                    "cache_creation": {"ephemeral_1h_input_tokens": 200},
+                    "service_tier": "standard",
+                },
+            },
+        },
+        {"type": "user", "message": {"content": [{"type": "tool_result", "is_error": False}]}},
+        {"type": "system", "subtype": "turn_duration", "durationMs": 1234},
+        {
+            "type": "system",
+            "subtype": "stop_hook_summary",
+            "hookInfos": [{"durationMs": 12}],
+            "hookErrors": [],
+        },
+    ]
+    with open(path, "w", encoding="utf-8") as handle:
+        for entry in entries:
+            handle.write(json.dumps(entry, separators=(",", ":")) + "\n")
+
+
+def _materialize_payload(workspace, now):
+    transcript = os.path.join(workspace, "statusline-transcript.jsonl")
+    _write_transcript(transcript, workspace, now)
+    return {
+        "session_id": "synthetic-session-0001",
+        "session_name": "Synthetic smoke session",
+        "transcript_path": transcript,
+        "cwd": workspace,
+        "version": "2.1.246",
+        "effort": {"level": "high"},
+        "model": {"id": "claude-opus-synthetic", "display_name": "Synthetic Opus"},
+        "workspace": {"current_dir": workspace, "project_dir": workspace, "added_dirs": []},
+        "output_style": {"name": "default"},
+        "thinking": {"enabled": True},
+        "fast_mode": False,
+        "cost": {
+            "total_cost_usd": 1.25,
+            "total_duration_ms": 600000,
+            "total_api_duration_ms": 120000,
+            "total_lines_added": 10,
+            "total_lines_removed": 2,
+        },
+        "context_window": {
+            "context_window_size": 1000000,
+            "used_percentage": 14,
+            "current_usage": {
+                "input_tokens": 2,
+                "output_tokens": 800,
+                "cache_creation_input_tokens": 700,
+                "cache_read_input_tokens": 70000,
+            },
+        },
+        "rate_limits": {
+            "five_hour": {"used_percentage": 15, "resets_at": now + 4 * 3600},
+            "seven_day": {"used_percentage": 49, "resets_at": now + 5 * 86400},
+        },
+    }
+
+
+def _labels(output):
+    lines = [ANSI.sub("", line) for line in output.splitlines()]
+    return tuple(line.split()[0] for line in lines if line.strip() and not line.startswith(" "))
+
+
+def _private_directory(path):
+    try:
+        info = os.lstat(path)
+    except OSError:
+        return False
+    return stat.S_ISDIR(info.st_mode) and stat.S_IMODE(info.st_mode) == 0o700
+
+
+def _private_state(state_dir):
+    if not _private_directory(state_dir):
+        return False
+    for directory, directories, files in os.walk(state_dir):
+        if not _private_directory(directory):
+            return False
+        for name in directories:
+            if not _private_directory(os.path.join(directory, name)):
+                return False
+        for name in files:
+            try:
+                info = os.lstat(os.path.join(directory, name))
+            except OSError:
+                return False
+            if not stat.S_ISREG(info.st_mode) or stat.S_IMODE(info.st_mode) != 0o600:
+                return False
+    return True
+
+
+def _fail(reason):
+    print(f"selftest failed: {reason}", file=sys.stderr)
+    return 1
+
+
+def run():
+    """Render a full synthetic payload in a fresh process and private state."""
+    with tempfile.TemporaryDirectory(prefix="agent-statusline-selftest-") as root:
+        workspace = os.path.abspath(root)
+        now = time.time()
+        state_dir = os.path.join(workspace, "state")
+        home_dir = os.path.join(workspace, "home")
+        os.mkdir(home_dir, mode=0o700)
+        payload = _materialize_payload(workspace, now)
+        env = dict(os.environ)
+        env["HOME"] = home_dir
+        env["CLAUDE_CONFIG_DIR"] = os.path.join(home_dir, ".claude")
+        env["AGENT_STATUSLINE_STATE"] = state_dir
+        env["COLUMNS"] = "240"
+        try:
+            process = subprocess.run(
+                [sys.executable, "-m", "agent_statusline"],
+                input=json.dumps(payload),
+                capture_output=True,
+                text=True,
+                timeout=20,
+                env=env,
+                cwd=workspace,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            return _fail("isolated renderer timed out")
+        if process.returncode:
+            return _fail("isolated renderer exited non-zero")
+        if _labels(process.stdout) != EXPECTED_ROWS:
+            return _fail("isolated renderer did not emit all approved rows in order")
+        if not _private_directory(home_dir):
+            return _fail("isolated home is missing or not private")
+        if not _private_state(state_dir):
+            return _fail("isolated runtime state is missing or not private")
+    count = len(EXPECTED_ROWS)
+    print(f"selftest ok: isolated renderer emitted all {count} approved rows with private state")
+    return 0

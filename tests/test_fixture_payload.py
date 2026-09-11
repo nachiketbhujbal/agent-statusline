@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from agent_statusline import selftest
 from fixture_payload import (
     PAYLOAD_TEMPLATE,
     TRANSCRIPT_TEMPLATE,
@@ -60,3 +61,23 @@ def test_render_contract_rejects_an_empty_or_partial_smoke():
         verify_render_contract("", ["PROJECT", "MODEL"])
     with pytest.raises(AssertionError):
         verify_render_contract("PROJECT project\nMODEL model\n", ["PROJECT", "MODEL"])
+
+
+def test_runtime_selftest_matches_the_committed_synthetic_contract(tmp_path):
+    now = 1_800_000_000.0
+    workspace = (tmp_path / "workspace").resolve()
+    committed = materialize_payload(workspace, now=now)
+    committed_entries = [
+        json.loads(line)
+        for line in Path(committed["transcript_path"]).read_text(encoding="utf-8").splitlines()
+    ]
+
+    runtime = selftest._materialize_payload(str(workspace), now)
+    runtime_entries = [
+        json.loads(line)
+        for line in Path(runtime["transcript_path"]).read_text(encoding="utf-8").splitlines()
+    ]
+
+    assert runtime == committed
+    assert runtime_entries == committed_entries
+    assert tuple(selftest.ORDER) == selftest.EXPECTED_ROWS

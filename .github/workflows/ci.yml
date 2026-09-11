@@ -111,6 +111,7 @@ jobs:
           PY
           agent-statusline version
           agent-statusline --help > /dev/null
+          agent-statusline selftest
           agent-statusline < "${RUNNER_TEMP}/statusline-payload.json" \
             > "${RUNNER_TEMP}/statusline-render.txt"
           python - <<'PY'
