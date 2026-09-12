@@ -258,7 +258,8 @@ Current release:
 - Align the changelog, roadmap, handoff, review ledger, and public-readiness
   verdict with released v0.2.12 and the completed inventory.
 - Establish public visibility and the active no-bypass `main` ruleset, with one
-  stable aggregate required CI result.
+  stable aggregate required CI result that fails closed on missing or malformed
+  scope and cannot be made conditional or non-blocking.
 - Keep runtime behavior, Git history, release tags and assets, existing workflow
   runs and logs, live state, and the accepted ADR 0035 pull-ref residue unchanged.
 

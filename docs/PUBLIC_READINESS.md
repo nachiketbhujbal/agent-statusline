@@ -47,6 +47,9 @@ separately. No GitHub Support request is planned.
   Python matrix when the scope is full; it accepts only the deliberate matrix
   skip for documentation-only changes. The `main` ruleset requires that result
   from the GitHub Actions application against current `main`.
+- Only explicit `true` and `false` scope outputs are valid. Missing or malformed
+  scope fails closed, and repository policy forbids making the aggregate
+  enforcement step conditional or non-blocking.
 - Automatic `main` CI also validates the generated release-spine commit
   identity when the full gate applies.
 - Release validates the annotated tagger and peeled commit identities before

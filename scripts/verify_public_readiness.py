@@ -7,6 +7,7 @@ import subprocess
 import sys
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Optional
 
 REQUIRED_PRIVATE_IGNORES = ("/.claude/", "/.pvt/", "/.worktrees/")
 ACTION_RE = re.compile(r"^\s*-\s+uses:\s+([^#\s]+)(?:\s+#\s*(.+?))?\s*$", re.MULTILINE)
@@ -72,6 +73,40 @@ def check_workflows(root: Path) -> list[str]:
     return errors
 
 
+def _yaml_block(text: str, header: str, indent: int) -> Optional[str]:
+    """Return one exact indentation-delimited YAML block without parsing YAML."""
+    lines = text.splitlines()
+    wanted = " " * indent + header
+    matches = [index for index, line in enumerate(lines) if line == wanted]
+    if len(matches) != 1:
+        return None
+    start = matches[0]
+    end = len(lines)
+    for index in range(start + 1, len(lines)):
+        line = lines[index]
+        if line.strip() and len(line) - len(line.lstrip(" ")) <= indent:
+            end = index
+            break
+    return "\n".join(lines[start:end])
+
+
+def _yaml_step_with_id(text: str, step_id: str) -> Optional[str]:
+    lines = text.splitlines()
+    starts = [index for index, line in enumerate(lines) if line.startswith("      - ")]
+    matches = []
+    for position, start in enumerate(starts):
+        end = starts[position + 1] if position + 1 < len(starts) else len(lines)
+        for index in range(start + 1, end):
+            line = lines[index]
+            if line.strip() and len(line) - len(line.lstrip(" ")) <= 4:
+                end = index
+                break
+        block = "\n".join(lines[start:end])
+        if re.search(rf"^(?:      - |        )id:\s*{re.escape(step_id)}\s*$", block, re.MULTILINE):
+            matches.append(block)
+    return matches[0] if len(matches) == 1 else None
+
+
 def check_lean_policy(root: Path) -> list[str]:
     errors: list[str] = []
     ci = _read(root / ".github" / "workflows" / "ci.yml", errors)
@@ -94,8 +129,11 @@ def check_lean_policy(root: Path) -> list[str]:
         "FULL_RUN: ${{ needs.checks.outputs.full }}",
         'test "${CHECKS_RESULT}" = "success"',
         'if [ "${FULL_RUN}" = "true" ]; then',
+        'elif [ "${FULL_RUN}" = "false" ]; then',
         'test "${TEST_RESULT}" = "success"',
         'test "${TEST_RESULT}" = "skipped"',
+        'echo "invalid full-scope result: ${FULL_RUN}" >&2',
+        "exit 1",
     )
     required_release = (
         'tags: ["v*"]',
@@ -115,6 +153,45 @@ def check_lean_policy(root: Path) -> list[str]:
         errors.append(
             ".github/workflows/ci.yml: ancestry audit must not skip documentation-only refs"
         )
+
+    checks_job = _yaml_block(ci, "checks:", indent=2)
+    scope_step = _yaml_step_with_id(checks_job or "", "scope")
+    if checks_job is None or scope_step is None:
+        errors.append(".github/workflows/ci.yml: requires one unambiguous scope step")
+    else:
+        for output in (
+            'echo "full=true" >> "${GITHUB_OUTPUT}"',
+            'echo "full=false" >> "${GITHUB_OUTPUT}"',
+        ):
+            if output not in scope_step:
+                errors.append(f".github/workflows/ci.yml: scope step must emit: {output}")
+
+    required_job = _yaml_block(ci, "required:", indent=2)
+    required_step = _yaml_block(
+        required_job or "", "- name: enforce the complete required CI result", indent=6
+    )
+    if required_job is None or required_step is None:
+        errors.append(".github/workflows/ci.yml: requires one named aggregate enforcement step")
+    else:
+        for fragment in ("if: always()", "needs: [checks, test]"):
+            if fragment not in required_job:
+                errors.append(f".github/workflows/ci.yml: aggregate job is missing: {fragment}")
+        if re.search(r"^    continue-on-error:", required_job, re.MULTILINE):
+            errors.append(
+                ".github/workflows/ci.yml: aggregate job must not declare continue-on-error"
+            )
+        for key in ("if", "continue-on-error"):
+            if re.search(rf"^        {key}:", required_step, re.MULTILINE):
+                errors.append(
+                    ".github/workflows/ci.yml: aggregate enforcement step must not declare "
+                    f"{key}"
+                )
+        for fragment in required_ci[12:]:
+            if fragment not in required_step:
+                errors.append(
+                    ".github/workflows/ci.yml: aggregate enforcement step is missing: "
+                    f"{fragment}"
+                )
     return errors
 
 

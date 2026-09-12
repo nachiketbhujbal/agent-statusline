@@ -39,24 +39,33 @@ jobs:
           fetch-depth: 0
       - run: python scripts/audit_reachable_history.py --ref HEAD
       - id: scope
-        run: git diff --quiet "${{BASE_SHA}}" HEAD -- .
+        run: |
+          if git diff --quiet "${{BASE_SHA}}" HEAD -- .; then
+            echo "full=false" >> "${{GITHUB_OUTPUT}}"
+          else
+            echo "full=true" >> "${{GITHUB_OUTPUT}}"
+          fi
   test:
     needs: checks
     if: needs.checks.outputs.full == 'true'
   required:
     if: always()
     needs: [checks, test]
-    env:
-      CHECKS_RESULT: ${{{{ needs.checks.result }}}}
-      TEST_RESULT: ${{{{ needs.test.result }}}}
-      FULL_RUN: ${{{{ needs.checks.outputs.full }}}}
     steps:
-      - run: |
+      - name: enforce the complete required CI result
+        env:
+          CHECKS_RESULT: ${{{{ needs.checks.result }}}}
+          TEST_RESULT: ${{{{ needs.test.result }}}}
+          FULL_RUN: ${{{{ needs.checks.outputs.full }}}}
+        run: |
           test "${{CHECKS_RESULT}}" = "success"
           if [ "${{FULL_RUN}}" = "true" ]; then
             test "${{TEST_RESULT}}" = "success"
-          else
+          elif [ "${{FULL_RUN}}" = "false" ]; then
             test "${{TEST_RESULT}}" = "skipped"
+          else
+            echo "invalid full-scope result: ${{FULL_RUN}}" >&2
+            exit 1
           fi
   macos:
     if: github.event_name == 'workflow_dispatch' && inputs.hosted_macos
@@ -92,6 +101,19 @@ def run_policy(root, *args):
         capture_output=True,
         text=True,
     )
+
+
+def workflow_step_script(path, name):
+    lines = path.read_text(encoding="utf-8").splitlines()
+    marker = f"      - name: {name}"
+    start = lines.index(marker)
+    run = lines.index("        run: |", start) + 1
+    body = []
+    for line in lines[run:]:
+        if line and not line.startswith("          "):
+            break
+        body.append(line[10:] if line else "")
+    return "\n".join(body)
 
 
 def git(root, *args):
@@ -217,6 +239,35 @@ def test_public_readiness_policy_requires_aggregate_ci_gate(tmp_path):
 
 
 @pytest.mark.parametrize(
+    ("full_run", "test_result", "expected"),
+    (
+        ("true", "success", 0),
+        ("false", "skipped", 0),
+        ("", "skipped", 1),
+        ("documentation", "skipped", 1),
+    ),
+)
+def test_required_ci_gate_fails_closed_on_scope_result(full_run, test_result, expected):
+    script = workflow_step_script(
+        VERIFY.parents[1] / ".github" / "workflows" / "ci.yml",
+        "enforce the complete required CI result",
+    )
+
+    result = subprocess.run(
+        ["/bin/sh", "-e", "-c", script],
+        env={
+            "CHECKS_RESULT": "success",
+            "TEST_RESULT": test_result,
+            "FULL_RUN": full_run,
+        },
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == expected, result.stderr
+
+
+@pytest.mark.parametrize(
     ("fragment", "replacement"),
     (
         (
@@ -226,6 +277,10 @@ def test_public_readiness_policy_requires_aggregate_ci_gate(tmp_path):
         (
             'if [ "${FULL_RUN}" = "true" ]; then',
             'if [ "${FULL_RUN}" = "false" ]; then',
+        ),
+        (
+            'elif [ "${FULL_RUN}" = "false" ]; then',
+            'elif [ "${FULL_RUN}" = "unknown" ]; then',
         ),
         (
             'test "${TEST_RESULT}" = "success"',
@@ -246,6 +301,37 @@ def test_public_readiness_policy_requires_aggregate_ci_enforcement(tmp_path, fra
 
     assert result.returncode == 1
     assert f"missing lean-policy fragment: {fragment}" in result.stderr
+
+
+@pytest.mark.parametrize("key", ("if: false", "continue-on-error: true"))
+def test_public_readiness_policy_rejects_skippable_aggregate_enforcement(tmp_path, key):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "ci.yml"
+    marker = "      - name: enforce the complete required CI result"
+    write(workflow, workflow.read_text().replace(marker, f"{marker}\n        {key}"))
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert f"aggregate enforcement step must not declare {key.split(':')[0]}" in result.stderr
+
+
+@pytest.mark.parametrize(
+    "output",
+    (
+        'echo "full=true" >> "${GITHUB_OUTPUT}"',
+        'echo "full=false" >> "${GITHUB_OUTPUT}"',
+    ),
+)
+def test_public_readiness_policy_requires_both_scope_outputs(tmp_path, output):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "ci.yml"
+    write(workflow, workflow.read_text().replace(output, "echo invalid"))
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert f"scope step must emit: {output}" in result.stderr
 
 
 def test_public_readiness_policy_requires_release_ancestry_audit(tmp_path):
