@@ -26,13 +26,14 @@ installed-artifact evidence.
 | 0.2.11 | Isolated self-test and safe diagnostics | **Released** |
 | 0.2.12 | Documentation, pinned workflow, and public-readiness closure | **Released** |
 | 0.2.13 | Oversized-audit and hosted-exposure closure | **Released** |
-| 0.2.14 | Public CI and installation-documentation alignment | **Current** |
-| 0.3.0 | Production-ready milestone | Planned after the patch train |
+| 0.2.14 | Public CI and installation-documentation alignment | **Released** |
+| 0.3.0 | Production-ready milestone | **Current** |
 
-0.2.1 through 0.2.13 are tagged and released. The current 0.2.14 boundary aligns
-hosted evidence and installation guidance with the public repository without
-changing runtime. Every release's review, hosted CI, tag, and artifact evidence
-must stand on its own; 0.2.14 remains unreleased.
+0.2.1 through 0.2.14 are tagged and released. The current 0.3.0 boundary names
+that completed, independently proven train as the production-ready supported
+public baseline. Every release's review, hosted CI, tag, and artifact evidence
+stands on its own; the historical hardening branch remains source material and
+is not a merge candidate.
 
 ## 0.2.1 — ownership-safe installation
 
@@ -266,7 +267,7 @@ Released:
 
 ## 0.2.14 — public CI and installation-documentation alignment
 
-Current release:
+Released:
 
 - Run the complete Python 3.9 through 3.13 matrix on Linux and one representative
   Python 3.12 lane on macOS for every full-scope pull request, `main` push, and
@@ -284,6 +285,22 @@ Current release:
 
 ## 0.3.0 — production-ready milestone
 
-Planned only after every preceding patch is independently reviewed, released,
-and proven from its installed artifacts. The milestone is a statement about the
-completed patch train, not authorization for another monolithic hardening merge.
+Current release:
+
+- Declare the completed v0.2.1 through v0.2.14 train the supported public
+  baseline after every patch's independent review, immutable tag, and release-
+  specific artifact proof. GitHub Release objects begin at v0.2.4, when the
+  hosted Release workflow was enabled.
+- Mark the distribution `Production/Stable` while retaining pre-1.0 semantic-
+  versioning rules; this is a product-readiness statement, not a promise that
+  future 0.x minors cannot change compatibility.
+- Point the normal no-clone installation and upgrade commands at the immutable
+  v0.3.0 tag; an exact-tag install must be replaced explicitly rather than
+  relying on `uv tool upgrade`.
+- Record that the historical hardening branch is superseded source material
+  whose intended work landed through corrected, individually proven patches;
+  do not merge or cherry-pick it wholesale.
+- Change no runtime source, renderer behavior, approved row or field,
+  dependency, installer, workflow, state, or live configuration.
+- Keep PyPI publication, accepted historical pull refs, unreachable-object
+  cleanup, performance work, and host architecture outside this milestone.

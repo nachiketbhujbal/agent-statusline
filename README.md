@@ -61,7 +61,7 @@ Rows are ordered by how often they answer a question worth asking — `PROJECT` 
 ## Install
 
 ```bash
-uv tool install 'git+https://github.com/nachiketbhujbal/agent-statusline@v0.2.14'
+uv tool install 'git+https://github.com/nachiketbhujbal/agent-statusline@v0.3.0'
 agent-statusline install
 ```
 
@@ -122,7 +122,7 @@ To upgrade, replace the tag with the newer immutable release and reinstall, then
 refresh the managed wiring if it changed:
 
 ```bash
-uv tool install --force 'git+https://github.com/nachiketbhujbal/agent-statusline@v0.2.14'
+uv tool install --force 'git+https://github.com/nachiketbhujbal/agent-statusline@v0.3.0'
 agent-statusline install
 ```
 
@@ -256,10 +256,16 @@ primitives, but no second-host adapter ships today. See
 
 ## Updating
 
+An exact Git-tag installation does not move when `uv tool upgrade` is run.
+Replace the tag with the newer immutable release and reinstall explicitly:
+
 ```bash
-uv tool upgrade agent-statusline            # installed
-git pull                                    # checkout: edits are already live
+uv tool install --force 'git+https://github.com/nachiketbhujbal/agent-statusline@v0.3.0'
+agent-statusline install
 ```
+
+For a development checkout, use `git pull`; the managed symlink makes those
+working-tree changes live without reinstalling.
 
 ## Uninstalling
 
