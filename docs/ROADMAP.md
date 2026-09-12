@@ -28,10 +28,14 @@ installed-artifact evidence.
 | 0.2.13 | Oversized-audit and hosted-exposure closure | **Released** |
 | 0.2.14 | Public CI and installation-documentation alignment | **Released** |
 | 0.3.0 | Production-ready milestone | **Released** |
-| 0.3.1 | Measured hot-path performance | **Current** |
-| 0.3.2 | Explicit host-acquisition architecture | Planned |
+| 0.3.1 | Measured hot-path performance | **Released** |
+| 0.3.2 | PyPI metadata and package-page readiness | **Current** |
+| 0.3.3 | Build-once release artifact promotion | Planned |
+| 0.3.4 | Trusted TestPyPI publication and verification | Planned |
+| 0.3.5 | Trusted production PyPI publication and verification | Planned |
+| 0.4.0 | Explicit host-acquisition architecture | Planned |
 
-0.2.1 through 0.2.14 and 0.3.0 are tagged and released. The v0.3.0 boundary
+0.2.1 through 0.2.14, v0.3.0, and v0.3.1 are tagged and released. The v0.3.0 boundary
 names that completed, independently proven train as the production-ready
 supported public baseline. Each boundary retains its exact review and artifact
 evidence; GitHub Release objects begin at v0.2.4. The historical hardening
@@ -309,7 +313,7 @@ Released:
 
 ## 0.3.1 — measured hot-path performance
 
-Current release:
+Released:
 
 - Repeat the interpreter, import-only, warm-render, and cold-render baseline
   against exact v0.3.0 before changing the hot path.
@@ -326,7 +330,66 @@ Current release:
 - Preserve every approved row and field. Performance work does not redesign the
   display, alter accounting, add dependencies, or change live configuration.
 
-## 0.3.2 — explicit host-acquisition architecture
+## 0.3.2 — PyPI metadata and package-page readiness
+
+Current release:
+
+- Align the v0.3.1 completion boundary across the changelog, roadmap, review
+  ledger, and handoff.
+- Add standard public Source, Issues, Changelog, Homepage, and Documentation
+  package metadata.
+- Make README links portable to rendering outside the repository, including a
+  future package-index project page.
+- Document `uv tool`, `pipx`, and `pip` as supported consumers of the same
+  standard Hatchling distributions, recommending isolated command installs
+  without making uv a runtime requirement.
+- Retain immutable tagged-Git installation until the production index release;
+  do not claim that package-name installation is available early.
+- Change no runtime source, dependency, workflow, live configuration, hosted
+  environment, or package index.
+
+## 0.3.3 — build-once release artifact promotion
+
+Planned:
+
+- Build and validate the wheel and source archive once in a read-only release
+  job, then upload one explicitly named workflow artifact.
+- Require later release jobs to download that exact artifact rather than
+  rebuilding or publishing ambient `dist` contents.
+- Separate GitHub Release write permission from the build job, keep action
+  references pinned to immutable commits, and retain the existing tag identity,
+  ancestry, documentation, test, privacy, and version gates.
+- Add package-description validation, exact two-file membership, and recorded
+  hashes before any publication job exists.
+- Keep TestPyPI, PyPI, OIDC permission, hosted environments, accounts, and
+  package-name installation outside this release.
+
+## 0.3.4 — trusted TestPyPI publication and verification
+
+Planned:
+
+- Configure a dedicated manually approved TestPyPI environment and pending
+  trusted publisher only after the exact reviewed workflow identity is known.
+- Publish the v0.3.4 build artifact with short-lived OIDC identity and no stored
+  package-index credential.
+- Verify index-reported hashes, exact-version installation, and the isolated
+  ten-row self-test after bounded propagation retries.
+- Do not publish to production PyPI or claim package-name installation there.
+
+## 0.3.5 — trusted production PyPI publication and verification
+
+Planned:
+
+- Configure a separate manually approved production environment and pending
+  trusted publisher for the reviewed workflow.
+- Permit production publication only after the same artifacts pass the build,
+  GitHub Release, TestPyPI, and installation-verification boundaries.
+- Publish without a stored API token, verify production hashes and installation,
+  and then make package-name `uv tool`, `pipx`, and `pip` commands current.
+- Treat an immutable publication mistake as a new patch; never replace or reuse
+  an uploaded filename.
+
+## 0.4.0 — explicit host-acquisition architecture
 
 Planned:
 

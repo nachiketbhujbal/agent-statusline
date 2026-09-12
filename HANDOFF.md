@@ -6,8 +6,8 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.3.1, measured hot-path performance.
-- Preceding release: v0.3.0, the immutable base for this slice.
+- Current release target: 0.3.2, PyPI metadata and package-page readiness.
+- Preceding release: v0.3.1, the immutable base for this slice.
 - Branch owner: Codex; only the owner changes the release branch.
 - Reviewer role: one independent read-only reviewer, assigned after the exact
   candidate SHA is frozen. No second reviewer or delegated worker runs beside it.
@@ -23,11 +23,11 @@ the roadmap, or accepted ADRs.
   force-push are blocked.
 - Runtime dependencies remain empty and versions remain Git-tag-derived.
 
-The v0.3.1 slice removes avoidable hot-path imports and adds reproducible,
-non-gating benchmark evidence. It preserves ordinary renderer output, the
-display contract, accounting, runtime dependencies, installer behavior, and
-live wiring. An unusable zero-column terminal result is consistently normalized
-to the existing fallback on every supported Python version.
+The v0.3.2 slice aligns completed v0.3.1 records, adds standard public package
+URLs, makes README links portable to a future package-index page, and clarifies
+that uv tool, pipx, and pip consume the same standard distributions. It changes
+no runtime source, dependency, workflow, live configuration, hosted environment,
+or package index.
 
 ## Stable product boundary
 
@@ -53,7 +53,9 @@ accepted historical pull-ref boundary, prospective ancestry protection,
 oversized-evidence closure, protected public conversion, and exact aggregate CI.
 
 v0.2.14 completed public-CI alignment after conversion. v0.3.0 completed the
-production-ready records-and-metadata milestone promised by ADR 0030.
+production-ready records-and-metadata milestone promised by ADR 0030. v0.3.1
+completed measured hot-path import reduction and source-hermetic benchmark
+evidence.
 
 The complete sequence and exclusions are authoritative in
 [ROADMAP.md](docs/ROADMAP.md). Do not merge the historical hardening branch as
@@ -61,22 +63,20 @@ a whole or import a later slice into the current release.
 
 ## Resume point
 
-v0.3.0 is complete at tagged merge
-`263a0002b8ba70ee5988f9b6d59330e423dbe9b9`. Exact-SHA review, protected PR and
+v0.3.1 is complete at tagged merge
+`577369f8b224313cf73677195ef53e19f72aae89`. Exact-SHA review, protected PR and
 merged-main Linux/macOS CI, tag-triggered Release, downloaded asset verification,
 and an isolated Python 3.9 wheel self-test passed. Live Claude Code is converged
-on exact installed v0.3.0 through one status-line command and four managed hooks,
+on exact installed v0.3.1 through one status-line command and four managed hooks,
 with unrelated settings and state preserved and no checkout symlink.
 
-The v0.3.1 owner branch starts from exact v0.3.0. Repeat the baseline first,
-then remove only the `argparse`, `subprocess`, and `shutil` import work identified
-by research while retaining ordinary width selection, cold probes, and private
-atomic publication. Normalize an unusable zero-column terminal result to the
-existing fallback across supported Python versions. Gate module exclusion
-deterministically and record wall-clock benchmarks without enforcing them.
-Compiled or persistent implementations, host architecture, orphan cleanup,
-accepted pull-ref changes, PyPI publication, and live installation changes
-remain separate.
+The v0.3.2 owner branch starts from exact v0.3.1. Align only the public package
+surface and current release records described by ADR 0041. Retain immutable
+tagged-Git installation and do not present package-name installation as live.
+Release workflow restructuring is v0.3.3; TestPyPI is v0.3.4; production PyPI is
+v0.3.5; explicit host acquisition and Codex evidence move to the next minor
+track. Runtime behavior, live installation, accepted pull refs, unreachable
+objects, and recovery cleanup remain separate.
 [PUBLIC_READINESS.md](docs/PUBLIC_READINESS.md) records the protected baseline.
 
 Durable decisions live in [ADRs](docs/adrs/README.md), completed behavior in the

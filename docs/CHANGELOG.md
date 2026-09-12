@@ -4,7 +4,22 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.3.1
+## Unreleased — 0.3.2
+
+The public package surface now names standard source, issue, documentation, and
+changelog URLs. README links are absolute so the same long description remains
+usable when rendered outside the GitHub repository, including a future package
+index page.
+
+Installation guidance now distinguishes package format from package manager:
+`uv tool` remains the recommended isolated command installation, `pipx` offers
+the same isolation model, and `pip` is supported in the selected Python
+environment. Until production PyPI publication lands in its own release, all
+three continue to install from the immutable public Git tag. This release does
+not change runtime code, dependencies, workflows, live configuration, or any
+package index ([ADR 0041](adrs/0041-stage-pypi-distribution-as-independent-patches.md)).
+
+## 0.3.1
 
 A fresh renderer process no longer imports `argparse`, `subprocess`, or
 `shutil`. Ledger argument parsing and probe subprocess support load only when
