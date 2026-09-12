@@ -209,11 +209,15 @@ jobs:
           TEST_RESULT: ${{ needs.test.result }}
           FULL_RUN: ${{ needs.checks.outputs.full }}
         run: |
+          set -eu
           test "${CHECKS_RESULT}" = "success"
           if [ "${FULL_RUN}" = "true" ]; then
             test "${TEST_RESULT}" = "success"
-          else
+          elif [ "${FULL_RUN}" = "false" ]; then
             test "${TEST_RESULT}" = "skipped"
+          else
+            echo "invalid full-scope result: ${FULL_RUN}" >&2
+            exit 1
           fi
 
   # Hosted macOS certification. Off by default -- one job here costs the same

@@ -22,9 +22,15 @@ The repository is public. Active no-bypass ruleset `22966865` protects `main`
 with mandatory pull requests and resolved review threads, a strict required
 GitHub Actions result, and blocked deletion and force-push. CI exposes one
 stable aggregate result that requires the always-on policy job and either the
-complete Python matrix or its deliberate documentation-only skip. Runtime
-behavior, dependencies, Git history, release tags and assets, and live state
-are unchanged.
+complete Python matrix or its deliberate documentation-only skip. The
+aggregate accepts only explicit full or documentation-only scope, fails closed
+on missing or malformed scope, requires the exact unconditional job condition,
+enables its own fail-fast shell behavior, and cannot be made conditional,
+non-blocking, or shell-overridden without failing repository policy. Only the
+reviewed canonical direct keys are accepted on the aggregate job and enforcement
+step, so quoted, escaped, whitespace-varied, duplicate, or unexpected keys fail
+closed. Runtime behavior, dependencies, Git history, release tags and assets,
+and live state are unchanged.
 
 ## 0.2.12
 

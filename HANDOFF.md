@@ -14,7 +14,11 @@ the roadmap, or accepted ADRs.
 - Both hosted workflows are active. Every pull request and `main` push runs one
   complete-ancestry audit; documentation-only refs skip the full Linux gate,
   hosted macOS remains opt-in, and one stable aggregate job reports whether all
-  required work passed or was deliberately skipped.
+  required work passed or was deliberately skipped. Missing or malformed scope
+  fails closed; the exact unconditional job condition and self-contained
+  fail-fast script are enforced, and only their reviewed canonical direct keys
+  are accepted; quoted, escaped, whitespace-varied, duplicate, or unexpected
+  keys fail closed.
 - The repository is public. Active no-bypass ruleset `22966865` protects
   `main`: pull requests and resolved review threads are required, the aggregate
   GitHub Actions result must pass against current `main`, and deletion and
