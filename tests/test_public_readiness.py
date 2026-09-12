@@ -311,11 +311,14 @@ def test_public_readiness_policy_requires_aggregate_ci_enforcement(tmp_path, fra
     (
         "if: false",
         "'if': false",
+        r'"\u0069f": false',
         "continue-on-error: true",
         "continue-on-error : true",
         "'continue-on-error': true",
+        r'"continue-on-\u0065rror": true',
         "shell: bash {0}",
         "'shell': bash {0}",
+        r'"sh\u0065ll": bash {0}',
     ),
 )
 def test_public_readiness_policy_rejects_skippable_aggregate_enforcement(tmp_path, key):
@@ -327,11 +330,18 @@ def test_public_readiness_policy_rejects_skippable_aggregate_enforcement(tmp_pat
     result = run_policy(root)
 
     assert result.returncode == 1
-    protected_key = key.split(":")[0].strip().strip("'\"")
-    assert f"aggregate enforcement step must not declare {protected_key}" in result.stderr
+    assert "aggregate enforcement step must use only its canonical direct keys" in result.stderr
 
 
-@pytest.mark.parametrize("key", ("continue-on-error : true", "'continue-on-error': true"))
+@pytest.mark.parametrize(
+    "key",
+    (
+        "continue-on-error: true",
+        "continue-on-error : true",
+        "'continue-on-error': true",
+        r'"continue-on-\u0065rror": true',
+    ),
+)
 def test_public_readiness_policy_rejects_nonblocking_aggregate_job(tmp_path, key):
     root = valid_repository(tmp_path)
     workflow = root / ".github" / "workflows" / "ci.yml"
@@ -341,7 +351,34 @@ def test_public_readiness_policy_rejects_nonblocking_aggregate_job(tmp_path, key
     result = run_policy(root)
 
     assert result.returncode == 1
-    assert "aggregate job must not declare continue-on-error" in result.stderr
+    assert "aggregate job must use only its canonical direct keys" in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("marker", "key", "message"),
+    (
+        (
+            "  required:",
+            "if: always()",
+            "aggregate job must use only its canonical direct keys",
+        ),
+        (
+            "      - name: enforce the complete required CI result",
+            "run: echo bypass",
+            "aggregate enforcement step must use only its canonical direct keys",
+        ),
+    ),
+)
+def test_public_readiness_policy_rejects_duplicate_aggregate_keys(tmp_path, marker, key, message):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "ci.yml"
+    indent = "    " if marker == "  required:" else "        "
+    write(workflow, workflow.read_text().replace(marker, f"{marker}\n{indent}{key}"))
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert message in result.stderr
 
 
 def test_public_readiness_policy_requires_exact_aggregate_job_condition(tmp_path):

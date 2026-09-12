@@ -31,8 +31,10 @@ scope step must emit both values on its deliberate branches, and the aggregate
 job condition must be exactly `if: always()`. Its enforcement script enables
 its own fail-fast shell behavior, and the enforcement step may not override its
 shell, add a step-level condition, or use `continue-on-error`.
-The policy recognizes quoted and whitespace-varied spellings of those YAML
-keys, so equivalent syntax cannot bypass the semantic prohibition.
+The policy permits only the reviewed canonical direct keys on the aggregate job
+and enforcement step. Quoted, escaped, whitespace-varied, duplicate, or
+unexpected direct keys therefore fail closed instead of relying on incomplete
+enumeration of YAML's equivalent spellings.
 
 Enforce the job's dependency and result inputs in the local public-readiness
 policy. Active repository ruleset `22966865` targets only `main`, has no bypass

@@ -107,12 +107,21 @@ def _yaml_step_with_id(text: str, step_id: str) -> Optional[str]:
     return matches[0] if len(matches) == 1 else None
 
 
-def _yaml_direct_key_values(text: str, key: str, indent: int) -> list[str]:
-    """Return direct scalar values for equivalent plain or quoted YAML keys."""
+def _canonical_yaml_direct_entries(text: str, indent: int) -> Optional[list[tuple[str, str]]]:
+    """Return canonical direct mapping entries, or None for ambiguous syntax."""
     padding = " " * indent
-    spellings = (re.escape(key), re.escape(f"'{key}'"), re.escape(f'"{key}"'))
-    pattern = rf"^{padding}(?:{'|'.join(spellings)})\s*:\s*(.*?)\s*$"
-    return re.findall(pattern, text, re.MULTILINE)
+    entries = []
+    for line in text.splitlines():
+        if not line.startswith(padding) or line.startswith(padding + " "):
+            continue
+        content = line[indent:]
+        if not content or content.startswith("#"):
+            continue
+        match = re.fullmatch(r"([a-z][a-z0-9-]*):(?:\s+(.*))?", content)
+        if match is None:
+            return None
+        entries.append((match.group(1), match.group(2) or ""))
+    return entries
 
 
 def check_lean_policy(root: Path) -> list[str]:
@@ -182,7 +191,32 @@ def check_lean_policy(root: Path) -> list[str]:
     if required_job is None or required_step is None:
         errors.append(".github/workflows/ci.yml: requires one named aggregate enforcement step")
     else:
-        job_conditions = _yaml_direct_key_values(required_job, "if", indent=4)
+        job_entries = _canonical_yaml_direct_entries(required_job, indent=4)
+        step_entries = _canonical_yaml_direct_entries(required_step, indent=8)
+        expected_job_keys = {"if", "needs", "runs-on", "timeout-minutes", "steps"}
+        expected_step_keys = {"env", "run"}
+        if (
+            job_entries is None
+            or [key for key, _ in job_entries] != list(dict.fromkeys(key for key, _ in job_entries))
+            or not {key for key, _ in job_entries}.issubset(expected_job_keys)
+        ):
+            errors.append(
+                ".github/workflows/ci.yml: aggregate job must use only its canonical direct keys"
+            )
+            job_entries = []
+        if (
+            step_entries is None
+            or [key for key, _ in step_entries]
+            != list(dict.fromkeys(key for key, _ in step_entries))
+            or not {key for key, _ in step_entries}.issubset(expected_step_keys)
+        ):
+            errors.append(
+                ".github/workflows/ci.yml: aggregate enforcement step must use only its "
+                "canonical direct keys"
+            )
+            step_entries = []
+
+        job_conditions = [value for key, value in job_entries if key == "if"]
         if job_conditions != ["always()"]:
             errors.append(
                 ".github/workflows/ci.yml: aggregate job must declare exactly: if: always()"
@@ -191,16 +225,6 @@ def check_lean_policy(root: Path) -> list[str]:
             errors.append(
                 ".github/workflows/ci.yml: aggregate job is missing: needs: [checks, test]"
             )
-        if _yaml_direct_key_values(required_job, "continue-on-error", indent=4):
-            errors.append(
-                ".github/workflows/ci.yml: aggregate job must not declare continue-on-error"
-            )
-        for key in ("if", "continue-on-error", "shell"):
-            if _yaml_direct_key_values(required_step, key, indent=8):
-                errors.append(
-                    ".github/workflows/ci.yml: aggregate enforcement step must not declare "
-                    f"{key}"
-                )
         for fragment in required_ci[12:]:
             if fragment not in required_step:
                 errors.append(
