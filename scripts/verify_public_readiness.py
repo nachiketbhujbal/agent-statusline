@@ -124,6 +124,175 @@ def _canonical_yaml_direct_entries(text: str, indent: int) -> Optional[list[tupl
     return entries
 
 
+def _exact_mapping(
+    text: str,
+    *,
+    indent: int,
+    expected: dict[str, str],
+) -> bool:
+    entries = _canonical_yaml_direct_entries(text, indent)
+    if entries is None:
+        return False
+    keys = [key for key, _value in entries]
+    return len(keys) == len(set(keys)) and dict(entries) == expected
+
+
+def _has_yaml_key(text: str, expected: str) -> bool:
+    """Recognize plain, quoted, spaced, and simple escaped spellings of a key."""
+    for line in text.splitlines():
+        if ":" not in line:
+            continue
+        key = line.split(":", 1)[0].strip().strip("'\"")
+        key = key.replace(r"\u0069", "i").replace(r"\u0065", "e")
+        if key == expected:
+            return True
+    return False
+
+
+def check_release_pipeline(release: str) -> list[str]:
+    """Require build-once promotion and least-privilege release topology."""
+    path = ".github/workflows/release.yml"
+    errors: list[str] = []
+
+    permissions = _yaml_block(release, "permissions:", indent=0)
+    if permissions is None or not _exact_mapping(
+        permissions, indent=2, expected={"contents": "read"}
+    ):
+        errors.append(f"{path}: workflow permissions must be exactly contents: read")
+
+    concurrency = _yaml_block(release, "concurrency:", indent=0)
+    expected_concurrency = {
+        "group": "release-${{ github.ref }}",
+        "cancel-in-progress": "false",
+    }
+    if concurrency is None or not _exact_mapping(
+        concurrency, indent=2, expected=expected_concurrency
+    ):
+        errors.append(f"{path}: release concurrency must bind one immutable tag ref")
+
+    jobs = _yaml_block(release, "jobs:", indent=0)
+    if jobs is None or not _exact_mapping(
+        jobs,
+        indent=2,
+        expected={"build": "", "github-release": ""},
+    ):
+        errors.append(
+            f"{path}: release workflow must contain exactly build and github-release jobs"
+        )
+
+    build = _yaml_block(release, "build:", indent=2)
+    expected_build = {
+        "runs-on": "ubuntu-latest",
+        "timeout-minutes": "10",
+        "permissions": "",
+        "outputs": "",
+        "steps": "",
+    }
+    if build is None or not _exact_mapping(build, indent=4, expected=expected_build):
+        errors.append(f"{path}: build job must use only its canonical direct keys")
+        build = ""
+
+    build_permissions = _yaml_block(build, "permissions:", indent=4)
+    if build_permissions is None or not _exact_mapping(
+        build_permissions, indent=6, expected={"contents": "read"}
+    ):
+        errors.append(f"{path}: build job permissions must be exactly contents: read")
+
+    expected_outputs = {
+        "artifact_name": "${{ steps.identity.outputs.artifact_name }}",
+        "wheel_name": "${{ steps.identity.outputs.wheel_name }}",
+        "wheel_sha256": "${{ steps.identity.outputs.wheel_sha256 }}",
+        "sdist_name": "${{ steps.identity.outputs.sdist_name }}",
+        "sdist_sha256": "${{ steps.identity.outputs.sdist_sha256 }}",
+    }
+    outputs = _yaml_block(build, "outputs:", indent=4)
+    if outputs is None or not _exact_mapping(outputs, indent=6, expected=expected_outputs):
+        errors.append(f"{path}: build outputs must expose exactly the bound artifact identities")
+
+    publish = _yaml_block(release, "github-release:", indent=2)
+    expected_publish = {
+        "needs": "build",
+        "runs-on": "ubuntu-latest",
+        "timeout-minutes": "5",
+        "permissions": "",
+        "steps": "",
+    }
+    if publish is None or not _exact_mapping(publish, indent=4, expected=expected_publish):
+        errors.append(f"{path}: github-release job must depend exactly on build")
+        publish = ""
+
+    publish_permissions = _yaml_block(publish, "permissions:", indent=4)
+    if publish_permissions is None or not _exact_mapping(
+        publish_permissions, indent=6, expected={"contents": "write"}
+    ):
+        errors.append(f"{path}: github-release permissions must be exactly contents: write")
+
+    required_once = (
+        "uv sync --locked --group dev --group release --no-install-project",
+        "uv build --no-build-isolation --out-dir release-dist",
+        "rm release-dist/.gitignore",
+        "twine check --strict release-dist/*",
+        "scripts/release_artifacts.py prepare",
+        '--artifact-name "${ARTIFACT_NAME}"',
+        "          name: ${{ steps.identity.outputs.artifact_name }}",
+        "          name: ${{ needs.build.outputs.artifact_name }}",
+        "scripts/release_artifacts.py verify",
+        "release-dist/${{ needs.build.outputs.wheel_name }}",
+        "release-dist/${{ needs.build.outputs.sdist_name }}",
+    )
+    for fragment in required_once:
+        if release.count(fragment) != 1:
+            errors.append(f"{path}: release pipeline must contain exactly once: {fragment}")
+
+    required_build = (
+        "actions/checkout@",
+        "actions/setup-python@",
+        "astral-sh/setup-uv@",
+        "actions/upload-artifact@",
+        'version: "0.12.5"',
+        "persist-credentials: false",
+        "uv run --no-sync python scripts/audit_reachable_history.py --ref HEAD",
+        "uv run --no-sync python scripts/verify_docs.py",
+        "uv run --no-sync python scripts/verify_public_readiness.py",
+        "uv run --no-sync pytest tests",
+        "uv run --no-sync python scripts/verify_artifacts.py release-dist/*",
+        "ARTIFACT_NAME: release-distributions-${{ github.sha }}",
+        "path: release-dist",
+        "if-no-files-found: error",
+        "include-hidden-files: false",
+    )
+    for fragment in required_build:
+        if fragment not in build:
+            errors.append(f"{path}: build job is missing: {fragment}")
+
+    required_publish = (
+        "actions/checkout@",
+        "actions/setup-python@",
+        "actions/download-artifact@",
+        "path: release-dist",
+        "persist-credentials: false",
+        "WHEEL_NAME: ${{ needs.build.outputs.wheel_name }}",
+        "WHEEL_SHA256: ${{ needs.build.outputs.wheel_sha256 }}",
+        "SDIST_NAME: ${{ needs.build.outputs.sdist_name }}",
+        "SDIST_SHA256: ${{ needs.build.outputs.sdist_sha256 }}",
+        "softprops/action-gh-release@",
+        "generate_release_notes: true",
+    )
+    for fragment in required_publish:
+        if fragment not in publish:
+            errors.append(f"{path}: github-release job is missing: {fragment}")
+
+    if re.search(r"^\s*id-token\s*:", release, re.MULTILINE):
+        errors.append(f"{path}: package-index identity permission is outside v0.3.3")
+    if re.search(r"(?:^|\s)dist/\*", release):
+        errors.append(f"{path}: ambient dist wildcard is forbidden")
+    if "python -m build" in release:
+        errors.append(f"{path}: unbounded Python build command is forbidden")
+    if _has_yaml_key(release, "continue-on-error") or _has_yaml_key(release, "if"):
+        errors.append(f"{path}: release evidence may not be conditional or nonblocking")
+    return errors
+
+
 def check_lean_policy(root: Path) -> list[str]:
     errors: list[str] = []
     ci = _read(root / ".github" / "workflows" / "ci.yml", errors)
@@ -162,9 +331,8 @@ def check_lean_policy(root: Path) -> list[str]:
     )
     required_release = (
         'tags: ["v*"]',
-        "contents: write",
         "fetch-depth: 0",
-        "python scripts/audit_reachable_history.py --ref HEAD",
+        "uv run --no-sync python scripts/audit_reachable_history.py --ref HEAD",
     )
     for fragment in required_ci:
         if fragment not in ci:
@@ -174,6 +342,7 @@ def check_lean_policy(root: Path) -> list[str]:
             errors.append(
                 f".github/workflows/release.yml: missing release-policy fragment: {fragment}"
             )
+    errors.extend(check_release_pipeline(release))
     if "paths-ignore:" in ci:
         errors.append(
             ".github/workflows/ci.yml: ancestry audit must not skip documentation-only refs"

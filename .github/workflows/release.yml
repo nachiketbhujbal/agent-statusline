@@ -13,51 +13,115 @@ on:
     tags: ["v*"]
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      artifact_name: ${{ steps.identity.outputs.artifact_name }}
+      wheel_name: ${{ steps.identity.outputs.wheel_name }}
+      wheel_sha256: ${{ steps.identity.outputs.wheel_sha256 }}
+      sdist_name: ${{ steps.identity.outputs.sdist_name }}
+      sdist_sha256: ${{ steps.identity.outputs.sdist_sha256 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0        # hatch-vcs reads the tag being built
+          persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-      - run: pip install build pytest
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: "0.12.5"
+      - run: uv sync --locked --group dev --group release --no-install-project
 
       - name: complete release ancestry is public-safe
-        run: python scripts/audit_reachable_history.py --ref HEAD
+        run: uv run --no-sync python scripts/audit_reachable_history.py --ref HEAD
 
       - name: documentation and public-readiness policy
         run: |
-          python scripts/verify_docs.py
-          python scripts/verify_public_readiness.py
-          python scripts/verify_public_readiness.py --release-tag "${GITHUB_REF_NAME}"
+          uv run --no-sync python scripts/verify_docs.py
+          uv run --no-sync python scripts/verify_public_readiness.py
+          uv run --no-sync python scripts/verify_public_readiness.py \
+            --release-tag "${GITHUB_REF_NAME}"
 
       - name: tests must pass before anything is published
-        run: python -m pytest tests
+        run: uv run --no-sync pytest tests
 
-      - run: python -m build
+      - run: uv build --no-build-isolation --out-dir release-dist
+      - run: rm release-dist/.gitignore
 
       - name: distribution archives exclude private workspace state
-        run: python scripts/verify_artifacts.py dist/*
+        run: uv run --no-sync python scripts/verify_artifacts.py release-dist/*
 
-      - name: the built artifacts carry the tagged version
+      - name: package description renders on the package index
+        run: uv run --no-sync twine check --strict release-dist/*
+
+      - name: bind the exact release artifact identities
+        id: identity
+        env:
+          ARTIFACT_NAME: release-distributions-${{ github.sha }}
         run: |
-          python - <<'PY'
-          import os, pathlib, sys
-          tag = os.environ["GITHUB_REF_NAME"].lstrip("v")
-          names = [p.name for p in pathlib.Path("dist").iterdir()]
-          if not all(tag in n for n in names):
-              sys.exit(f"tag {tag!r} does not match built artifacts {names}")
-          print(f"artifacts match tag {tag}: {names}")
-          PY
+          uv run --no-sync python scripts/release_artifacts.py prepare \
+            --directory release-dist \
+            --tag "${GITHUB_REF_NAME}" \
+            --artifact-name "${ARTIFACT_NAME}" \
+            --github-output "${GITHUB_OUTPUT}" \
+            --github-summary "${GITHUB_STEP_SUMMARY}"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.identity.outputs.artifact_name }}
+          path: release-dist
+          if-no-files-found: error
+          include-hidden-files: false
+          retention-days: 7
+
+  github-release:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ needs.build.outputs.artifact_name }}
+          path: release-dist
+
+      - name: downloaded artifacts match the build job
+        env:
+          WHEEL_NAME: ${{ needs.build.outputs.wheel_name }}
+          WHEEL_SHA256: ${{ needs.build.outputs.wheel_sha256 }}
+          SDIST_NAME: ${{ needs.build.outputs.sdist_name }}
+          SDIST_SHA256: ${{ needs.build.outputs.sdist_sha256 }}
+        run: |
+          python scripts/release_artifacts.py verify \
+            --directory release-dist \
+            --wheel-name "${WHEEL_NAME}" \
+            --wheel-sha256 "${WHEEL_SHA256}" \
+            --sdist-name "${SDIST_NAME}" \
+            --sdist-sha256 "${SDIST_SHA256}"
 
       - name: publish a GitHub release with the artifacts
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
-          files: dist/*
+          files: |
+            release-dist/${{ needs.build.outputs.wheel_name }}
+            release-dist/${{ needs.build.outputs.sdist_name }}
           generate_release_notes: true

@@ -29,17 +29,18 @@ installed-artifact evidence.
 | 0.2.14 | Public CI and installation-documentation alignment | **Released** |
 | 0.3.0 | Production-ready milestone | **Released** |
 | 0.3.1 | Measured hot-path performance | **Released** |
-| 0.3.2 | PyPI metadata and package-page readiness | **Current** |
-| 0.3.3 | Build-once release artifact promotion | Planned |
+| 0.3.2 | PyPI metadata and package-page readiness | **Released** |
+| 0.3.3 | Build-once release artifact promotion | **Current** |
 | 0.3.4 | Trusted TestPyPI publication and verification | Planned |
 | 0.3.5 | Trusted production PyPI publication and verification | Planned |
 | 0.4.0 | Explicit host-acquisition architecture | Planned |
 
-0.2.1 through 0.2.14, v0.3.0, and v0.3.1 are tagged and released. The v0.3.0 boundary
-names that completed, independently proven train as the production-ready
-supported public baseline. Each boundary retains its exact review and artifact
-evidence; GitHub Release objects begin at v0.2.4. The historical hardening
-branch remains source material and is not a merge candidate.
+0.2.1 through 0.2.14 and v0.3.0 through v0.3.2 are tagged and released. The
+v0.3.0 boundary names that completed, independently proven train as the
+production-ready supported public baseline. Each boundary retains its exact
+review and artifact evidence; GitHub Release objects begin at v0.2.4. The
+historical hardening branch remains source material and is not a merge
+candidate.
 
 ## 0.2.1 — ownership-safe installation
 
@@ -332,7 +333,7 @@ Released:
 
 ## 0.3.2 — PyPI metadata and package-page readiness
 
-Current release:
+Released:
 
 - Align the v0.3.1 completion boundary across the changelog, roadmap, review
   ledger, and handoff.
@@ -350,7 +351,7 @@ Current release:
 
 ## 0.3.3 — build-once release artifact promotion
 
-Planned:
+Current release:
 
 - Build and validate the wheel and source archive once in a read-only release
   job, then upload one explicitly named workflow artifact.
@@ -363,6 +364,10 @@ Planned:
   hashes before any publication job exists.
 - Keep TestPyPI, PyPI, OIDC permission, hosted environments, accounts, and
   package-name installation outside this release.
+- Lock the release-only build and package-description tools without adding a
+  runtime dependency or requiring Python 3.10 for the installed command.
+- Enforce least privilege, build-once behavior, exact artifact identity, and
+  fail-closed promotion with deterministic policy and mutation tests.
 
 ## 0.3.4 — trusted TestPyPI publication and verification
 
