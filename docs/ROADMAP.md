@@ -314,8 +314,9 @@ Current release:
 - Repeat the interpreter, import-only, warm-render, and cold-render baseline
   against exact v0.3.0 before changing the hot path.
 - Lazy-load `subprocess` on probe cache misses and `argparse` only for the ledger
-  CLI; remove `shutil` from fresh renderer processes while preserving terminal
-  width and private atomic state publication behavior.
+  CLI; remove `shutil` from fresh renderer processes while preserving ordinary
+  terminal-width and private atomic state publication behavior and consistently
+  normalizing an unusable zero-column terminal result to the existing fallback.
 - Add a deterministic import-budget regression that names the expensive modules
   excluded from the renderer import boundary.
 - Add a synthetic isolated benchmark command reporting interpreter floor, warm

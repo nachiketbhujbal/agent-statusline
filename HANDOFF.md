@@ -24,8 +24,10 @@ the roadmap, or accepted ADRs.
 - Runtime dependencies remain empty and versions remain Git-tag-derived.
 
 The v0.3.1 slice removes avoidable hot-path imports and adds reproducible,
-non-gating benchmark evidence. It preserves renderer output, the display
-contract, accounting, runtime dependencies, installer behavior, and live wiring.
+non-gating benchmark evidence. It preserves ordinary renderer output, the
+display contract, accounting, runtime dependencies, installer behavior, and
+live wiring. An unusable zero-column terminal result is consistently normalized
+to the existing fallback on every supported Python version.
 
 ## Stable product boundary
 
@@ -68,11 +70,13 @@ with unrelated settings and state preserved and no checkout symlink.
 
 The v0.3.1 owner branch starts from exact v0.3.0. Repeat the baseline first,
 then remove only the `argparse`, `subprocess`, and `shutil` import work identified
-by research while retaining width selection, cold probes, and private atomic
-publication. Gate module exclusion deterministically and record wall-clock
-benchmarks without enforcing them. Compiled or persistent implementations,
-host architecture, orphan cleanup, accepted pull-ref changes, PyPI publication,
-and live installation changes remain separate.
+by research while retaining ordinary width selection, cold probes, and private
+atomic publication. Normalize an unusable zero-column terminal result to the
+existing fallback across supported Python versions. Gate module exclusion
+deterministically and record wall-clock benchmarks without enforcing them.
+Compiled or persistent implementations, host architecture, orphan cleanup,
+accepted pull-ref changes, PyPI publication, and live installation changes
+remain separate.
 [PUBLIC_READINESS.md](docs/PUBLIC_READINESS.md) records the protected baseline.
 
 Durable decisions live in [ADRs](docs/adrs/README.md), completed behavior in the
