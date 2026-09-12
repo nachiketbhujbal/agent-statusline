@@ -86,14 +86,80 @@ on:
   push:
     tags: ["v*"]
 permissions:
-  contents: write
+  contents: read
+concurrency:
+  group: release-${{{{ github.ref }}}}
+  cancel-in-progress: false
 jobs:
-  release:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      artifact_name: ${{{{ steps.identity.outputs.artifact_name }}}}
+      wheel_name: ${{{{ steps.identity.outputs.wheel_name }}}}
+      wheel_sha256: ${{{{ steps.identity.outputs.wheel_sha256 }}}}
+      sdist_name: ${{{{ steps.identity.outputs.sdist_name }}}}
+      sdist_sha256: ${{{{ steps.identity.outputs.sdist_sha256 }}}}
     steps:
       - uses: actions/checkout@{PIN} # v7
         with:
           fetch-depth: 0
-      - run: python scripts/audit_reachable_history.py --ref HEAD
+          persist-credentials: false
+      - uses: actions/setup-python@{PIN} # v7
+      - uses: astral-sh/setup-uv@{PIN} # v10.1.0
+        with:
+          version: "0.12.5"
+      - run: uv sync --locked --group dev --group release --no-install-project
+      - run: uv run --no-sync python scripts/audit_reachable_history.py --ref HEAD
+      - run: |
+          uv run --no-sync python scripts/verify_docs.py
+          uv run --no-sync python scripts/verify_public_readiness.py
+      - run: uv run --no-sync pytest tests
+      - run: uv build --no-build-isolation --out-dir release-dist
+      - run: rm release-dist/.gitignore
+      - run: uv run --no-sync python scripts/verify_artifacts.py release-dist/*
+      - run: uv run --no-sync twine check --strict release-dist/*
+      - id: identity
+        env:
+          ARTIFACT_NAME: release-distributions-${{{{ github.sha }}}}
+        run: |
+          uv run --no-sync python scripts/release_artifacts.py prepare \
+            --artifact-name "${{ARTIFACT_NAME}}"
+      - uses: actions/upload-artifact@{PIN} # v7
+        with:
+          name: ${{{{ steps.identity.outputs.artifact_name }}}}
+          path: release-dist
+          if-no-files-found: error
+          include-hidden-files: false
+  github-release:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@{PIN} # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@{PIN} # v7
+      - uses: actions/download-artifact@{PIN} # v8.0.1
+        with:
+          name: ${{{{ needs.build.outputs.artifact_name }}}}
+          path: release-dist
+      - env:
+          WHEEL_NAME: ${{{{ needs.build.outputs.wheel_name }}}}
+          WHEEL_SHA256: ${{{{ needs.build.outputs.wheel_sha256 }}}}
+          SDIST_NAME: ${{{{ needs.build.outputs.sdist_name }}}}
+          SDIST_SHA256: ${{{{ needs.build.outputs.sdist_sha256 }}}}
+        run: python scripts/release_artifacts.py verify
+      - uses: softprops/action-gh-release@{PIN} # v3.0.3
+        with:
+          files: |
+            release-dist/${{{{ needs.build.outputs.wheel_name }}}}
+            release-dist/${{{{ needs.build.outputs.sdist_name }}}}
+          generate_release_notes: true
 """,
     )
     write(
@@ -552,6 +618,97 @@ def test_public_readiness_policy_requires_release_ancestry_audit(tmp_path):
 
     assert result.returncode == 1
     assert "missing release-policy fragment" in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("fragment", "replacement", "message"),
+    (
+        (
+            "permissions:\n  contents: read\nconcurrency:",
+            "permissions:\n  contents: write\nconcurrency:",
+            "workflow permissions must be exactly contents: read",
+        ),
+        (
+            "    permissions:\n      contents: read\n    outputs:",
+            "    permissions:\n      contents: write\n    outputs:",
+            "build job permissions must be exactly contents: read",
+        ),
+        (
+            "  github-release:\n    needs: build",
+            "  github-release:\n    needs: other-job",
+            "github-release job must depend exactly on build",
+        ),
+        (
+            "    permissions:\n      contents: write\n    steps:",
+            "    permissions:\n      contents: read\n    steps:",
+            "github-release permissions must be exactly contents: write",
+        ),
+        (
+            "      - run: uv build --no-build-isolation --out-dir release-dist",
+            "      - run: uv build --no-build-isolation --out-dir release-dist\n"
+            "      - run: uv build --no-build-isolation --out-dir release-dist",
+            "release pipeline must contain exactly once: uv build",
+        ),
+        (
+            "          name: ${{ needs.build.outputs.artifact_name }}",
+            "          name: release-distributions-unbound",
+            "needs.build.outputs.artifact_name",
+        ),
+        (
+            "            release-dist/${{ needs.build.outputs.wheel_name }}",
+            "            dist/*",
+            "ambient dist wildcard is forbidden",
+        ),
+        (
+            "  contents: read\nconcurrency:",
+            "  contents: read\n  id-token: write\nconcurrency:",
+            "package-index identity permission is outside v0.3.3",
+        ),
+        (
+            "  build:\n    runs-on: ubuntu-latest",
+            "  build:\n    continue-on-error: true\n    runs-on: ubuntu-latest",
+            "build job must use only its canonical direct keys",
+        ),
+    ),
+)
+def test_public_readiness_policy_enforces_build_once_release_topology(
+    tmp_path, fragment, replacement, message
+):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "release.yml"
+    text = workflow.read_text()
+    assert fragment in text
+    write(workflow, text.replace(fragment, replacement, 1))
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert message in result.stderr
+
+
+@pytest.mark.parametrize(
+    "key",
+    (
+        "if: false",
+        "if : false",
+        "'if': false",
+        r'"\u0069f": false',
+        "continue-on-error: true",
+        "continue-on-error : true",
+        "'continue-on-error': true",
+        r'"continue-on-\u0065rror": true',
+    ),
+)
+def test_public_readiness_policy_rejects_conditional_release_evidence(tmp_path, key):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "release.yml"
+    marker = "      - run: uv run --no-sync pytest tests"
+    write(workflow, workflow.read_text().replace(marker, f"{marker}\n        {key}"))
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert "release evidence may not be conditional or nonblocking" in result.stderr
 
 
 def test_public_readiness_policy_accepts_release_commit_no_reply_identity(tmp_path):

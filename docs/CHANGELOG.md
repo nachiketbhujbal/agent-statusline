@@ -4,7 +4,29 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.3.2
+## Unreleased — 0.3.3
+
+The tag-triggered pipeline now builds and validates one exact wheel/source pair
+inside a read-only job using the committed uv lock and exact uv version. It
+records exact filenames and SHA-256 hashes, transports only one workflow
+artifact named for the tagged commit, and rejects additional, symlinked,
+renamed, version-disagreeing, or hash-disagreeing files.
+
+Only the dependent GitHub Release job receives repository-content write
+permission. That job downloads and verifies the named pair without rebuilding,
+then publishes two explicit paths rather than ambient `dist` contents. The
+public-readiness policy and synthetic mutations fail closed if future edits
+weaken permissions, dependency order, build uniqueness, artifact identity, or
+the exclusion of package-index authority. Release-only Twine 7 removes the
+v0.3.2 local/hosted metadata-checker mismatch without changing the package's
+empty runtime dependency set or Python 3.9 support
+([ADR 0042](adrs/0042-build-once-and-promote-exact-release-artifacts.md)).
+
+TestPyPI, production PyPI, OIDC, hosted environments, accounts, credentials,
+package-name installation, runtime behavior, and live Claude Code remain
+outside this release.
+
+## 0.3.2
 
 The public package surface now names standard source, issue, documentation, and
 changelog URLs. README links are absolute so the same long description remains
