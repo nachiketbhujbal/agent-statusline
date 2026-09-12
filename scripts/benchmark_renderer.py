@@ -10,6 +10,13 @@ import tempfile
 import time
 
 PAYLOAD = b"{}\n"
+ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+SOURCE = os.path.join(ROOT, "src")
+IMPORT_CODE = f"import sys; sys.path.insert(0, {SOURCE!r}); import agent_statusline.statusline"
+RENDER_CODE = (
+    f"import sys; sys.path.insert(0, {SOURCE!r}); "
+    "from agent_statusline.cli import main; raise SystemExit(main())"
+)
 
 
 def _positive(value):
@@ -64,13 +71,10 @@ def main(argv=None):
             COLUMNS="180",
         )
         isolated = [sys.executable, "-I"]
-        render = [*isolated, "-m", "agent_statusline"]
+        render = [*isolated, "-c", RENDER_CODE]
 
         interpreter = [_elapsed([*isolated, "-c", "pass"], root) for _ in range(args.runs)]
-        imports = [
-            _elapsed([*isolated, "-c", "import agent_statusline.statusline"], root)
-            for _ in range(args.runs)
-        ]
+        imports = [_elapsed([*isolated, "-c", IMPORT_CODE], root) for _ in range(args.runs)]
 
         _elapsed(render, root, env=env, payload=PAYLOAD)
         warm = [_elapsed(render, root, env=env, payload=PAYLOAD) for _ in range(args.runs)]

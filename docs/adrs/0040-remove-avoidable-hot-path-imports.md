@@ -37,9 +37,10 @@ the transitive `shutil` import without weakening state publication.
 Gate the deterministic fact that a fresh renderer import does not load
 `argparse`, `subprocess`, or `shutil`. Add a standard-library benchmark command
 that uses private temporary home, configuration, state, and working directories
-and reports interpreter, import-only, warm-render, cold-render, median, range,
-and warm-to-interpreter ratio. Treat every timing as informational evidence;
-do not fail CI based on elapsed time.
+and explicitly loads the exact checkout source rather than requiring an editable
+or wheel installation. Report interpreter, import-only, warm-render, cold-render,
+median, range, and warm-to-interpreter ratio. Treat every timing as informational
+evidence; do not fail CI based on elapsed time.
 
 ## Consequences
 

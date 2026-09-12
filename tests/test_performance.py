@@ -3,6 +3,7 @@
 import os
 import subprocess
 import sys
+import venv
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -46,9 +47,11 @@ print(','.join(name for name in ('argparse', 'subprocess', 'shutil') if name in 
 
 
 def test_benchmark_command_reports_every_non_gating_boundary(tmp_path):
+    clean_python = tmp_path / "clean-python"
+    venv.EnvBuilder(with_pip=False).create(clean_python)
     completed = subprocess.run(
         [
-            sys.executable,
+            str(clean_python / "bin" / "python"),
             str(ROOT / "scripts" / "benchmark_renderer.py"),
             "--runs",
             "1",

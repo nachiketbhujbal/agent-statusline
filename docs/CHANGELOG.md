@@ -20,9 +20,11 @@ lock, flush, replacement, cleanup, and permission guarantees
 The new isolated benchmark command reports interpreter, import-only, warm, and
 cold timing distributions plus the warm/interpreter ratio. Results remain
 informational rather than a wall-clock CI gate. Deterministic tests enforce the
-import budget and terminal-width/storage behavior. Apart from the unusable
-zero-width normalization, the approved ten rows, fields, priorities, runtime
-dependencies, accounting, and live configuration are unchanged.
+import budget and terminal-width/storage behavior. Benchmark children load the
+exact checkout source explicitly, so the command does not depend on an editable
+or wheel installation. Apart from the unusable zero-width normalization, the
+approved ten rows, fields, priorities, runtime dependencies, accounting, and
+live configuration are unchanged.
 
 ## 0.3.0
 

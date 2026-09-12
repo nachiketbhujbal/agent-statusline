@@ -33,7 +33,9 @@ If flicker ever returns, the next lever is the `ps` sweep (raise its TTL or narr
 then Python startup itself, which is the hard floor.
 
 Run the isolated informational benchmark from a synchronized development
-environment; it never reads live payload, transcript, ledger, or probe state:
+environment; it bootstraps that checkout's source into isolated child processes
+without requiring an editable installation, and never reads live payload,
+transcript, ledger, or probe state:
 
 ```bash
 uv run --locked python scripts/benchmark_renderer.py
