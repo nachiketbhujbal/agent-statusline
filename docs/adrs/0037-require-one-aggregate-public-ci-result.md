@@ -28,7 +28,9 @@ when a dependency fails or is skipped. It succeeds only when:
 The scope output is an enum, not a truthiness hint: only exact `true` and exact
 `false` are accepted. A missing or unknown value fails the aggregate job. The
 scope step must emit both values on its deliberate branches, and the aggregate
-enforcement step may not have a step-level condition or `continue-on-error`.
+job condition must be exactly `if: always()`. Its enforcement script enables
+its own fail-fast shell behavior, and the enforcement step may not override its
+shell, add a step-level condition, or use `continue-on-error`.
 
 Enforce the job's dependency and result inputs in the local public-readiness
 policy. Active repository ruleset `22966865` targets only `main`, has no bypass

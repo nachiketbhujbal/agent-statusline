@@ -209,6 +209,7 @@ jobs:
           TEST_RESULT: ${{ needs.test.result }}
           FULL_RUN: ${{ needs.checks.outputs.full }}
         run: |
+          set -eu
           test "${CHECKS_RESULT}" = "success"
           if [ "${FULL_RUN}" = "true" ]; then
             test "${TEST_RESULT}" = "success"

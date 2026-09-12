@@ -48,8 +48,9 @@ separately. No GitHub Support request is planned.
   skip for documentation-only changes. The `main` ruleset requires that result
   from the GitHub Actions application against current `main`.
 - Only explicit `true` and `false` scope outputs are valid. Missing or malformed
-  scope fails closed, and repository policy forbids making the aggregate
-  enforcement step conditional or non-blocking.
+  scope fails closed. Repository policy requires the aggregate job's exact
+  unconditional condition and its self-contained fail-fast script, and forbids
+  making the enforcement step conditional, non-blocking, or shell-overridden.
 - Automatic `main` CI also validates the generated release-spine commit
   identity when the full gate applies.
 - Release validates the annotated tagger and peeled commit identities before

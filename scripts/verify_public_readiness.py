@@ -127,6 +127,7 @@ def check_lean_policy(root: Path) -> list[str]:
         "CHECKS_RESULT: ${{ needs.checks.result }}",
         "TEST_RESULT: ${{ needs.test.result }}",
         "FULL_RUN: ${{ needs.checks.outputs.full }}",
+        "set -eu",
         'test "${CHECKS_RESULT}" = "success"',
         'if [ "${FULL_RUN}" = "true" ]; then',
         'elif [ "${FULL_RUN}" = "false" ]; then',
@@ -173,14 +174,20 @@ def check_lean_policy(root: Path) -> list[str]:
     if required_job is None or required_step is None:
         errors.append(".github/workflows/ci.yml: requires one named aggregate enforcement step")
     else:
-        for fragment in ("if: always()", "needs: [checks, test]"):
-            if fragment not in required_job:
-                errors.append(f".github/workflows/ci.yml: aggregate job is missing: {fragment}")
+        job_conditions = re.findall(r"^    if:\s*(.*?)\s*$", required_job, re.MULTILINE)
+        if job_conditions != ["always()"]:
+            errors.append(
+                ".github/workflows/ci.yml: aggregate job must declare exactly: if: always()"
+            )
+        if not re.search(r"^    needs: \[checks, test\]\s*$", required_job, re.MULTILINE):
+            errors.append(
+                ".github/workflows/ci.yml: aggregate job is missing: needs: [checks, test]"
+            )
         if re.search(r"^    continue-on-error:", required_job, re.MULTILINE):
             errors.append(
                 ".github/workflows/ci.yml: aggregate job must not declare continue-on-error"
             )
-        for key in ("if", "continue-on-error"):
+        for key in ("if", "continue-on-error", "shell"):
             if re.search(rf"^        {key}:", required_step, re.MULTILINE):
                 errors.append(
                     ".github/workflows/ci.yml: aggregate enforcement step must not declare "

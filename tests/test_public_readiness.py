@@ -58,6 +58,7 @@ jobs:
           TEST_RESULT: ${{{{ needs.test.result }}}}
           FULL_RUN: ${{{{ needs.checks.outputs.full }}}}
         run: |
+          set -eu
           test "${{CHECKS_RESULT}}" = "success"
           if [ "${{FULL_RUN}}" = "true" ]; then
             test "${{TEST_RESULT}}" = "success"
@@ -239,24 +240,26 @@ def test_public_readiness_policy_requires_aggregate_ci_gate(tmp_path):
 
 
 @pytest.mark.parametrize(
-    ("full_run", "test_result", "expected"),
+    ("checks_result", "full_run", "test_result", "expected"),
     (
-        ("true", "success", 0),
-        ("false", "skipped", 0),
-        ("", "skipped", 1),
-        ("documentation", "skipped", 1),
+        ("success", "true", "success", 0),
+        ("success", "false", "skipped", 0),
+        ("success", "", "skipped", 1),
+        ("success", "documentation", "skipped", 1),
+        ("failure", "true", "success", 1),
+        ("success", "true", "failure", 1),
     ),
 )
-def test_required_ci_gate_fails_closed_on_scope_result(full_run, test_result, expected):
+def test_required_ci_gate_fails_closed(checks_result, full_run, test_result, expected):
     script = workflow_step_script(
         VERIFY.parents[1] / ".github" / "workflows" / "ci.yml",
         "enforce the complete required CI result",
     )
 
     result = subprocess.run(
-        ["/bin/sh", "-e", "-c", script],
+        ["/bin/sh", "-c", script],
         env={
-            "CHECKS_RESULT": "success",
+            "CHECKS_RESULT": checks_result,
             "TEST_RESULT": test_result,
             "FULL_RUN": full_run,
         },
@@ -303,7 +306,7 @@ def test_public_readiness_policy_requires_aggregate_ci_enforcement(tmp_path, fra
     assert f"missing lean-policy fragment: {fragment}" in result.stderr
 
 
-@pytest.mark.parametrize("key", ("if: false", "continue-on-error: true"))
+@pytest.mark.parametrize("key", ("if: false", "continue-on-error: true", "shell: bash {0}"))
 def test_public_readiness_policy_rejects_skippable_aggregate_enforcement(tmp_path, key):
     root = valid_repository(tmp_path)
     workflow = root / ".github" / "workflows" / "ci.yml"
@@ -314,6 +317,17 @@ def test_public_readiness_policy_rejects_skippable_aggregate_enforcement(tmp_pat
 
     assert result.returncode == 1
     assert f"aggregate enforcement step must not declare {key.split(':')[0]}" in result.stderr
+
+
+def test_public_readiness_policy_requires_exact_aggregate_job_condition(tmp_path):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "ci.yml"
+    write(workflow, workflow.read_text().replace("    if: always()", "    if: always() && false"))
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert "aggregate job must declare exactly: if: always()" in result.stderr
 
 
 @pytest.mark.parametrize(

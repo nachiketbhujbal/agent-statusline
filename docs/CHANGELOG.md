@@ -24,8 +24,9 @@ GitHub Actions result, and blocked deletion and force-push. CI exposes one
 stable aggregate result that requires the always-on policy job and either the
 complete Python matrix or its deliberate documentation-only skip. The
 aggregate accepts only explicit full or documentation-only scope, fails closed
-on missing or malformed scope, and cannot be made conditional or non-blocking
-without failing the repository policy. Runtime
+on missing or malformed scope, requires the exact unconditional job condition,
+enables its own fail-fast shell behavior, and cannot be made conditional,
+non-blocking, or shell-overridden without failing repository policy. Runtime
 behavior, dependencies, Git history, release tags and assets, and live state
 are unchanged.
 
