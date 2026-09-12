@@ -2,8 +2,8 @@
 
 [![CI](https://github.com/nachiketbhujbal/agent-statusline/actions/workflows/ci.yml/badge.svg)](https://github.com/nachiketbhujbal/agent-statusline/actions/workflows/ci.yml)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![No dependencies](https://img.shields.io/badge/dependencies-none-brightgreen.svg)](pyproject.toml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/nachiketbhujbal/agent-statusline/blob/main/LICENSE)
+[![No dependencies](https://img.shields.io/badge/dependencies-none-brightgreen.svg)](https://github.com/nachiketbhujbal/agent-statusline/blob/main/pyproject.toml)
 
 A dense, width-aware status line for [Claude Code](https://claude.com/claude-code). It
 reports what the session is doing, what it is costing, how well the prompt cache is
@@ -38,17 +38,17 @@ Rows are ordered by how often they answer a question worth asking — `PROJECT` 
 
 | document | what is in it |
 | --- | --- |
-| [HANDOFF.md](HANDOFF.md) | the concise current release boundary and exact resume point |
-| [docs/FIELDS.md](docs/FIELDS.md) | every row and every field, and where each value comes from |
-| [docs/INTERNALS.md](docs/INTERNALS.md) | data sources, width fitting, adding a field, how undocumented signals were discovered |
-| [docs/adrs/](docs/adrs/README.md) | architecture decision records — one file per durable decision, with an index. **Read 0001, 0014 and 0004 before changing anything that touches money or dependencies** |
-| [docs/DEFERRED.md](docs/DEFERRED.md) | ideas considered and consciously not built |
-| [docs/PORTING.md](docs/PORTING.md) | adapting this to Codex or another agent, and why Codex cannot run it as-is |
-| [docs/RESEARCH.md](docs/RESEARCH.md) | dated measurements and open questions that are not release commitments |
-| [docs/CHANGELOG.md](docs/CHANGELOG.md) | what changed in each release, and what is queued for the next one |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | the 0.2.x release sequence and what each one is for |
-| [docs/CODE_REVIEW.md](docs/CODE_REVIEW.md) | review findings, with the release that resolved each |
-| [docs/PUBLIC_READINESS.md](docs/PUBLIC_READINESS.md) | the reproducible privacy and repository-visibility audit |
+| [HANDOFF.md](https://github.com/nachiketbhujbal/agent-statusline/blob/main/HANDOFF.md) | the concise current release boundary and exact resume point |
+| [docs/FIELDS.md](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/FIELDS.md) | every row and every field, and where each value comes from |
+| [docs/INTERNALS.md](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/INTERNALS.md) | data sources, width fitting, adding a field, how undocumented signals were discovered |
+| [docs/adrs/](https://github.com/nachiketbhujbal/agent-statusline/tree/main/docs/adrs) | architecture decision records — one file per durable decision, with an index. **Read 0001, 0014 and 0004 before changing anything that touches money or dependencies** |
+| [docs/DEFERRED.md](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/DEFERRED.md) | ideas considered and consciously not built |
+| [docs/PORTING.md](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/PORTING.md) | adapting this to Codex or another agent, and why Codex cannot run it as-is |
+| [docs/RESEARCH.md](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/RESEARCH.md) | dated measurements and open questions that are not release commitments |
+| [docs/CHANGELOG.md](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/CHANGELOG.md) | what changed in each release, and what is queued for the next one |
+| [docs/ROADMAP.md](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/ROADMAP.md) | the release sequence and what each slice is for |
+| [docs/CODE_REVIEW.md](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/CODE_REVIEW.md) | review findings, with the release that resolved each |
+| [docs/PUBLIC_READINESS.md](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/PUBLIC_READINESS.md) | the reproducible privacy and repository-visibility audit |
 
 ## Requirements
 
@@ -66,9 +66,20 @@ agent-statusline install
 ```
 
 Then restart Claude Code. This installs a normal local command directly from an
-immutable public release; no manual clone is needed. `pipx install` and
-`pip install` can use the same tagged Git URL. Installing by package name would
-still require a separate PyPI publication.
+immutable public release; no manual clone is needed. `uv tool` is recommended
+because it gives the command its own isolated environment, but it is not a
+runtime requirement and does not define the package format. The Hatchling-built
+wheel and source archive are standard Python distributions. Until package-name
+publication lands, the equivalent tagged-Git installs are:
+
+```bash
+pipx install 'git+https://github.com/nachiketbhujbal/agent-statusline@v0.3.1'
+python -m pip install 'git+https://github.com/nachiketbhujbal/agent-statusline@v0.3.1'
+```
+
+`pipx` provides command isolation comparable to `uv tool`; `pip` installs into
+the currently selected Python environment. Installing any of them by the plain
+package name still requires the separately planned PyPI publication.
 
 `agent-statusline install` writes its `statusLine` entry and two always-on hooks
 into `~/.claude/settings.json`; while Claude's native timestamp feature remains
@@ -104,7 +115,7 @@ and write in the same install or uninstall reuses that same binding rather than
 re-resolving the configuration directory's location partway through — so redirecting
 publication by changing what occupies that location mid-operation, whether by a symlink
 or an ordinary directory swap, is refused
-([ADR 0020](docs/adrs/0020-own-only-managed-configuration.md)).
+([ADR 0020](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/adrs/0020-own-only-managed-configuration.md)).
 
 An expected failure partway through an install or uninstall — a full disk, a permission
 error — cannot always avoid touching anything (the checkout symlink and the settings file
@@ -116,7 +127,7 @@ link and settings left disagreeing are never silently mistaken for a clean failu
 One documented exception to "only what it owns": `showMessageTimestamps` is set to `true`
 when absent and is deliberately *not* removed on uninstall, because a value already in
 your settings cannot be told apart from one this installer added
-([ADR 0015](docs/adrs/0015-timestamp-hooks-are-a-stopgap.md)).
+([ADR 0015](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/adrs/0015-timestamp-hooks-are-a-stopgap.md)).
 
 To upgrade, replace the tag with the newer immutable release and reinstall, then
 refresh the managed wiring if it changed:
@@ -167,7 +178,7 @@ the caches, the rate-limit log — is machine-local and stays in `~/.claude/`:
 
 Override the location with `AGENT_STATUSLINE_STATE=/some/dir` — useful for testing against
 a throwaway directory, which is the *only* safe way to exercise cost paths (see
-[ADR 0014](docs/adrs/0014-never-exercise-cost-paths-against-the-live-ledger.md)).
+[ADR 0014](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/adrs/0014-never-exercise-cost-paths-against-the-live-ledger.md)).
 
 ### Privacy and trust boundary
 
@@ -252,7 +263,7 @@ agent-statusline/
 `statusline.py`, `transcript.py`, the hooks, and the installer know about
 Claude-specific contracts. The modules marked host-agnostic provide reusable
 primitives, but no second-host adapter ships today. See
-[docs/PORTING.md](docs/PORTING.md).
+[docs/PORTING.md](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/PORTING.md).
 
 ## Updating
 
@@ -287,7 +298,7 @@ will replace the link with a regular file.
 ## Development
 
 Uses [uv](https://docs.astral.sh/uv/) 0.12+ and a committed lockfile
-([ADR 0023](docs/adrs/0023-use-a-locked-local-quality-gate.md)):
+([ADR 0023](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/adrs/0023-use-a-locked-local-quality-gate.md)):
 
 ```bash
 uv sync --locked --all-groups
@@ -312,7 +323,7 @@ uv run --locked python scripts/benchmark_renderer.py
 
 Versioning is [hatch-vcs](https://github.com/ofek/hatch-vcs): there is no version string in
 the source, and `git tag v1.2.3` is what makes a release. Tags are immutable
-([ADR 0019](docs/adrs/0019-release-tags-are-immutable.md)) — a mistake in a released
+([ADR 0019](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/adrs/0019-release-tags-are-immutable.md)) — a mistake in a released
 version is fixed by a new patch version, never by moving the tag.
 
 CI runs Python 3.9–3.13 on Linux, plus one combined job carrying lint, the
@@ -320,7 +331,7 @@ dependency-policy guard, both install shapes, and the build. Every full-scope
 pull request and `main` push also runs one representative macOS job with the
 complete tests and native memory-probe check. The stable required result covers
 both operating systems. Documentation-only refs retain only the ancestry audit
-([ADR 0038](docs/adrs/0038-run-public-ci-on-linux-and-macos.md)).
+([ADR 0038](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/adrs/0038-run-public-ci-on-linux-and-macos.md)).
 
 ## Troubleshooting
 
@@ -346,7 +357,7 @@ child directory *is* one, its branch is shown prefixed with `↳`; with zero or 
 nothing is shown, because ambiguity is worse than absence.
 
 **Costs look doubled.** Almost always caused by rendering against the live ledger by hand.
-Read [ADR 0014](docs/adrs/0014-never-exercise-cost-paths-against-the-live-ledger.md) — it explains the
+Read [ADR 0014](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/adrs/0014-never-exercise-cost-paths-against-the-live-ledger.md) — it explains the
 failure and how to repair the row.
 
 **First commit fails with `Author identity unknown`.** A fresh machine has no git identity:
