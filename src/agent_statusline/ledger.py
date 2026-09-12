@@ -11,7 +11,6 @@ crash, lost daemon):
     python3 <repo>/src/ledger.py close <session-id> --reason killed
     python3 <repo>/src/ledger.py show
 """
-import argparse
 import datetime
 import math
 import os
@@ -391,6 +390,8 @@ def close_session(sid, reason="end", transcript=None, when=None, create=False):
 
 
 def _main():
+    import argparse
+
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )

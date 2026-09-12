@@ -11,9 +11,11 @@
 
 Historical measurements found a roughly 30ms warm redraw against a roughly
 15ms bare-interpreter floor, down from about 110ms before the Git probe was
-collapsed. These are observations from one machine, not a cross-platform
-performance guarantee; [RESEARCH.md](RESEARCH.md) carries the dated benchmark
-evidence and [ROADMAP.md](ROADMAP.md) scopes reproducible benchmarking to 0.3.1.
+collapsed. The v0.3.1 repeat records a separate paired baseline and candidate
+from the current environment. These are observations from one machine, not a
+cross-platform performance guarantee; [RESEARCH.md](RESEARCH.md) carries the
+dated evidence and [ADR 0040](adrs/0040-remove-avoidable-hot-path-imports.md)
+keeps elapsed time outside the release gate.
 
 In that same historical measurement, cold costs were: `ps` ~29ms · Git bundle
 ~35ms · `vm_stat` ~6ms · `sysctl` ~4ms · `~/.claude.json` ~1ms · `statvfs`
@@ -29,6 +31,13 @@ KiB; full scanning happens only at the compaction boundary. See
 
 If flicker ever returns, the next lever is the `ps` sweep (raise its TTL or narrow it),
 then Python startup itself, which is the hard floor.
+
+Run the isolated informational benchmark from a synchronized development
+environment; it never reads live payload, transcript, ledger, or probe state:
+
+```bash
+uv run --locked python scripts/benchmark_renderer.py
+```
 
 ## Incremental transcript parsing
 

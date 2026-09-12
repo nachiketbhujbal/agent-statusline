@@ -1,6 +1,7 @@
 """The width-fitting behaviour: fit on one line, else wrap, else truncate."""
 
 import math
+import os
 
 import pytest
 
@@ -72,6 +73,41 @@ class TestVis:
         cleaned = render.sanitize("safevalue\033[31")
 
         assert cleaned == "safevalue"
+
+
+class TestWidth:
+    def test_positive_columns_environment_wins(self, monkeypatch):
+        monkeypatch.setenv("COLUMNS", "99")
+        monkeypatch.setattr(
+            render.os,
+            "get_terminal_size",
+            lambda _fd: (_ for _ in ()).throw(AssertionError("terminal queried")),
+        )
+
+        assert render.width() == 99
+
+    @pytest.mark.parametrize("columns", ["", "0", "-2", "not-a-number"])
+    def test_unusable_environment_uses_terminal(self, monkeypatch, columns):
+        monkeypatch.setenv("COLUMNS", columns)
+        monkeypatch.setattr(render.os, "get_terminal_size", lambda _fd: os.terminal_size((87, 24)))
+
+        assert render.width() == 87
+
+    def test_unavailable_terminal_uses_fallback(self, monkeypatch):
+        monkeypatch.delenv("COLUMNS", raising=False)
+
+        def unavailable(_fd):
+            raise OSError("not a terminal")
+
+        monkeypatch.setattr(render.os, "get_terminal_size", unavailable)
+
+        assert render.width() == render.FALLBACK_WIDTH
+
+    def test_zero_width_terminal_uses_fallback(self, monkeypatch):
+        monkeypatch.delenv("COLUMNS", raising=False)
+        monkeypatch.setattr(render.os, "get_terminal_size", lambda _fd: os.terminal_size((0, 24)))
+
+        assert render.width() == render.FALLBACK_WIDTH
 
 
 class TestRow:

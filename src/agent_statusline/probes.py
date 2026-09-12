@@ -9,7 +9,6 @@ through `probe()` and reused for a few seconds. Measured costs on this machine:
 import json
 import math
 import os
-import subprocess
 import time
 from collections.abc import Mapping
 
@@ -101,6 +100,8 @@ def probe(key, ttl, fn):
 
 
 def _run(*args, timeout=1.0):
+    import subprocess
+
     r = subprocess.run(args, capture_output=True, text=True, timeout=timeout)
     return r.stdout if r.returncode == 0 else ""
 

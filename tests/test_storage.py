@@ -62,6 +62,21 @@ def test_private_text_publish_is_atomic_and_modes_are_private(tmp_path):
     assert not list(tmp_path.glob(".state.json.*"))
 
 
+def test_private_temporary_retries_a_preexisting_name(tmp_path, monkeypatch):
+    path = tmp_path / "state.json"
+    monkeypatch.setattr(storage.os, "getpid", lambda: 123)
+    monkeypatch.setattr(storage.os, "urandom", lambda _size: b"\0" * 12)
+    collision = tmp_path / f".state.json.123.{'00' * 12}.0"
+    collision.write_text("foreign\n")
+
+    storage.write_text(path, "published\n")
+
+    assert path.read_text() == "published\n"
+    assert mode(path) == 0o600
+    assert collision.read_text() == "foreign\n"
+    assert list(tmp_path.glob(".state.json.*")) == [collision]
+
+
 def test_existing_state_mode_is_narrowed_but_directory_is_unchanged(tmp_path):
     tmp_path.chmod(0o750)
     path = tmp_path / "state.json"

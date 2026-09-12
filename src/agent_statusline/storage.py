@@ -6,7 +6,6 @@ import fcntl
 import json
 import os
 import stat
-import tempfile
 from collections.abc import Mapping
 
 
@@ -134,13 +133,25 @@ def _unlink_temporary(path):
         pass
 
 
+def _open_temporary(target):
+    """Create one private same-directory temporary without importing tempfile."""
+    directory = os.path.dirname(target)
+    prefix = f".{os.path.basename(target)}.{os.getpid()}.{os.urandom(12).hex()}"
+    for attempt in range(128):
+        temporary = os.path.join(directory, f"{prefix}.{attempt}")
+        try:
+            fd = _open_regular(temporary, os.O_CREAT | os.O_EXCL | os.O_RDWR, 0o600)
+        except FileExistsError:
+            continue
+        return fd, temporary
+    raise FileExistsError(f"cannot create unique temporary for {target}")
+
+
 def _atomic_publish_unlocked(path, writer):
     target = _entry(path)
     _validate_entry(target)
     directory = os.path.dirname(target)
-    fd, temporary = tempfile.mkstemp(
-        prefix=f".{os.path.basename(target)}.", dir=directory, text=True
-    )
+    fd, temporary = _open_temporary(target)
     descriptor_owned = True
     published = False
     try:
