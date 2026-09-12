@@ -43,10 +43,11 @@ separately. No GitHub Support request is planned.
 - Every pull request and `main` push audits the complete ancestry of `HEAD`,
   including documentation-only changes. Only the minimal ancestry job runs for
   documentation-only refs; the full gate remains conservatively skipped.
-- One stable `required` job waits for the always-on policy job and requires the
-  Python matrix when the scope is full; it accepts only the deliberate matrix
-  skip for documentation-only changes. The `main` ruleset requires that result
-  from the GitHub Actions application against current `main`.
+- One stable `required` job waits for the always-on policy job, the complete
+  Linux Python matrix, and representative macOS evidence. Full scope requires
+  both hosted test lanes to pass; documentation-only scope requires both to be
+  deliberately skipped. The `main` ruleset requires that aggregate result from
+  the GitHub Actions application against current `main`.
 - Only explicit `true` and `false` scope outputs are valid. Missing or malformed
   scope fails closed. Repository policy requires the aggregate job's exact
   unconditional condition and its self-contained fail-fast script, and forbids

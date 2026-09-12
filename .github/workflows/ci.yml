@@ -1,29 +1,16 @@
 name: CI
 
-# Cost policy: docs/adrs/0018-budget-hosted-ci.md
+# Public-runner policy: docs/adrs/0038-run-public-ci-on-linux-and-macos.md
 #
-# Private-repository Actions minutes are billed per job, rounded UP to the whole
-# minute, with a 10x multiplier on macOS. Two consequences drive this file:
-#
-#   1. A job that finishes in ten seconds still bills a full minute, so four
-#      single-purpose Linux jobs cost four minutes to do about ninety seconds of
-#      work. Work that needs no isolation is therefore combined into one job.
-#   2. Hosted macOS is the dominant cost. It is not part of the default run; it
-#      is requested deliberately through workflow_dispatch.
-#
-# Public repositories get unlimited free minutes, at which point the macOS gate
-# can be relaxed -- but the shape below is worth keeping regardless.
+# Standard GitHub-hosted runners are free for public repositories. Keep setup
+# consolidated, but run one representative macOS lane automatically whenever
+# the full gate runs. Documentation-only refs retain only the ancestry audit.
 
 on:
   push:
     branches: [main]
   pull_request:
   workflow_dispatch:
-    inputs:
-      hosted_macos:
-        description: "Also run hosted macOS (billed at 10x -- check the account ledger first)"
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -47,7 +34,7 @@ jobs:
       - name: complete PR or main ancestry is public-safe
         run: python scripts/audit_reachable_history.py --ref HEAD
 
-      - name: preserve the documentation-only cost boundary
+      - name: preserve the documentation-only compute boundary
         id: scope
         env:
           BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
@@ -175,8 +162,8 @@ jobs:
           path: dist/
 
   # Python-version isolation is the point of this matrix, so it stays split.
-  # Linux only: nothing here is platform-specific except the memory probe, which
-  # the macOS job below covers when it is deliberately requested.
+  # Linux covers every supported Python version. The representative macOS job
+  # below covers the platform-specific memory probe without multiplying matrices.
   test:
     needs: checks
     if: needs.checks.outputs.full == 'true'
@@ -195,11 +182,11 @@ jobs:
       - run: python -m pytest tests -v
 
   # One stable branch-protection context. It succeeds only when the always-on
-  # policy job passed and the version matrix either passed or was deliberately
-  # skipped for a documentation-only change.
+  # policy job passed and both hosted test lanes either passed or were
+  # deliberately skipped for a documentation-only change.
   required:
     if: always()
-    needs: [checks, test]
+    needs: [checks, test, macos]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
@@ -207,24 +194,26 @@ jobs:
         env:
           CHECKS_RESULT: ${{ needs.checks.result }}
           TEST_RESULT: ${{ needs.test.result }}
+          MACOS_RESULT: ${{ needs.macos.result }}
           FULL_RUN: ${{ needs.checks.outputs.full }}
         run: |
           set -eu
           test "${CHECKS_RESULT}" = "success"
           if [ "${FULL_RUN}" = "true" ]; then
             test "${TEST_RESULT}" = "success"
+            test "${MACOS_RESULT}" = "success"
           elif [ "${FULL_RUN}" = "false" ]; then
             test "${TEST_RESULT}" = "skipped"
+            test "${MACOS_RESULT}" = "skipped"
           else
             echo "invalid full-scope result: ${FULL_RUN}" >&2
             exit 1
           fi
 
-  # Hosted macOS certification. Off by default -- one job here costs the same
-  # allowance as ten Linux jobs. Request it before a vX.Y.0 release, or for a
-  # change to the macOS-specific probes in probes.py (vm_stat, sysctl, ps).
+  # Representative macOS certification for the platform-specific probes.
   macos:
-    if: github.event_name == 'workflow_dispatch' && inputs.hosted_macos
+    needs: checks
+    if: needs.checks.outputs.full == 'true'
     runs-on: macos-latest
     timeout-minutes: 10
     steps:

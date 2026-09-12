@@ -61,14 +61,14 @@ Rows are ordered by how often they answer a question worth asking — `PROJECT` 
 ## Install
 
 ```bash
-uv tool install git+https://github.com/nachiketbhujbal/agent-statusline
+uv tool install 'git+https://github.com/nachiketbhujbal/agent-statusline@v0.2.14'
 agent-statusline install
 ```
 
-Then restart Claude Code. `pipx install` and `pip install` can install from the
-same Git URL. Making the repository public removes the authentication
-requirement; installing by package name would still require a separate PyPI
-publication.
+Then restart Claude Code. This installs a normal local command directly from an
+immutable public release; no manual clone is needed. `pipx install` and
+`pip install` can use the same tagged Git URL. Installing by package name would
+still require a separate PyPI publication.
 
 `agent-statusline install` writes its `statusLine` entry and two always-on hooks
 into `~/.claude/settings.json`; while Claude's native timestamp feature remains
@@ -118,8 +118,13 @@ when absent and is deliberately *not* removed on uninstall, because a value alre
 your settings cannot be told apart from one this installer added
 ([ADR 0015](docs/adrs/0015-timestamp-hooks-are-a-stopgap.md)).
 
-Upgrading is `uv tool upgrade agent-statusline` followed by `agent-statusline install`
-(the second step is only needed if the wiring itself changed).
+To upgrade, replace the tag with the newer immutable release and reinstall, then
+refresh the managed wiring if it changed:
+
+```bash
+uv tool install --force 'git+https://github.com/nachiketbhujbal/agent-statusline@v0.2.14'
+agent-statusline install
+```
 
 ### Or from a checkout, to hack on it
 
@@ -298,10 +303,11 @@ the source, and `git tag v1.2.3` is what makes a release. Tags are immutable
 version is fixed by a new patch version, never by moving the tag.
 
 CI runs Python 3.9–3.13 on Linux, plus one combined job carrying lint, the
-dependency-policy guard, both install shapes, and the build. **Hosted macOS is off by
-default** and requested through `workflow_dispatch`, because a macOS job bills about ten
-times a Linux one and Actions minutes are shared across every private repository
-([ADR 0018](docs/adrs/0018-budget-hosted-ci.md)). Documentation-only pushes skip CI.
+dependency-policy guard, both install shapes, and the build. Every full-scope
+pull request and `main` push also runs one representative macOS job with the
+complete tests and native memory-probe check. The stable required result covers
+both operating systems. Documentation-only refs retain only the ancestry audit
+([ADR 0038](docs/adrs/0038-run-public-ci-on-linux-and-macos.md)).
 
 ## Troubleshooting
 
