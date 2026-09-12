@@ -43,6 +43,7 @@ old one rather than rewriting why the earlier choice was made.
 | [0035](0035-accept-historical-pull-refs-and-gate-future-ancestry.md) | Accept historical pull refs and gate future ancestry |
 | [0036](0036-fail-closed-on-oversized-public-evidence.md) | Fail closed on oversized public evidence |
 | [0037](0037-require-one-aggregate-public-ci-result.md) | Require one aggregate public CI result |
+| [0038](0038-run-public-ci-on-linux-and-macos.md) | Run public CI on Linux and macOS |
 
 ## Reading order
 

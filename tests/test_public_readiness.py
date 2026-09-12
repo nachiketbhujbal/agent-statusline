@@ -24,9 +24,6 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
-    inputs:
-      hosted_macos:
-        type: boolean
 permissions:
   contents: read
 jobs:
@@ -48,28 +45,38 @@ jobs:
   test:
     needs: checks
     if: needs.checks.outputs.full == 'true'
+  macos:
+    needs: checks
+    if: needs.checks.outputs.full == 'true'
+    runs-on: macos-latest
+    steps:
+      - run: python -m pytest tests -v
+      - name: the macOS-specific probes actually return data
+        run: |
+          mem = probes.memory()
   required:
     if: always()
-    needs: [checks, test]
+    needs: [checks, test, macos]
     steps:
       - name: enforce the complete required CI result
         env:
           CHECKS_RESULT: ${{{{ needs.checks.result }}}}
           TEST_RESULT: ${{{{ needs.test.result }}}}
+          MACOS_RESULT: ${{{{ needs.macos.result }}}}
           FULL_RUN: ${{{{ needs.checks.outputs.full }}}}
         run: |
           set -eu
           test "${{CHECKS_RESULT}}" = "success"
           if [ "${{FULL_RUN}}" = "true" ]; then
             test "${{TEST_RESULT}}" = "success"
+            test "${{MACOS_RESULT}}" = "success"
           elif [ "${{FULL_RUN}}" = "false" ]; then
             test "${{TEST_RESULT}}" = "skipped"
+            test "${{MACOS_RESULT}}" = "skipped"
           else
             echo "invalid full-scope result: ${{FULL_RUN}}" >&2
             exit 1
           fi
-  macos:
-    if: github.event_name == 'workflow_dispatch' && inputs.hosted_macos
 """,
     )
     write(
@@ -230,27 +237,118 @@ def test_public_readiness_policy_requires_aggregate_ci_gate(tmp_path):
     workflow = root / ".github" / "workflows" / "ci.yml"
     write(
         workflow,
-        workflow.read_text().replace("needs: [checks, test]", "needs: checks"),
+        workflow.read_text().replace("needs: [checks, test, macos]", "needs: checks"),
     )
 
     result = run_policy(root)
 
     assert result.returncode == 1
-    assert "missing lean-policy fragment: needs: [checks, test]" in result.stderr
+    assert "missing lean-policy fragment: needs: [checks, test, macos]" in result.stderr
 
 
 @pytest.mark.parametrize(
-    ("checks_result", "full_run", "test_result", "expected"),
+    ("fragment", "replacement", "message"),
     (
-        ("success", "true", "success", 0),
-        ("success", "false", "skipped", 0),
-        ("success", "", "skipped", 1),
-        ("success", "documentation", "skipped", 1),
-        ("failure", "true", "success", 1),
-        ("success", "true", "failure", 1),
+        (
+            "    needs: checks\n    if: needs.checks.outputs.full == 'true'\n"
+            "    runs-on: macos-latest",
+            "    needs: checks\n    if: false\n    runs-on: macos-latest",
+            "macos job must declare exactly: if: needs.checks.outputs.full == 'true'",
+        ),
+        (
+            "    runs-on: macos-latest",
+            "    runs-on: ubuntu-latest",
+            "macos job must declare exactly: runs-on: macos-latest",
+        ),
+        (
+            "  macos:",
+            "  macos:\n    continue-on-error: true",
+            "macos job must use only its canonical direct keys",
+        ),
     ),
 )
-def test_required_ci_gate_fails_closed(checks_result, full_run, test_result, expected):
+def test_public_readiness_policy_requires_automatic_blocking_macos(
+    tmp_path, fragment, replacement, message
+):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "ci.yml"
+    text = workflow.read_text()
+    if fragment.startswith("    needs: checks"):
+        text = text.replace(fragment, replacement, 1)
+        text = text.replace(fragment, replacement, 1)
+    else:
+        text = text.replace(fragment, replacement)
+    write(workflow, text)
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert message in result.stderr
+
+
+def test_public_readiness_policy_rejects_dispatch_gated_macos(tmp_path):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "ci.yml"
+    write(workflow, workflow.read_text() + "\nhosted_macos: false\n")
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert "public full-scope macos must not be dispatch-gated" in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("marker", "key", "message"),
+    (
+        (
+            "      - run: python -m pytest tests -v",
+            "if: false",
+            "macos test step must be exact and unconditional",
+        ),
+        (
+            "      - run: python -m pytest tests -v",
+            "continue-on-error: true",
+            "macos test step must be exact and unconditional",
+        ),
+        (
+            "      - name: the macOS-specific probes actually return data",
+            "'if': false",
+            "macos probe step must be exact and unconditional",
+        ),
+        (
+            "      - name: the macOS-specific probes actually return data",
+            r'"sh\u0065ll": bash {0}',
+            "macos probe step must be exact and unconditional",
+        ),
+    ),
+)
+def test_public_readiness_policy_rejects_skippable_macos_evidence(tmp_path, marker, key, message):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "ci.yml"
+    write(workflow, workflow.read_text().replace(marker, f"{marker}\n        {key}"))
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert message in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("checks_result", "full_run", "test_result", "macos_result", "expected"),
+    (
+        ("success", "true", "success", "success", 0),
+        ("success", "false", "skipped", "skipped", 0),
+        ("success", "", "skipped", "skipped", 1),
+        ("success", "documentation", "skipped", "skipped", 1),
+        ("failure", "true", "success", "success", 1),
+        ("success", "true", "failure", "success", 1),
+        ("success", "true", "success", "failure", 1),
+        ("success", "false", "skipped", "success", 1),
+    ),
+)
+def test_required_ci_gate_fails_closed(
+    checks_result, full_run, test_result, macos_result, expected
+):
     script = workflow_step_script(
         VERIFY.parents[1] / ".github" / "workflows" / "ci.yml",
         "enforce the complete required CI result",
@@ -261,6 +359,7 @@ def test_required_ci_gate_fails_closed(checks_result, full_run, test_result, exp
         env={
             "CHECKS_RESULT": checks_result,
             "TEST_RESULT": test_result,
+            "MACOS_RESULT": macos_result,
             "FULL_RUN": full_run,
         },
         capture_output=True,
@@ -268,6 +367,27 @@ def test_required_ci_gate_fails_closed(checks_result, full_run, test_result, exp
     )
 
     assert result.returncode == expected, result.stderr
+
+
+@pytest.mark.parametrize(
+    "key",
+    (
+        "MACOS_RESULT: success",
+        "MACOS_RESULT : success",
+        "'MACOS_RESULT': success",
+        r'"MACOS_\u0052ESULT": success',
+    ),
+)
+def test_public_readiness_policy_rejects_aggregate_result_override(tmp_path, key):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "ci.yml"
+    marker = "      - name: enforce the complete required CI result\n        env:"
+    write(workflow, workflow.read_text().replace(marker, f"{marker}\n          {key}"))
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert "aggregate environment must use exactly its canonical result inputs" in result.stderr
 
 
 @pytest.mark.parametrize(
@@ -292,6 +412,14 @@ def test_required_ci_gate_fails_closed(checks_result, full_run, test_result, exp
         (
             'test "${TEST_RESULT}" = "skipped"',
             'test "${TEST_RESULT}" = "success"',
+        ),
+        (
+            'test "${MACOS_RESULT}" = "success"',
+            'test "${MACOS_RESULT}" = "failure"',
+        ),
+        (
+            'test "${MACOS_RESULT}" = "skipped"',
+            'test "${MACOS_RESULT}" = "success"',
         ),
     ),
 )

@@ -4,7 +4,22 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.2.13
+## Unreleased — 0.2.14
+
+Full-scope pull requests, `main` pushes, and manual runs now add one automatic
+macOS lane to the complete Linux Python matrix. The stable branch-protection
+result requires both hosted test lanes to pass for full scope and both to be
+deliberately skipped for documentation-only scope; missing, failed, cancelled,
+or inconsistent results fail closed. The public-readiness verifier locks that
+topology and the macOS test/probe evidence in place.
+
+Current documentation now reflects the public repository and released v0.2.13
+boundary. Normal users install the command-line tool directly from an immutable
+public Git tag without manually cloning; a future package-name install still
+requires a separate PyPI publication. Runtime behavior, the ten-row renderer,
+dependencies, live state, and current installed wiring are unchanged.
+
+## 0.2.13
 
 Artifact and reachable-history privacy checks now fail closed on every regular
 member or blob above the two-MiB audit boundary instead of silently skipping

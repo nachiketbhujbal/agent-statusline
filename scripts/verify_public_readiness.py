@@ -117,7 +117,7 @@ def _canonical_yaml_direct_entries(text: str, indent: int) -> Optional[list[tupl
         content = line[indent:]
         if not content or content.startswith("#"):
             continue
-        match = re.fullmatch(r"([a-z][a-z0-9-]*):(?:\s+(.*))?", content)
+        match = re.fullmatch(r"([A-Za-z][A-Za-z0-9_-]*):(?:\s+(.*))?", content)
         if match is None:
             return None
         entries.append((match.group(1), match.group(2) or ""))
@@ -128,30 +128,37 @@ def check_lean_policy(root: Path) -> list[str]:
     errors: list[str] = []
     ci = _read(root / ".github" / "workflows" / "ci.yml", errors)
     release = _read(root / ".github" / "workflows" / "release.yml", errors)
-    required_ci = (
-        "pull_request:",
-        "workflow_dispatch:",
-        "hosted_macos:",
-        "if: github.event_name == 'workflow_dispatch' && inputs.hosted_macos",
-        "contents: read",
-        "fetch-depth: 0",
-        "python scripts/audit_reachable_history.py --ref HEAD",
-        'git diff --quiet "${BASE_SHA}" HEAD --',
-        "if: needs.checks.outputs.full == 'true'",
-        "required:",
-        "if: always()",
-        "needs: [checks, test]",
+    required_step_fragments = (
         "CHECKS_RESULT: ${{ needs.checks.result }}",
         "TEST_RESULT: ${{ needs.test.result }}",
+        "MACOS_RESULT: ${{ needs.macos.result }}",
         "FULL_RUN: ${{ needs.checks.outputs.full }}",
         "set -eu",
         'test "${CHECKS_RESULT}" = "success"',
         'if [ "${FULL_RUN}" = "true" ]; then',
         'elif [ "${FULL_RUN}" = "false" ]; then',
         'test "${TEST_RESULT}" = "success"',
+        'test "${MACOS_RESULT}" = "success"',
         'test "${TEST_RESULT}" = "skipped"',
+        'test "${MACOS_RESULT}" = "skipped"',
         'echo "invalid full-scope result: ${FULL_RUN}" >&2',
         "exit 1",
+    )
+    required_ci = (
+        "pull_request:",
+        "workflow_dispatch:",
+        "contents: read",
+        "fetch-depth: 0",
+        "python scripts/audit_reachable_history.py --ref HEAD",
+        'git diff --quiet "${BASE_SHA}" HEAD --',
+        "if: needs.checks.outputs.full == 'true'",
+        "macos:",
+        "needs: checks",
+        "runs-on: macos-latest",
+        "required:",
+        "if: always()",
+        "needs: [checks, test, macos]",
+        *required_step_fragments,
     )
     required_release = (
         'tags: ["v*"]',
@@ -170,6 +177,10 @@ def check_lean_policy(root: Path) -> list[str]:
     if "paths-ignore:" in ci:
         errors.append(
             ".github/workflows/ci.yml: ancestry audit must not skip documentation-only refs"
+        )
+    if "hosted_macos" in ci:
+        errors.append(
+            ".github/workflows/ci.yml: public full-scope macos must not be dispatch-gated"
         )
 
     checks_job = _yaml_block(ci, "checks:", indent=2)
@@ -193,6 +204,8 @@ def check_lean_policy(root: Path) -> list[str]:
     else:
         job_entries = _canonical_yaml_direct_entries(required_job, indent=4)
         step_entries = _canonical_yaml_direct_entries(required_step, indent=8)
+        env_block = _yaml_block(required_step, "env:", indent=8)
+        env_entries = _canonical_yaml_direct_entries(env_block or "", indent=10)
         expected_job_keys = {"if", "needs", "runs-on", "timeout-minutes", "steps"}
         expected_step_keys = {"env", "run"}
         if (
@@ -216,21 +229,95 @@ def check_lean_policy(root: Path) -> list[str]:
             )
             step_entries = []
 
+        expected_env = {
+            "CHECKS_RESULT": "${{ needs.checks.result }}",
+            "TEST_RESULT": "${{ needs.test.result }}",
+            "MACOS_RESULT": "${{ needs.macos.result }}",
+            "FULL_RUN": "${{ needs.checks.outputs.full }}",
+        }
+        if (
+            env_block is None
+            or env_entries is None
+            or [key for key, _ in env_entries] != list(dict.fromkeys(key for key, _ in env_entries))
+            or {key for key, _ in env_entries} != set(expected_env)
+            or dict(env_entries) != expected_env
+        ):
+            errors.append(
+                ".github/workflows/ci.yml: aggregate environment must use exactly its "
+                "canonical result inputs"
+            )
+
         job_conditions = [value for key, value in job_entries if key == "if"]
         if job_conditions != ["always()"]:
             errors.append(
                 ".github/workflows/ci.yml: aggregate job must declare exactly: if: always()"
             )
-        if not re.search(r"^    needs: \[checks, test\]\s*$", required_job, re.MULTILINE):
+        if not re.search(r"^    needs: \[checks, test, macos\]\s*$", required_job, re.MULTILINE):
             errors.append(
-                ".github/workflows/ci.yml: aggregate job is missing: needs: [checks, test]"
+                ".github/workflows/ci.yml: aggregate job is missing: "
+                "needs: [checks, test, macos]"
             )
-        for fragment in required_ci[12:]:
+        for fragment in required_step_fragments:
             if fragment not in required_step:
                 errors.append(
                     ".github/workflows/ci.yml: aggregate enforcement step is missing: "
                     f"{fragment}"
                 )
+
+    macos_job = _yaml_block(ci, "macos:", indent=2)
+    if macos_job is None:
+        errors.append(".github/workflows/ci.yml: requires one unambiguous macos job")
+    else:
+        macos_entries = _canonical_yaml_direct_entries(macos_job, indent=4)
+        expected_macos_keys = {"needs", "if", "runs-on", "timeout-minutes", "steps"}
+        if (
+            macos_entries is None
+            or [key for key, _ in macos_entries]
+            != list(dict.fromkeys(key for key, _ in macos_entries))
+            or not {key for key, _ in macos_entries}.issubset(expected_macos_keys)
+        ):
+            errors.append(
+                ".github/workflows/ci.yml: macos job must use only its canonical direct keys"
+            )
+            macos_entries = []
+        macos_values = dict(macos_entries)
+        expected_macos_values = {
+            "needs": "checks",
+            "if": "needs.checks.outputs.full == 'true'",
+            "runs-on": "macos-latest",
+        }
+        for key, value in expected_macos_values.items():
+            if macos_values.get(key) != value:
+                errors.append(
+                    f".github/workflows/ci.yml: macos job must declare exactly: {key}: {value}"
+                )
+        for fragment in (
+            "python -m pytest tests -v",
+            "the macOS-specific probes actually return data",
+            "mem = probes.memory()",
+        ):
+            if fragment not in macos_job:
+                errors.append(f".github/workflows/ci.yml: macos job is missing: {fragment}")
+        macos_test_step = _yaml_block(macos_job, "- run: python -m pytest tests -v", indent=6)
+        macos_probe_step = _yaml_block(
+            macos_job, "- name: the macOS-specific probes actually return data", indent=6
+        )
+        test_entries = _canonical_yaml_direct_entries(macos_test_step or "", indent=8)
+        probe_entries = _canonical_yaml_direct_entries(macos_probe_step or "", indent=8)
+        if macos_test_step is None or test_entries != []:
+            errors.append(
+                ".github/workflows/ci.yml: macos test step must be exact and unconditional"
+            )
+        if (
+            macos_probe_step is None
+            or probe_entries is None
+            or [key for key, _ in probe_entries]
+            != list(dict.fromkeys(key for key, _ in probe_entries))
+            or dict(probe_entries) != {"run": "|"}
+        ):
+            errors.append(
+                ".github/workflows/ci.yml: macos probe step must be exact and unconditional"
+            )
     return errors
 
 

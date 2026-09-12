@@ -25,14 +25,14 @@ installed-artifact evidence.
 | 0.2.10 | Hermetic installed-renderer evidence | **Released** |
 | 0.2.11 | Isolated self-test and safe diagnostics | **Released** |
 | 0.2.12 | Documentation, pinned workflow, and public-readiness closure | **Released** |
-| 0.2.13 | Oversized-audit and hosted-exposure closure | **Current** |
+| 0.2.13 | Oversized-audit and hosted-exposure closure | **Released** |
+| 0.2.14 | Public CI and installation-documentation alignment | **Current** |
 | 0.3.0 | Production-ready milestone | Planned after the patch train |
 
-0.2.1 through 0.2.12 are tagged and released. The current 0.2.13 boundary closes
-the oversized privacy-audit bypass, inventories the retained Actions exposure,
-and establishes the active no-bypass protected public baseline without changing
-runtime. Every release's review, hosted CI, tag, and artifact evidence must
-stand on its own; 0.2.13 remains unreleased.
+0.2.1 through 0.2.13 are tagged and released. The current 0.2.14 boundary aligns
+hosted evidence and installation guidance with the public repository without
+changing runtime. Every release's review, hosted CI, tag, and artifact evidence
+must stand on its own; 0.2.14 remains unreleased.
 
 ## 0.2.1 — ownership-safe installation
 
@@ -247,7 +247,7 @@ Released:
 
 ## 0.2.13 — oversized-audit and hosted-exposure closure
 
-Current release:
+Released:
 
 - Reject every distribution member and reachable blob above the bounded
   privacy-audit size instead of silently skipping it.
@@ -263,6 +263,24 @@ Current release:
   and cannot be made conditional, non-blocking, or shell-overridden.
 - Keep runtime behavior, Git history, release tags and assets, existing workflow
   runs and logs, live state, and the accepted ADR 0035 pull-ref residue unchanged.
+
+## 0.2.14 — public CI and installation-documentation alignment
+
+Current release:
+
+- Run the complete Python 3.9 through 3.13 matrix on Linux and one representative
+  Python 3.12 lane on macOS for every full-scope pull request, `main` push, and
+  manual run.
+- Include both hosted test lanes in the stable aggregate required result; require
+  both to pass for full scope and both to be skipped for documentation-only scope.
+- Keep one combined Linux policy/build/install job, immutable action pins,
+  ancestry auditing on every ref, and Linux-only tag publication.
+- Replace current private-repository billing language with the public-runner
+  decision in ADR 0038 while preserving earlier ADRs as historical records.
+- Document the normal no-clone command-line installation from an immutable public
+  Git tag; defer package-name installation until a separate PyPI decision.
+- Keep runtime behavior, renderer output, dependencies, live installed v0.2.13,
+  accepted historical refs, unreachable objects, and v0.3.0 work unchanged.
 
 ## 0.3.0 — production-ready milestone
 
