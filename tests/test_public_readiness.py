@@ -306,7 +306,18 @@ def test_public_readiness_policy_requires_aggregate_ci_enforcement(tmp_path, fra
     assert f"missing lean-policy fragment: {fragment}" in result.stderr
 
 
-@pytest.mark.parametrize("key", ("if: false", "continue-on-error: true", "shell: bash {0}"))
+@pytest.mark.parametrize(
+    "key",
+    (
+        "if: false",
+        "'if': false",
+        "continue-on-error: true",
+        "continue-on-error : true",
+        "'continue-on-error': true",
+        "shell: bash {0}",
+        "'shell': bash {0}",
+    ),
+)
 def test_public_readiness_policy_rejects_skippable_aggregate_enforcement(tmp_path, key):
     root = valid_repository(tmp_path)
     workflow = root / ".github" / "workflows" / "ci.yml"
@@ -316,7 +327,21 @@ def test_public_readiness_policy_rejects_skippable_aggregate_enforcement(tmp_pat
     result = run_policy(root)
 
     assert result.returncode == 1
-    assert f"aggregate enforcement step must not declare {key.split(':')[0]}" in result.stderr
+    protected_key = key.split(":")[0].strip().strip("'\"")
+    assert f"aggregate enforcement step must not declare {protected_key}" in result.stderr
+
+
+@pytest.mark.parametrize("key", ("continue-on-error : true", "'continue-on-error': true"))
+def test_public_readiness_policy_rejects_nonblocking_aggregate_job(tmp_path, key):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "ci.yml"
+    marker = "  required:"
+    write(workflow, workflow.read_text().replace(marker, f"{marker}\n    {key}"))
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert "aggregate job must not declare continue-on-error" in result.stderr
 
 
 def test_public_readiness_policy_requires_exact_aggregate_job_condition(tmp_path):

@@ -107,6 +107,14 @@ def _yaml_step_with_id(text: str, step_id: str) -> Optional[str]:
     return matches[0] if len(matches) == 1 else None
 
 
+def _yaml_direct_key_values(text: str, key: str, indent: int) -> list[str]:
+    """Return direct scalar values for equivalent plain or quoted YAML keys."""
+    padding = " " * indent
+    spellings = (re.escape(key), re.escape(f"'{key}'"), re.escape(f'"{key}"'))
+    pattern = rf"^{padding}(?:{'|'.join(spellings)})\s*:\s*(.*?)\s*$"
+    return re.findall(pattern, text, re.MULTILINE)
+
+
 def check_lean_policy(root: Path) -> list[str]:
     errors: list[str] = []
     ci = _read(root / ".github" / "workflows" / "ci.yml", errors)
@@ -174,7 +182,7 @@ def check_lean_policy(root: Path) -> list[str]:
     if required_job is None or required_step is None:
         errors.append(".github/workflows/ci.yml: requires one named aggregate enforcement step")
     else:
-        job_conditions = re.findall(r"^    if:\s*(.*?)\s*$", required_job, re.MULTILINE)
+        job_conditions = _yaml_direct_key_values(required_job, "if", indent=4)
         if job_conditions != ["always()"]:
             errors.append(
                 ".github/workflows/ci.yml: aggregate job must declare exactly: if: always()"
@@ -183,12 +191,12 @@ def check_lean_policy(root: Path) -> list[str]:
             errors.append(
                 ".github/workflows/ci.yml: aggregate job is missing: needs: [checks, test]"
             )
-        if re.search(r"^    continue-on-error:", required_job, re.MULTILINE):
+        if _yaml_direct_key_values(required_job, "continue-on-error", indent=4):
             errors.append(
                 ".github/workflows/ci.yml: aggregate job must not declare continue-on-error"
             )
         for key in ("if", "continue-on-error", "shell"):
-            if re.search(rf"^        {key}:", required_step, re.MULTILINE):
+            if _yaml_direct_key_values(required_step, key, indent=8):
                 errors.append(
                     ".github/workflows/ci.yml: aggregate enforcement step must not declare "
                     f"{key}"

@@ -51,6 +51,7 @@ separately. No GitHub Support request is planned.
   scope fails closed. Repository policy requires the aggregate job's exact
   unconditional condition and its self-contained fail-fast script, and forbids
   making the enforcement step conditional, non-blocking, or shell-overridden.
+  Equivalent quoted and whitespace-varied protected-key spellings are rejected.
 - Automatic `main` CI also validates the generated release-spine commit
   identity when the full gate applies.
 - Release validates the annotated tagger and peeled commit identities before

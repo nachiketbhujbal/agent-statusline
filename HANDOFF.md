@@ -16,7 +16,8 @@ the roadmap, or accepted ADRs.
   hosted macOS remains opt-in, and one stable aggregate job reports whether all
   required work passed or was deliberately skipped. Missing or malformed scope
   fails closed; the exact unconditional job condition and self-contained
-  fail-fast script are enforced, and step-level shell overrides are forbidden.
+  fail-fast script are enforced, step-level shell overrides are forbidden, and
+  equivalent quoted or whitespace-varied protected keys are rejected.
 - The repository is public. Active no-bypass ruleset `22966865` protects
   `main`: pull requests and resolved review threads are required, the aggregate
   GitHub Actions result must pass against current `main`, and deletion and
