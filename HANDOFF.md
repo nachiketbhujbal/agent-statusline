@@ -6,8 +6,8 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.2.14, public-CI and installation-documentation alignment.
-- Preceding release: v0.2.13, the immutable base for this slice.
+- Current release target: 0.3.0, the production-ready supported milestone.
+- Preceding release: v0.2.14, the immutable base for this slice.
 - Branch owner: Codex; only the owner changes the release branch.
 - Reviewer role: one independent read-only reviewer, assigned after the exact
   candidate SHA is frozen. No second reviewer or delegated worker runs beside it.
@@ -23,11 +23,10 @@ the roadmap, or accepted ADRs.
   force-push are blocked.
 - Runtime dependencies remain empty and versions remain Git-tag-derived.
 
-The v0.2.14 slice aligns hosted evidence and installation guidance with the
-public repository. It adds automatic representative macOS evidence behind the
-existing aggregate result and documents immutable-tag installation without a
-manual clone. It changes no renderer, display contract, runtime dependency,
-live state, or current installed wiring.
+The v0.3.0 slice names the already-proven patch train as the supported public
+baseline. It updates only version-boundary records, immutable-tag installation
+guidance, and package maturity metadata. It changes no renderer, display
+contract, runtime dependency, state, installer, workflow, or live wiring.
 
 ## Stable product boundary
 
@@ -43,7 +42,7 @@ widget-based host; [PORTING.md](docs/PORTING.md) records the verified boundary.
 
 ## Release train
 
-Released slices through v0.2.13 cover ownership-safe installation, the locked
+Released slices through v0.2.14 cover ownership-safe installation, the locked
 quality gate, malformed-input resilience, private serialized state, exact
 rolling-cost attribution, session-scoped process evidence, and bounded
 observation state, tracked governance, deterministic rendering safety, and
@@ -52,9 +51,9 @@ They also cover pinned lean workflows, the ordinary reachable-history rewrite,
 accepted historical pull-ref boundary, prospective ancestry protection,
 oversized-evidence closure, protected public conversion, and exact aggregate CI.
 
-v0.2.14 is the narrow public-CI and documentation correction after v0.2.13
-release and installed-mode convergence. It preserves the patch train boundary
-and does not start v0.3.0.
+v0.2.14 completed the public-CI and installation-documentation alignment after
+public conversion. v0.3.0 is the records-and-metadata milestone promised by
+ADR 0030, not another hardening integration branch.
 
 The complete sequence and exclusions are authoritative in
 [ROADMAP.md](docs/ROADMAP.md). Do not merge the historical hardening branch as
@@ -62,17 +61,21 @@ a whole or import a later slice into the current release.
 
 ## Resume point
 
-v0.2.13 is complete at tagged merge
-`de5e7bc0c3e44c56630bfe5d30edd23e775f9e7d`. PR, merged-main CI, tag-triggered
-Release, downloaded asset verification, and isolated wheel self-test passed.
-Claude Code uses exact installed v0.2.13 with four managed hooks and no checkout
-symlink; unrelated settings and known live state bytes were preserved.
+v0.2.14 is complete at tagged merge
+`0b47d8f5fccd3417bbad5f4d695dbff2d910e3e1`. Exact-SHA review, PR and merged-main
+Linux/macOS CI, tag-triggered Release, downloaded asset verification, and an
+isolated Python 3.9 wheel self-test passed. Claude Code remains on exact
+installed v0.2.13 because v0.2.14 changed only CI, policy tests, and
+documentation; its four managed hooks and unrelated live state remain intact.
 
-The v0.2.14 owner branch starts from that exact release. Its only product work is
-automatic representative macOS CI, aggregate enforcement, public-current
-documentation, ADR 0038, and synthetic policy coverage. It remains untagged and
-unreleased. Orphan cleanup, accepted pull-ref changes, PyPI publication, live
-installation changes, and v0.3.0 work remain separate.
+The v0.3.0 owner branch starts from exact v0.2.14. The historical
+`codex/hardening/v0.3.0-production-readiness` branch is superseded source
+material and must not be merged or cherry-picked wholesale. Reconcile it only
+to prove that the sequential patch releases cover its intended hardening. The
+candidate may change the tracked milestone records, README release tag, ADR
+0039, and package maturity classifier; no runtime source changes are in scope.
+Orphan cleanup, accepted pull-ref changes, PyPI publication, live installation
+changes, performance work, and host-architecture work remain separate.
 [PUBLIC_READINESS.md](docs/PUBLIC_READINESS.md) records the protected baseline.
 
 Durable decisions live in [ADRs](docs/adrs/README.md), completed behavior in the

@@ -114,6 +114,13 @@ tags were not deleted or rewritten.
 Public conversion and ruleset activation were completed as the final v0.2.13
 public-baseline operation. Any orphan-object work remains separate.
 
+v0.2.14 then proved the public operating model on both supported platforms:
+automatic pull-request and merged-main runs passed the complete Linux Python
+matrix, representative macOS tests and native memory probe, and the stable
+aggregate result. Its tag-triggered Release and freshly downloaded artifacts
+also passed. That evidence closes the final hosted prerequisite for declaring
+v0.3.0 the supported production-ready baseline.
+
 ## Completed public baseline
 
 The maintainer explicitly authorized public conversion and `main` protection.

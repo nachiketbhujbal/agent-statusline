@@ -13,7 +13,7 @@ license-files = ["LICENSE"]
 authors = [{ name = "nachiketbhujbal" }]
 keywords = ["claude-code", "statusline", "cli", "tui", "codex"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",

@@ -4,7 +4,20 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.2.14
+## Unreleased — 0.3.0
+
+The independently reviewed and released v0.2.1 through v0.2.14 hardening train
+is now the explicit production-ready supported public baseline. The historical
+integration branch remains superseded source material and is not merged into
+this release.
+
+The package maturity classifier now reports `Production/Stable`, and the normal
+no-clone installation and upgrade commands point at the immutable v0.3.0 Git
+tag. This milestone changes no runtime source, renderer output, approved row or
+field, dependency, installer, workflow, state, or live configuration. PyPI
+publication remains a separate future decision.
+
+## 0.2.14
 
 Full-scope pull requests, `main` pushes, and manual runs now add one automatic
 macOS lane to the complete Linux Python matrix. The stable branch-protection
