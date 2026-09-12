@@ -4,8 +4,9 @@ Nothing here knows what a Claude payload looks like -- this is the presentation
 layer any host can reuse (see docs/PORTING.md).
 """
 
+import os
 import re
-import shutil
+import sys
 import unicodedata
 
 from agent_statusline.coerce import finite_integer, finite_number
@@ -109,15 +110,25 @@ def vis(s):
 def width():
     """Current terminal width.
 
-    Claude Code exports COLUMNS into the status-line subprocess, which is what
-    shutil consults first. Nothing else works from in there: stdin, stdout,
-    stderr and /dev/tty all raise OSError. See docs/INTERNALS.md.
+    Claude Code exports COLUMNS into the status-line subprocess. Nothing else
+    works from in there: stdin, stdout, stderr and /dev/tty all raise OSError.
+    See docs/INTERNALS.md.
 
     Deliberately read on every call rather than cached at import: the status
     line is a fresh process per redraw and the user resizes windows live, so a
     module-level constant would freeze the layout at the first width seen.
     """
-    return shutil.get_terminal_size((FALLBACK_WIDTH, 24)).columns
+    try:
+        columns = int(os.environ.get("COLUMNS", ""))
+    except ValueError:
+        columns = 0
+    if columns <= 0:
+        try:
+            output = sys.__stdout__
+            columns = os.get_terminal_size(output.fileno()).columns if output else 0
+        except (AttributeError, OSError, ValueError):
+            columns = 0
+    return columns if columns > 0 else FALLBACK_WIDTH
 
 
 def clip(s, budget):

@@ -27,13 +27,15 @@ installed-artifact evidence.
 | 0.2.12 | Documentation, pinned workflow, and public-readiness closure | **Released** |
 | 0.2.13 | Oversized-audit and hosted-exposure closure | **Released** |
 | 0.2.14 | Public CI and installation-documentation alignment | **Released** |
-| 0.3.0 | Production-ready milestone | **Current** |
+| 0.3.0 | Production-ready milestone | **Released** |
+| 0.3.1 | Measured hot-path performance | **Current** |
+| 0.3.2 | Explicit host-acquisition architecture | Planned |
 
-0.2.1 through 0.2.14 are tagged and released. The current 0.3.0 boundary names
-that completed, independently proven train as the production-ready supported
-public baseline. Every release's review, hosted CI, tag, and artifact evidence
-stands on its own; the historical hardening branch remains source material and
-is not a merge candidate.
+0.2.1 through 0.2.14 and 0.3.0 are tagged and released. The v0.3.0 boundary
+names that completed, independently proven train as the production-ready
+supported public baseline. Each boundary retains its exact review and artifact
+evidence; GitHub Release objects begin at v0.2.4. The historical hardening
+branch remains source material and is not a merge candidate.
 
 ## 0.2.1 — ownership-safe installation
 
@@ -285,7 +287,7 @@ Released:
 
 ## 0.3.0 — production-ready milestone
 
-Current release:
+Released:
 
 - Declare the completed v0.2.1 through v0.2.14 train the supported public
   baseline after every patch's independent review, immutable tag, and release-
@@ -304,3 +306,38 @@ Current release:
   dependency, installer, workflow, state, or live configuration.
 - Keep PyPI publication, accepted historical pull refs, unreachable-object
   cleanup, performance work, and host architecture outside this milestone.
+
+## 0.3.1 — measured hot-path performance
+
+Current release:
+
+- Repeat the interpreter, import-only, warm-render, and cold-render baseline
+  against exact v0.3.0 before changing the hot path.
+- Lazy-load `subprocess` on probe cache misses and `argparse` only for the ledger
+  CLI; remove `shutil` from fresh renderer processes while preserving ordinary
+  terminal-width and private atomic state publication behavior and consistently
+  normalizing an unusable zero-column terminal result to the existing fallback.
+- Add a deterministic import-budget regression that names the expensive modules
+  excluded from the renderer import boundary.
+- Add a synthetic isolated benchmark command reporting interpreter floor, warm
+  and cold render medians and ranges, plus the ratio to interpreter startup.
+- Track benchmark output as evidence; do not gate on elapsed time until enough
+  cross-machine history exists to define a non-flaky boundary.
+- Preserve every approved row and field. Performance work does not redesign the
+  display, alter accounting, add dependencies, or change live configuration.
+
+## 0.3.2 — explicit host-acquisition architecture
+
+Planned:
+
+- Confine host-specific payload and transcript interpretation to an acquisition
+  layer with an explicit internal interface.
+- Keep rendering, storage, ledger arithmetic, paths, and host-independent probes
+  free of new Claude-specific assumptions.
+- Inventory Codex's local JSONL evidence with privacy-neutral fixtures before
+  specifying token, session, or cost fields; post-hoc approximate cost analysis
+  is not sufficient evidence for a currency-labelled runtime claim.
+- Re-check Codex's current declarative footer and hook interfaces before choosing
+  an implementation. Do not claim this command renderer runs in Codex unless an
+  installed interface actually supports arbitrary-command status output.
+- Document credible future adapters without shipping a speculative host adapter.

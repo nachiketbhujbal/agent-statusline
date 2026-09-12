@@ -45,6 +45,7 @@ old one rather than rewriting why the earlier choice was made.
 | [0037](0037-require-one-aggregate-public-ci-result.md) | Require one aggregate public CI result |
 | [0038](0038-run-public-ci-on-linux-and-macos.md) | Run public CI on Linux and macOS |
 | [0039](0039-declare-the-production-ready-public-baseline.md) | Declare the production-ready public baseline |
+| [0040](0040-remove-avoidable-hot-path-imports.md) | Remove avoidable hot-path imports and record non-gating benchmarks |
 
 ## Reading order
 

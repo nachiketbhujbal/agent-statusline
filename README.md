@@ -61,7 +61,7 @@ Rows are ordered by how often they answer a question worth asking — `PROJECT` 
 ## Install
 
 ```bash
-uv tool install 'git+https://github.com/nachiketbhujbal/agent-statusline@v0.3.0'
+uv tool install 'git+https://github.com/nachiketbhujbal/agent-statusline@v0.3.1'
 agent-statusline install
 ```
 
@@ -122,7 +122,7 @@ To upgrade, replace the tag with the newer immutable release and reinstall, then
 refresh the managed wiring if it changed:
 
 ```bash
-uv tool install --force 'git+https://github.com/nachiketbhujbal/agent-statusline@v0.3.0'
+uv tool install --force 'git+https://github.com/nachiketbhujbal/agent-statusline@v0.3.1'
 agent-statusline install
 ```
 
@@ -260,7 +260,7 @@ An exact Git-tag installation does not move when `uv tool upgrade` is run.
 Replace the tag with the newer immutable release and reinstall explicitly:
 
 ```bash
-uv tool install --force 'git+https://github.com/nachiketbhujbal/agent-statusline@v0.3.0'
+uv tool install --force 'git+https://github.com/nachiketbhujbal/agent-statusline@v0.3.1'
 agent-statusline install
 ```
 
@@ -302,6 +302,13 @@ repository hygiene checks, Ruff, Black, and mypy from the locked environment;
 run it directly rather than relying on the installed git hook when working in
 a linked worktree, since the hook itself is shared and installed once from the
 primary clone.
+
+Renderer timings are informational and machine-specific. The isolated benchmark
+uses only synthetic input and private temporary state:
+
+```bash
+uv run --locked python scripts/benchmark_renderer.py
+```
 
 Versioning is [hatch-vcs](https://github.com/ofek/hatch-vcs): there is no version string in
 the source, and `git tag v1.2.3` is what makes a release. Tags are immutable

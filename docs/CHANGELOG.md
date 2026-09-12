@@ -4,7 +4,29 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.3.0
+## Unreleased — 0.3.1
+
+A fresh renderer process no longer imports `argparse`, `subprocess`, or
+`shutil`. Ledger argument parsing and probe subprocess support load only when
+those colder paths execute; terminal-width detection keeps its environment,
+positive terminal, and fallback behavior without `shutil`. An unusable
+zero-column terminal result now consistently selects the existing fallback on
+every supported Python version; Python 3.9 previously returned zero at that
+edge. Atomic state publication now creates the same private, exclusive,
+same-directory temporary directly, with a bounded collision retry and unchanged
+lock, flush, replacement, cleanup, and permission guarantees
+([ADR 0040](adrs/0040-remove-avoidable-hot-path-imports.md)).
+
+The new isolated benchmark command reports interpreter, import-only, warm, and
+cold timing distributions plus the warm/interpreter ratio. Results remain
+informational rather than a wall-clock CI gate. Deterministic tests enforce the
+import budget and terminal-width/storage behavior. Benchmark children load the
+exact checkout source explicitly, so the command does not depend on an editable
+or wheel installation. Apart from the unusable zero-width normalization, the
+approved ten rows, fields, priorities, runtime dependencies, accounting, and
+live configuration are unchanged.
+
+## 0.3.0
 
 The independently reviewed and released v0.2.1 through v0.2.14 hardening train
 is now the explicit production-ready supported public baseline. The historical

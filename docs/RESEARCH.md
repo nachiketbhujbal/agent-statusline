@@ -27,6 +27,24 @@ time on shared runners is noisy and should initially be recorded rather than
 gated. Comparing render time with the interpreter floor is more portable than
 an absolute millisecond threshold.
 
+A paired 2026-09-12 repeat against exact v0.3.0 and the v0.3.1 implementation
+used the same Python 3.9.6 environment on the reference ARM64 macOS machine.
+Each interpreter, import, and warm result is the median of 40 isolated child
+processes; cold results use 12 fresh state roots:
+
+| Boundary | v0.3.0 | v0.3.1 implementation | Change |
+| --- | ---: | ---: | ---: |
+| Interpreter startup | 45.635 ms | 45.708 ms | informational floor |
+| Project imports | 131.720 ms | 93.109 ms | -29.3% |
+| Complete warm render | 148.885 ms | 105.270 ms | -29.3% |
+| Complete cold render | 182.580 ms | 167.780 ms | -8.1% |
+| Warm / interpreter | 3.263x | 2.303x | -29.4% |
+
+The absolute values differ from the older interpreter and environment, which is
+why elapsed time remains recorded evidence rather than a gate. The deterministic
+release boundary is instead that a fresh renderer import excludes `argparse`,
+`subprocess`, and `shutil`.
+
 ### Compiled implementation
 
 A compiled one-shot could approach the roughly 2.5 ms floor observed in that
@@ -74,6 +92,14 @@ token fields. That supports an adapter seam but does not justify speculative
 implementation. Before sharing a monetary ledger across hosts, prove from an
 official or isolated measured contract that the host supplies exact cost. Never
 infer currency from tokens or a drifting price table.
+
+A maintainer-directed local investigation on 2026-09-12 found that Codex session
+JSONL contains substantially richer token and session evidence than the native
+footer exposes; post-hoc analysis could derive total-token figures and
+approximate cost. This establishes a worthwhile v0.3.2 research target, not a
+runtime contract. The field schema, lifecycle, privacy boundary, and installed
+Codex version must be inventoried with synthetic evidence, and approximate cost
+must not acquire a currency label under this project's exact-money rule.
 
 ## Repository visibility and CI
 

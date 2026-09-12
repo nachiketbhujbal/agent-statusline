@@ -11,9 +11,11 @@
 
 Historical measurements found a roughly 30ms warm redraw against a roughly
 15ms bare-interpreter floor, down from about 110ms before the Git probe was
-collapsed. These are observations from one machine, not a cross-platform
-performance guarantee; [RESEARCH.md](RESEARCH.md) carries the dated benchmark
-evidence and [ROADMAP.md](ROADMAP.md) scopes reproducible benchmarking to 0.3.1.
+collapsed. The v0.3.1 repeat records a separate paired baseline and candidate
+from the current environment. These are observations from one machine, not a
+cross-platform performance guarantee; [RESEARCH.md](RESEARCH.md) carries the
+dated evidence and [ADR 0040](adrs/0040-remove-avoidable-hot-path-imports.md)
+keeps elapsed time outside the release gate.
 
 In that same historical measurement, cold costs were: `ps` ~29ms · Git bundle
 ~35ms · `vm_stat` ~6ms · `sysctl` ~4ms · `~/.claude.json` ~1ms · `statvfs`
@@ -30,6 +32,15 @@ KiB; full scanning happens only at the compaction boundary. See
 If flicker ever returns, the next lever is the `ps` sweep (raise its TTL or narrow it),
 then Python startup itself, which is the hard floor.
 
+Run the isolated informational benchmark from a synchronized development
+environment; it bootstraps that checkout's source into isolated child processes
+without requiring an editable installation, and never reads live payload,
+transcript, ledger, or probe state:
+
+```bash
+uv run --locked python scripts/benchmark_renderer.py
+```
+
 ## Incremental transcript parsing
 
 `statusline-transcript.json` stores a **byte offset plus accumulated totals** per
@@ -45,9 +56,10 @@ and the new field stays empty forever, with no error anywhere.
 The payload carries **no terminal width**, and neither `stdin`, `stdout`, `stderr` nor
 `/dev/tty` is a terminal inside the status-line subprocess — all four raise `OSError`.
 
-What *does* work: Claude Code exports **`COLUMNS`** into the subprocess environment, which
-is the first thing `shutil.get_terminal_size()` consults. Measured directly from inside a
-live render:
+What *does* work: Claude Code exports **`COLUMNS`** into the subprocess environment. The
+historical implementation read it through `shutil.get_terminal_size()`; v0.3.1 reads it
+directly to avoid importing `shutil`. Measured directly from inside a live render before
+that replacement:
 
 ```
 stdin/stdout/stderr fd     -> OSError (pipes)
@@ -55,6 +67,12 @@ stdin/stdout/stderr fd     -> OSError (pipes)
 COLUMNS                    -> "180"          <-- the only working source
 shutil.get_terminal_size() -> (180, 50)
 ```
+
+The direct implementation preserves positive `COLUMNS`, then tries the terminal API, then
+uses the existing 120-column fallback. A terminal API result of zero columns is unusable
+and also selects that fallback. This makes the edge deterministic across supported Python
+versions: Python 3.9's `shutil` returned zero there, while newer Python versions already
+substitute the fallback.
 
 > `ps eww <claude-pid>` does **not** show `COLUMNS` — the parent process lacks it and
 > Claude Code injects it per status-line spawn. Do not conclude anything from the parent
