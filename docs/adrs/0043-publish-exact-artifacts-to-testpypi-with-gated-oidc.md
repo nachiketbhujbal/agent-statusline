@@ -49,8 +49,12 @@ command version, and runs the installed self-test with disposable state.
 Policy tests lock the four-job topology, dependency order, environment,
 least-privilege permissions, action identity, TestPyPI endpoints, exact artifact
 binding, bounded verification, isolated install, and absence of stored
-credentials or bypass controls. A tag or uploaded filename is immutable; any
-failure requiring a content change is corrected in a later patch.
+credentials or bypass controls. They exact-map both publisher steps and every
+supported input so alternate repository/run artifact sources, credential
+aliases, and collision-skipping options cannot hide behind a pinned action. An
+execution-level regression also runs the exact documented `selftest` subcommand.
+A tag or uploaded filename is immutable; any failure requiring a content change
+is corrected in a later patch.
 
 Production PyPI remains v0.3.5. This decision changes no runtime source,
 runtime dependency, display, accounting, live configuration, or Codex host

@@ -23,6 +23,11 @@ verifies the command version, and runs the installed self-test against
 disposable state. Deterministic policy and unit tests fail closed on privilege,
 topology, endpoint, artifact, retry, credential, and isolated-install drift
 ([ADR 0043](adrs/0043-publish-exact-artifacts-to-testpypi-with-gated-oidc.md)).
+Independent review additionally proved and corrected the installed command from
+the invalid `--selftest` option to the real `selftest` subcommand, then required
+exact input maps for both publisher actions so quoted credentials,
+collision-skipping aliases, and cross-run or cross-repository artifact sources
+fail closed.
 
 Production PyPI, production package-name installation, runtime behavior,
 runtime dependencies, display, accounting, live Claude Code, and Codex host

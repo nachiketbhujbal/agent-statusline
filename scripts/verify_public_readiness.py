@@ -107,6 +107,28 @@ def _yaml_step_with_id(text: str, step_id: str) -> Optional[str]:
     return matches[0] if len(matches) == 1 else None
 
 
+def _yaml_step_with_action(text: str, action: str) -> Optional[str]:
+    """Return the unique workflow step invoking one exact action."""
+    lines = text.splitlines()
+    starts = [index for index, line in enumerate(lines) if line.startswith("      - ")]
+    matches = []
+    for position, start in enumerate(starts):
+        end = starts[position + 1] if position + 1 < len(starts) else len(lines)
+        for index in range(start + 1, end):
+            line = lines[index]
+            if line.strip() and len(line) - len(line.lstrip(" ")) <= 4:
+                end = index
+                break
+        block = "\n".join(lines[start:end])
+        if re.search(
+            rf"^(?:      - |        )uses:\s*{re.escape(action)}(?:\s+#\s*[^\n]+)?$",
+            block,
+            re.MULTILINE,
+        ):
+            matches.append(block)
+    return matches[0] if len(matches) == 1 else None
+
+
 def _canonical_yaml_direct_entries(text: str, indent: int) -> Optional[list[tuple[str, str]]]:
     """Return canonical direct mapping entries, or None for ambiguous syntax."""
     padding = " " * indent
@@ -351,6 +373,51 @@ def check_release_pipeline(release: str) -> list[str]:
     for fragment in required_testpypi_publish:
         if testpypi_publish.count(fragment) != 1:
             errors.append(f"{path}: TestPyPI publish job must contain exactly once: {fragment}")
+
+    download_action = "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c"
+    download_step = _yaml_step_with_action(testpypi_publish, download_action)
+    if (
+        download_step is None
+        or download_step.splitlines()[0] != f"      - uses: {download_action} # v8.0.1"
+        or not _exact_mapping(download_step, indent=8, expected={"with": ""})
+    ):
+        errors.append(f"{path}: TestPyPI download step must be exact")
+        download_step = ""
+    download_inputs = _yaml_block(download_step, "with:", indent=8)
+    if download_inputs is None or not _exact_mapping(
+        download_inputs,
+        indent=10,
+        expected={
+            "name": "${{ needs.build.outputs.artifact_name }}",
+            "path": "release-dist",
+        },
+    ):
+        errors.append(f"{path}: TestPyPI download inputs must bind only the current build artifact")
+
+    pypi_action = "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33"
+    pypi_step = _yaml_step_with_action(testpypi_publish, pypi_action)
+    if (
+        pypi_step is None
+        or pypi_step.splitlines()[0] != "      - name: publish the exact artifacts to TestPyPI"
+        or not _exact_mapping(
+            pypi_step,
+            indent=8,
+            expected={"uses": pypi_action + " # v1.14.2", "with": ""},
+        )
+    ):
+        errors.append(f"{path}: TestPyPI publishing action step must be exact")
+        pypi_step = ""
+    pypi_inputs = _yaml_block(pypi_step, "with:", indent=8)
+    if pypi_inputs is None or not _exact_mapping(
+        pypi_inputs,
+        indent=10,
+        expected={
+            "packages-dir": "release-dist/",
+            "repository-url": "https://test.pypi.org/legacy/",
+        },
+    ):
+        errors.append(f"{path}: TestPyPI publishing inputs must be exact and credential-free")
+
     if testpypi_publish.count("\n      - ") != 2:
         errors.append(f"{path}: TestPyPI publish job must contain exactly two action steps")
     for forbidden in (
@@ -390,7 +457,7 @@ def check_release_pipeline(release: str) -> list[str]:
         '"agent-statusline==${VERSION}"',
         'test "$(testpypi-venv/bin/agent-statusline --version)" = "${VERSION}"',
         "AGENT_STATUSLINE_STATE: ${{ runner.temp }}/agent-statusline-testpypi-state",
-        "testpypi-venv/bin/agent-statusline --selftest",
+        "testpypi-venv/bin/agent-statusline selftest",
     )
     for fragment in required_testpypi_verify:
         if fragment not in testpypi_verify:
@@ -407,7 +474,13 @@ def check_release_pipeline(release: str) -> list[str]:
 
     if len(re.findall(r"^\s*id-token\s*:", release, re.MULTILINE)) != 1:
         errors.append(f"{path}: exactly one job must receive package-index identity permission")
-    if re.search(r"^\s*(?:password|user|api-token|secrets)\s*:", release, re.MULTILINE):
+    if (
+        any(
+            _has_yaml_key(release, key)
+            for key in ("password", "user", "username", "api-token", "secrets")
+        )
+        or "${{ secrets." in release
+    ):
         errors.append(f"{path}: stored package-index credentials are forbidden")
     if re.search(r"(?:^|\s)dist/\*", release):
         errors.append(f"{path}: ambient dist wildcard is forbidden")

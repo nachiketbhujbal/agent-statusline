@@ -195,4 +195,4 @@ jobs:
             --timeout 10 \
             "agent-statusline==${VERSION}"
           test "$(testpypi-venv/bin/agent-statusline --version)" = "${VERSION}"
-          testpypi-venv/bin/agent-statusline --selftest
+          testpypi-venv/bin/agent-statusline selftest

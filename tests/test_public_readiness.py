@@ -1,3 +1,5 @@
+import os
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -171,11 +173,12 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@{PIN} # v8.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{{{ needs.build.outputs.artifact_name }}}}
           path: release-dist
-      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+      - name: publish the exact artifacts to TestPyPI
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
           packages-dir: release-dist/
           repository-url: https://test.pypi.org/legacy/
@@ -225,7 +228,7 @@ jobs:
             --timeout 10 \
             "agent-statusline==${{VERSION}}"
           test "$(testpypi-venv/bin/agent-statusline --version)" = "${{VERSION}}"
-          testpypi-venv/bin/agent-statusline --selftest
+          testpypi-venv/bin/agent-statusline selftest
 """,
     )
     write(
@@ -800,6 +803,11 @@ def test_public_readiness_policy_enforces_build_once_release_topology(
             "          AGENT_STATUSLINE_STATE: ~/.local/state/agent-statusline",
             "TestPyPI verification job is missing: AGENT_STATUSLINE_STATE",
         ),
+        (
+            "          testpypi-venv/bin/agent-statusline selftest",
+            "          testpypi-venv/bin/agent-statusline --selftest",
+            "TestPyPI verification job is missing: testpypi-venv/bin/agent-statusline selftest",
+        ),
     ),
 )
 def test_public_readiness_policy_enforces_testpypi_boundaries(
@@ -825,19 +833,19 @@ def test_public_readiness_policy_enforces_testpypi_boundaries(
             "TestPyPI publish job must not contain: run:",
         ),
         (
-            "        password: stored-secret\n",
+            '        "password": ${{ secrets.TESTPYPI_TOKEN }}\n',
             "stored package-index credentials are forbidden",
         ),
         (
-            "        skip-existing: true\n",
-            "TestPyPI publish job must not contain: skip-existing:",
+            "        skip_existing: true\n",
+            "TestPyPI publishing action step must be exact",
         ),
     ),
 )
 def test_public_readiness_policy_rejects_testpypi_publish_bypasses(tmp_path, insertion, message):
     root = valid_repository(tmp_path)
     workflow = root / ".github" / "workflows" / "release.yml"
-    marker = "      - uses: pypa/gh-action-pypi-publish@"
+    marker = "        uses: pypa/gh-action-pypi-publish@"
     text = workflow.read_text()
     index = text.index(marker)
     line_end = text.index("\n", index) + 1
@@ -847,6 +855,57 @@ def test_public_readiness_policy_rejects_testpypi_publish_bypasses(tmp_path, ins
 
     assert result.returncode == 1
     assert message in result.stderr
+
+
+@pytest.mark.parametrize(
+    "extra_input",
+    (
+        "          repository: other/project\n",
+        "          run-id: 1234\n",
+        "          github-token: ${{ github.token }}\n",
+    ),
+)
+def test_public_readiness_policy_rejects_cross_run_artifact_sources(tmp_path, extra_input):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "release.yml"
+    text = workflow.read_text()
+    before, publish = text.split("  testpypi-publish:", 1)
+    marker = "          path: release-dist\n"
+    assert marker in publish
+    write(
+        workflow, before + "  testpypi-publish:" + publish.replace(marker, marker + extra_input, 1)
+    )
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert "TestPyPI download inputs must bind only the current build artifact" in result.stderr
+
+
+def test_testpypi_workflow_selftest_command_matches_the_real_cli(tmp_path):
+    script = workflow_step_script(
+        VERIFY.parents[1] / ".github" / "workflows" / "release.yml",
+        "install the exact TestPyPI wheel and run its isolated self-test",
+    )
+    selftest_line = script.splitlines()[-1]
+    assert selftest_line == "testpypi-venv/bin/agent-statusline selftest"
+    command = selftest_line.replace(
+        "testpypi-venv/bin/agent-statusline",
+        f"{shlex.quote(sys.executable)} -m agent_statusline",
+    )
+    env = os.environ.copy()
+    env["AGENT_STATUSLINE_STATE"] = str(tmp_path / "state")
+
+    result = subprocess.run(
+        ["/bin/sh", "-c", command],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "selftest ok" in result.stdout
 
 
 @pytest.mark.parametrize(

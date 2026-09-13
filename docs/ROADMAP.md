@@ -384,6 +384,8 @@ Current release:
 - Enforce the exact four-job topology, least privilege, immutable action and
   filename behavior, bounded network evidence, and isolated install through
   synthetic mutation coverage.
+- Exact-map every publisher-action input and execute the installed `selftest`
+  command shape in local policy evidence before the immutable upload boundary.
 - Do not publish to production PyPI or claim package-name installation there.
 
 ## 0.3.5 — trusted production PyPI publication and verification

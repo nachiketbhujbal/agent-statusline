@@ -77,7 +77,8 @@ The v0.3.4 owner branch starts from exact v0.3.3. Change only the release
 workflow, artifact identity output, package-index verifier and policy tests, one
 ADR, and synchronized release records described by ADR 0043. Configure the
 exact TestPyPI environment and pending publisher only after independent review.
-Do not automate the maintainer's deployment approval. Production PyPI is
+Exact-map both publisher action inputs and preserve the executable `selftest`
+subcommand regression. Do not automate the maintainer's deployment approval. Production PyPI is
 v0.3.5; explicit host acquisition and Codex evidence move to the next minor
 track. Runtime behavior, live installation, accepted pull refs, unreachable
 objects, and recovery cleanup remain separate.
