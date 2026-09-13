@@ -49,6 +49,7 @@ old one rather than rewriting why the earlier choice was made.
 | [0041](0041-stage-pypi-distribution-as-independent-patches.md) | Stage PyPI distribution as independent patches |
 | [0042](0042-build-once-and-promote-exact-release-artifacts.md) | Build once and promote exact release artifacts |
 | [0043](0043-publish-exact-artifacts-to-testpypi-with-gated-oidc.md) | Publish exact artifacts to TestPyPI with gated OIDC |
+| [0044](0044-keep-the-readme-as-a-product-landing-page.md) | Keep the README as a product landing page |
 
 ## Reading order
 

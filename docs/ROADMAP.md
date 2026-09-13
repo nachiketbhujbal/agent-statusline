@@ -31,11 +31,11 @@ installed-artifact evidence.
 | 0.3.1 | Measured hot-path performance | **Released** |
 | 0.3.2 | PyPI metadata and package-page readiness | **Released** |
 | 0.3.3 | Build-once release artifact promotion | **Released** |
-| 0.3.4 | Trusted TestPyPI publication and verification | **Current** |
-| 0.3.5 | Trusted production PyPI publication and verification | Planned |
+| 0.3.4 | Trusted TestPyPI publication and verification | **Released** |
+| 0.3.5 | Public README and trusted production PyPI publication | **Current** |
 | 0.4.0 | Explicit host-acquisition architecture | Planned |
 
-0.2.1 through 0.2.14 and v0.3.0 through v0.3.3 are tagged and released. The
+0.2.1 through 0.2.14 and v0.3.0 through v0.3.4 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
 production-ready supported public baseline. Each boundary retains its exact
 review and artifact evidence; GitHub Release objects begin at v0.2.4. The
@@ -371,7 +371,7 @@ Released:
 
 ## 0.3.4 — trusted TestPyPI publication and verification
 
-Current release:
+Released:
 
 - Configure a dedicated manually approved TestPyPI environment and pending
   trusted publisher only after the exact reviewed workflow identity is known.
@@ -388,12 +388,22 @@ Current release:
   command shape in local policy evidence before the immutable upload boundary.
 - Do not publish to production PyPI or claim package-name installation there.
 
-## 0.3.5 — trusted production PyPI publication and verification
+## 0.3.5 — public README and trusted production PyPI publication
 
-Planned:
+Current release:
 
+- Replace the exhaustive landing-page documentation catalog and internal
+  process narrative with a concise product, output, installation, safety,
+  command, and contributor journey
+  ([ADR 0044](adrs/0044-keep-the-readme-as-a-product-landing-page.md)).
+- Preserve the detailed handoff, history, review, research, and architecture
+  records in the repository without promoting every one from the README.
+- Stage plain package-name installation and update commands on the unmerged
+  release candidate; do not claim production availability on `main` before the
+  production publication is authorized.
 - Configure a separate manually approved production environment and pending
-  trusted publisher for the reviewed workflow.
+  trusted publisher for the reviewed workflow only after the maintainer accepts
+  the public README and separately authorizes production publication.
 - Permit production publication only after the same artifacts pass the build,
   GitHub Release, TestPyPI, and installation-verification boundaries.
 - Publish without a stored API token, verify production hashes and installation,

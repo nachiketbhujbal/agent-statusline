@@ -4,7 +4,23 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.3.4
+## Unreleased — 0.3.5
+
+The public README is now a focused product landing page and package-index
+description rather than an inventory of internal project records. It leads with
+the complete status-line output, the short installation and verification path,
+the data shown, local privacy and exact-money guarantees, common commands, and
+concise update, removal, and development guidance. Detailed handoff, release,
+review, research, and architecture history remains tracked in the repository
+without being promoted as the prospective user's primary journey
+([ADR 0044](adrs/0044-keep-the-readme-as-a-product-landing-page.md)).
+
+The unmerged candidate stages production package-name commands for `uv tool`,
+`pipx`, and `pip`. Production PyPI configuration, publication, merge, tagging,
+and release remain unapproved and must not occur until the maintainer accepts
+the public copy and separately authorizes that boundary.
+
+## 0.3.4
 
 The release pipeline now sends the exact build-once artifact pair to TestPyPI
 through a dedicated manually approved environment and a short-lived trusted

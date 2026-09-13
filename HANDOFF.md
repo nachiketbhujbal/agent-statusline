@@ -6,8 +6,8 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.3.4, trusted TestPyPI publication and verification.
-- Preceding release: v0.3.3, the immutable base for this slice.
+- Current release target: 0.3.5, public README and trusted production PyPI publication.
+- Preceding release: v0.3.4, the immutable base for this slice.
 - Branch owner: Codex; only the owner changes the release branch.
 - Reviewer role: one independent read-only reviewer, assigned after the exact
   candidate SHA is frozen. No second reviewer or delegated worker runs beside it.
@@ -23,11 +23,11 @@ the roadmap, or accepted ADRs.
   force-push are blocked.
 - Runtime dependencies remain empty and versions remain Git-tag-derived.
 
-The v0.3.4 slice preserves v0.3.3's build-once pair, then adds one manually
-approved TestPyPI environment and one two-action publisher with only short-lived
-OIDC authority. A dependent read-only job requires the exact index filenames
-and build hashes, then installs the exact wheel under Python 3.9 and runs its
-isolated self-test. Production PyPI remains a separate v0.3.5 boundary.
+The first v0.3.5 phase replaces the exhaustive public README catalog and
+internal process narrative with a concise product and installation journey.
+The unmerged candidate may stage package-name commands, but production PyPI
+configuration, publication, merge, tagging, and release remain unapproved until
+the maintainer accepts the public copy and separately authorizes that boundary.
 
 ## Stable product boundary
 
@@ -57,7 +57,8 @@ production-ready records-and-metadata milestone promised by ADR 0030. v0.3.1
 completed measured hot-path import reduction and source-hermetic benchmark
 evidence. v0.3.2 completed public package metadata, portable package-page
 rendering, and package-manager guidance. v0.3.3 completed locked build-once
-artifact promotion and exact GitHub Release publication.
+artifact promotion and exact GitHub Release publication. v0.3.4 completed
+trusted TestPyPI publication and exact public-index verification.
 
 The complete sequence and exclusions are authoritative in
 [ROADMAP.md](docs/ROADMAP.md). Do not merge the historical hardening branch as
@@ -65,24 +66,22 @@ a whole or import a later slice into the current release.
 
 ## Resume point
 
-v0.3.3 is complete at tagged merge
-`8261b0609f7b6a827da7b8dc0a79aebb082d677f`. Exact-SHA review, protected PR and
-merged-main Linux/macOS CI, tag-triggered Release, current package-description
-validation, downloaded asset verification, and an isolated Python 3.9 wheel
-self-test passed. Live Claude Code remains intentionally on exact installed
-v0.3.1 through one status-line command and four managed hooks, with unrelated
-settings and state preserved and no checkout symlink.
+v0.3.4 is complete at tagged merge
+`d7f81ba7101eb4ee1fdc736bedd2fb5286e9e0ae`. Exact-SHA review, protected PR and
+merged-main CI, tag-triggered build-once Release, manually approved OIDC
+TestPyPI publication, public hash verification, and an isolated Python 3.9
+wheel self-test passed. Live Claude Code remains intentionally on exact
+installed v0.3.1 through one status-line command and four managed hooks, with
+unrelated settings and state preserved and no checkout symlink.
 
-The v0.3.4 owner branch starts from exact v0.3.3. Change only the release
-workflow, artifact identity output, package-index verifier and policy tests, one
-ADR, and synchronized release records described by ADR 0043. Configure the
-exact TestPyPI environment and pending publisher only after independent review.
-Exact-map both publisher action inputs and preserve the executable `selftest`
-subcommand regression under the Release job's non-installed project shape. Do
-not automate the maintainer's deployment approval. Production PyPI is
-v0.3.5; explicit host acquisition and Codex evidence move to the next minor
-track. Runtime behavior, live installation, accepted pull refs, unreachable
-objects, and recovery cleanup remain separate.
+The v0.3.5 owner branch starts from exact v0.3.4. In the current phase change
+only the README, ADR 0044 and its index, and synchronized release records. Run
+the complete local gate and one independent exact-SHA review, then stop for
+maintainer acceptance. Do not configure a production publisher or environment,
+merge, tag, publish, access live state, or alter live installation. Explicit
+host acquisition and Codex evidence remain on the next minor track. Runtime
+behavior, accepted pull refs, unreachable objects, and recovery cleanup remain
+separate.
 [PUBLIC_READINESS.md](docs/PUBLIC_READINESS.md) records the protected baseline.
 
 Durable decisions live in [ADRs](docs/adrs/README.md), completed behavior in the
