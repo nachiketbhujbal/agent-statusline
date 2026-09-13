@@ -559,17 +559,28 @@ def check_lean_policy(root: Path) -> list[str]:
             "':(exclude)docs/**' ':(exclude)**/*.md' "
             "':(top,glob,exclude)*.md' ':(exclude)LICENSE'; then"
         )
-        if sum(line.strip() == scope_condition for line in scope_step.splitlines()) != 1:
-            errors.append(
-                ".github/workflows/ci.yml: scope step must use the exact reviewed "
-                "documentation-only path boundary"
+        expected_scope_step = "\n".join(
+            (
+                "      - name: preserve the documentation-only compute boundary",
+                "        id: scope",
+                "        env:",
+                "          BASE_SHA: ${{ github.event_name == 'pull_request' "
+                "&& github.event.pull_request.base.sha || github.event.before }}",
+                "        run: |",
+                '          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then',
+                '            echo "full=true" >> "${GITHUB_OUTPUT}"',
+                f"          {scope_condition}",
+                '            echo "full=false" >> "${GITHUB_OUTPUT}"',
+                "          else",
+                '            echo "full=true" >> "${GITHUB_OUTPUT}"',
+                "          fi",
             )
-        for output in (
-            'echo "full=true" >> "${GITHUB_OUTPUT}"',
-            'echo "full=false" >> "${GITHUB_OUTPUT}"',
-        ):
-            if output not in scope_step:
-                errors.append(f".github/workflows/ci.yml: scope step must emit: {output}")
+        )
+        if scope_step != expected_scope_step:
+            errors.append(
+                ".github/workflows/ci.yml: scope step must exactly match the reviewed "
+                "fail-closed classifier"
+            )
 
     required_job = _yaml_block(ci, "required:", indent=2)
     required_step = _yaml_block(

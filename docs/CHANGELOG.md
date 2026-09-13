@@ -33,6 +33,12 @@ source change still selects the full Linux and macOS gate. Public-readiness
 policy pins the exact reviewed path boundary so the mismatch cannot silently
 return.
 
+Independent review then demonstrated that checking only the diff line and the
+presence of both output strings would still accept a changed base expression or
+a trailing `full=false` override. The policy now exact-matches the complete
+scope step, and mutation tests reject both bypasses before either could skip
+required source or workflow evidence.
+
 ## 0.3.4
 
 The release pipeline now sends the exact build-once artifact pair to TestPyPI

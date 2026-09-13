@@ -14,6 +14,10 @@ SCOPE_CONDITION = (
     "':(exclude)docs/**' ':(exclude)**/*.md' "
     "':(top,glob,exclude)*.md' ':(exclude)LICENSE'"
 )
+BASE_SHA_EXPRESSION = (
+    "${{ github.event_name == 'pull_request' "
+    "&& github.event.pull_request.base.sha || github.event.before }}"
+)
 
 
 def write(path, text):
@@ -42,7 +46,10 @@ jobs:
         with:
           fetch-depth: 0
       - run: python scripts/audit_reachable_history.py --ref HEAD
-      - id: scope
+      - name: preserve the documentation-only compute boundary
+        id: scope
+        env:
+          BASE_SHA: {BASE_SHA_EXPRESSION}
         run: |
           if [ "${{GITHUB_EVENT_NAME}}" = "workflow_dispatch" ]; then
             echo "full=true" >> "${{GITHUB_OUTPUT}}"
@@ -663,35 +670,30 @@ def test_public_readiness_policy_requires_exact_aggregate_job_condition(tmp_path
 
 
 @pytest.mark.parametrize(
-    "output",
+    ("fragment", "replacement"),
     (
-        'echo "full=true" >> "${GITHUB_OUTPUT}"',
-        'echo "full=false" >> "${GITHUB_OUTPUT}"',
+        (
+            BASE_SHA_EXPRESSION,
+            "${{ github.sha }}",
+        ),
+        (
+            "          fi\n",
+            '          fi\n          echo "full=false" >> "${GITHUB_OUTPUT}"\n',
+        ),
+        (" ':(top,glob,exclude)*.md'", ""),
     ),
 )
-def test_public_readiness_policy_requires_both_scope_outputs(tmp_path, output):
+def test_public_readiness_policy_requires_exact_scope_classifier(tmp_path, fragment, replacement):
     root = valid_repository(tmp_path)
     workflow = root / ".github" / "workflows" / "ci.yml"
-    write(workflow, workflow.read_text().replace(output, "echo invalid"))
+    text = workflow.read_text()
+    assert fragment in text
+    write(workflow, text.replace(fragment, replacement, 1))
 
     result = run_policy(root)
 
     assert result.returncode == 1
-    assert f"scope step must emit: {output}" in result.stderr
-
-
-def test_public_readiness_policy_requires_root_markdown_scope_exclusion(tmp_path):
-    root = valid_repository(tmp_path)
-    workflow = root / ".github" / "workflows" / "ci.yml"
-    write(
-        workflow,
-        workflow.read_text().replace(" ':(top,glob,exclude)*.md'", "", 1),
-    )
-
-    result = run_policy(root)
-
-    assert result.returncode == 1
-    assert "exact reviewed documentation-only path boundary" in result.stderr
+    assert "exactly match the reviewed fail-closed classifier" in result.stderr
 
 
 @pytest.mark.parametrize(
@@ -701,11 +703,18 @@ def test_public_readiness_policy_requires_root_markdown_scope_exclusion(tmp_path
         ("HANDOFF.md", "false"),
         ("docs/guide.md", "false"),
         ("src/example.py", "true"),
+        (".github/workflows/ci.yml", "true"),
     ),
 )
 def test_ci_scope_classifies_root_and_nested_documentation(tmp_path, relative, expected):
     root = tmp_path / "repository"
-    for path in ("README.md", "HANDOFF.md", "docs/guide.md", "src/example.py"):
+    for path in (
+        "README.md",
+        "HANDOFF.md",
+        "docs/guide.md",
+        "src/example.py",
+        ".github/workflows/ci.yml",
+    ):
         write(root / path, "base\n")
     commit_repository(root)
     base_sha = git(root, "rev-parse", "HEAD").stdout.strip()
