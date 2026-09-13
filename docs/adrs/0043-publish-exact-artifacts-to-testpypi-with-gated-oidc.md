@@ -53,6 +53,8 @@ credentials or bypass controls. They exact-map both publisher steps and every
 supported input so alternate repository/run artifact sources, credential
 aliases, and collision-skipping options cannot hide behind a pinned action. An
 execution-level regression also runs the exact documented `selftest` subcommand.
+That child explicitly loads the current checkout source so it remains hermetic
+when the Release job tests under its deliberate `--no-install-project` setup.
 A tag or uploaded filename is immutable; any failure requiring a content change
 is corrected in a later patch.
 

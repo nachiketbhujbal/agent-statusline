@@ -28,6 +28,9 @@ the invalid `--selftest` option to the real `selftest` subcommand, then required
 exact input maps for both publisher actions so quoted credentials,
 collision-skipping aliases, and cross-run or cross-repository artifact sources
 fail closed.
+The command-shape regression explicitly loads this checkout's source, so it
+also passes in the Release job's deliberate `--no-install-project` environment
+from an unrelated working directory.
 
 Production PyPI, production package-name installation, runtime behavior,
 runtime dependencies, display, accounting, live Claude Code, and Codex host

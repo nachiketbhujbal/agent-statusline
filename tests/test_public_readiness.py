@@ -895,6 +895,7 @@ def test_testpypi_workflow_selftest_command_matches_the_real_cli(tmp_path):
     )
     env = os.environ.copy()
     env["AGENT_STATUSLINE_STATE"] = str(tmp_path / "state")
+    env["PYTHONPATH"] = str(VERIFY.parents[1] / "src")
 
     result = subprocess.run(
         ["/bin/sh", "-c", command],
