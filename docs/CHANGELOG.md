@@ -20,6 +20,12 @@ The unmerged candidate stages production package-name commands for `uv tool`,
 and release remain unapproved and must not occur until the maintainer accepts
 the public copy and separately authorizes that boundary.
 
+Independent review corrected the retained output example so its process-memory
+percentage, memory bar, and named tool counts agree with the renderer. It also
+distinguishes atomically replaced state from the rate-limit log's locked,
+durable append path rather than overstating one persistence mechanism for every
+state file.
+
 ## 0.3.4
 
 The release pipeline now sends the exact build-once artifact pair to TestPyPI
