@@ -30,12 +30,12 @@ installed-artifact evidence.
 | 0.3.0 | Production-ready milestone | **Released** |
 | 0.3.1 | Measured hot-path performance | **Released** |
 | 0.3.2 | PyPI metadata and package-page readiness | **Released** |
-| 0.3.3 | Build-once release artifact promotion | **Current** |
-| 0.3.4 | Trusted TestPyPI publication and verification | Planned |
+| 0.3.3 | Build-once release artifact promotion | **Released** |
+| 0.3.4 | Trusted TestPyPI publication and verification | **Current** |
 | 0.3.5 | Trusted production PyPI publication and verification | Planned |
 | 0.4.0 | Explicit host-acquisition architecture | Planned |
 
-0.2.1 through 0.2.14 and v0.3.0 through v0.3.2 are tagged and released. The
+0.2.1 through 0.2.14 and v0.3.0 through v0.3.3 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
 production-ready supported public baseline. Each boundary retains its exact
 review and artifact evidence; GitHub Release objects begin at v0.2.4. The
@@ -351,7 +351,7 @@ Released:
 
 ## 0.3.3 — build-once release artifact promotion
 
-Current release:
+Released:
 
 - Build and validate the wheel and source archive once in a read-only release
   job, then upload one explicitly named workflow artifact.
@@ -371,7 +371,7 @@ Current release:
 
 ## 0.3.4 — trusted TestPyPI publication and verification
 
-Planned:
+Current release:
 
 - Configure a dedicated manually approved TestPyPI environment and pending
   trusted publisher only after the exact reviewed workflow identity is known.
@@ -379,6 +379,13 @@ Planned:
   package-index credential.
 - Verify index-reported hashes, exact-version installation, and the isolated
   ten-row self-test after bounded propagation retries.
+- Require the TestPyPI deployment to wait for the same tag's successful build
+  and GitHub Release, and keep its manual environment approval human-operated.
+- Enforce the exact four-job topology, least privilege, immutable action and
+  filename behavior, bounded network evidence, and isolated install through
+  synthetic mutation coverage.
+- Exact-map every publisher-action input and execute the installed `selftest`
+  command shape in local policy evidence before the immutable upload boundary.
 - Do not publish to production PyPI or claim package-name installation there.
 
 ## 0.3.5 — trusted production PyPI publication and verification

@@ -71,6 +71,7 @@ def prepare(args: argparse.Namespace) -> None:
     pair = _expected_pair(args.directory, match.group(1))
     outputs = {
         "artifact_name": args.artifact_name,
+        "version": match.group(1),
         "wheel_name": pair.wheel.name,
         "wheel_sha256": pair.wheel_sha256,
         "sdist_name": pair.sdist.name,

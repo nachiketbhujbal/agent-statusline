@@ -4,7 +4,39 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.3.3
+## Unreleased — 0.3.4
+
+The release pipeline now sends the exact build-once artifact pair to TestPyPI
+through a dedicated manually approved environment and a short-lived trusted
+publishing identity. The publication job waits for both the read-only build and
+GitHub Release, receives only `id-token: write`, downloads the named artifact,
+and invokes one immutable-pinned PyPA action. It cannot rebuild, execute a
+script, read a stored package-index credential, skip an existing filename, or
+target production PyPI.
+
+A separate read-only job polls the version-specific TestPyPI JSON endpoint
+within fixed attempt, delay, response-size, and request-timeout limits. It
+requires the exact v0.3.4 project, wheel/source filenames, distribution types,
+and build-job SHA-256 hashes. It then installs the exact wheel from TestPyPI in
+a fresh Python 3.9 environment with no dependencies or source fallback,
+verifies the command version, and runs the installed self-test against
+disposable state. Deterministic policy and unit tests fail closed on privilege,
+topology, endpoint, artifact, retry, credential, and isolated-install drift
+([ADR 0043](adrs/0043-publish-exact-artifacts-to-testpypi-with-gated-oidc.md)).
+Independent review additionally proved and corrected the installed command from
+the invalid `--selftest` option to the real `selftest` subcommand, then required
+exact input maps for both publisher actions so quoted credentials,
+collision-skipping aliases, and cross-run or cross-repository artifact sources
+fail closed.
+The command-shape regression explicitly loads this checkout's source, so it
+also passes in the Release job's deliberate `--no-install-project` environment
+from an unrelated working directory.
+
+Production PyPI, production package-name installation, runtime behavior,
+runtime dependencies, display, accounting, live Claude Code, and Codex host
+work remain outside this release.
+
+## 0.3.3
 
 The tag-triggered pipeline now builds and validates one exact wheel/source pair
 inside a read-only job using the committed uv lock and exact uv version. It
