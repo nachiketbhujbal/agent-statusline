@@ -81,7 +81,7 @@ jobs:
     )
     write(
         tmp_path / ".github" / "workflows" / "release.yml",
-        f"""name: Release
+        rf"""name: Release
 on:
   push:
     tags: ["v*"]
@@ -98,6 +98,7 @@ jobs:
       contents: read
     outputs:
       artifact_name: ${{{{ steps.identity.outputs.artifact_name }}}}
+      version: ${{{{ steps.identity.outputs.version }}}}
       wheel_name: ${{{{ steps.identity.outputs.wheel_name }}}}
       wheel_sha256: ${{{{ steps.identity.outputs.wheel_sha256 }}}}
       sdist_name: ${{{{ steps.identity.outputs.sdist_name }}}}
@@ -160,6 +161,71 @@ jobs:
             release-dist/${{{{ needs.build.outputs.wheel_name }}}}
             release-dist/${{{{ needs.build.outputs.sdist_name }}}}
           generate_release_notes: true
+  testpypi-publish:
+    needs: [build, github-release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/agent-statusline/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@{PIN} # v8.0.1
+        with:
+          name: ${{{{ needs.build.outputs.artifact_name }}}}
+          path: release-dist
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          packages-dir: release-dist/
+          repository-url: https://test.pypi.org/legacy/
+  testpypi-verify:
+    needs: [build, testpypi-publish]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@{PIN} # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@{PIN} # v7.0.0
+        with:
+          python-version: "3.9"
+      - env:
+          VERSION: ${{{{ needs.build.outputs.version }}}}
+          WHEEL_NAME: ${{{{ needs.build.outputs.wheel_name }}}}
+          WHEEL_SHA256: ${{{{ needs.build.outputs.wheel_sha256 }}}}
+          SDIST_NAME: ${{{{ needs.build.outputs.sdist_name }}}}
+          SDIST_SHA256: ${{{{ needs.build.outputs.sdist_sha256 }}}}
+        run: |
+          python scripts/verify_package_index.py \
+            --index testpypi \
+            --project agent-statusline \
+            --version "${{VERSION}}" \
+            --wheel-name "${{WHEEL_NAME}}" \
+            --wheel-sha256 "${{WHEEL_SHA256}}" \
+            --sdist-name "${{SDIST_NAME}}" \
+            --sdist-sha256 "${{SDIST_SHA256}}" \
+            --attempts 12 \
+            --delay-seconds 5 \
+            --timeout-seconds 10
+      - env:
+          VERSION: ${{{{ needs.build.outputs.version }}}}
+          AGENT_STATUSLINE_STATE: ${{{{ runner.temp }}}}/agent-statusline-testpypi-state
+        run: |
+          python -m venv testpypi-venv
+          testpypi-venv/bin/python -m pip install \
+            --disable-pip-version-check \
+            --no-cache-dir \
+            --no-deps \
+            --only-binary=:all: \
+            --index-url https://test.pypi.org/simple/ \
+            --retries 4 \
+            --timeout 10 \
+            "agent-statusline==${{VERSION}}"
+          test "$(testpypi-venv/bin/agent-statusline --version)" = "${{VERSION}}"
+          testpypi-venv/bin/agent-statusline --selftest
 """,
     )
     write(
@@ -662,7 +728,7 @@ def test_public_readiness_policy_requires_release_ancestry_audit(tmp_path):
         (
             "  contents: read\nconcurrency:",
             "  contents: read\n  id-token: write\nconcurrency:",
-            "package-index identity permission is outside v0.3.3",
+            "exactly one job must receive package-index identity permission",
         ),
         (
             "  build:\n    runs-on: ubuntu-latest",
@@ -679,6 +745,103 @@ def test_public_readiness_policy_enforces_build_once_release_topology(
     text = workflow.read_text()
     assert fragment in text
     write(workflow, text.replace(fragment, replacement, 1))
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert message in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("fragment", "replacement", "message"),
+    (
+        (
+            "  testpypi-publish:\n    needs: [build, github-release]",
+            "  testpypi-publish:\n    needs: github-release",
+            "TestPyPI publish job must use only its canonical direct keys",
+        ),
+        (
+            "      name: testpypi",
+            "      name: pypi",
+            "TestPyPI publish environment must be exact",
+        ),
+        (
+            "      id-token: write",
+            "      contents: write",
+            "TestPyPI publish permission must be exactly id-token: write",
+        ),
+        (
+            "          packages-dir: release-dist/",
+            "          packages-dir: dist/",
+            "TestPyPI publish job must contain exactly once: packages-dir: release-dist/",
+        ),
+        (
+            "          repository-url: https://test.pypi.org/legacy/",
+            "          repository-url: https://upload.pypi.org/legacy/",
+            "TestPyPI publish job must contain exactly once: repository-url",
+        ),
+        (
+            "  testpypi-verify:\n    needs: [build, testpypi-publish]",
+            "  testpypi-verify:\n    needs: testpypi-publish",
+            "TestPyPI verification job must use only its canonical direct keys",
+        ),
+        (
+            "            --attempts 12",
+            "            --attempts 120",
+            "TestPyPI verification job requires exact bounded option: --attempts 12",
+        ),
+        (
+            "            --no-deps",
+            "            --deps",
+            "TestPyPI verification job is missing: --no-deps",
+        ),
+        (
+            "          AGENT_STATUSLINE_STATE: ${{ runner.temp }}/agent-statusline-testpypi-state",
+            "          AGENT_STATUSLINE_STATE: ~/.local/state/agent-statusline",
+            "TestPyPI verification job is missing: AGENT_STATUSLINE_STATE",
+        ),
+    ),
+)
+def test_public_readiness_policy_enforces_testpypi_boundaries(
+    tmp_path, fragment, replacement, message
+):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "release.yml"
+    text = workflow.read_text()
+    assert fragment in text
+    write(workflow, text.replace(fragment, replacement, 1))
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert message in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("insertion", "message"),
+    (
+        (
+            "        run: echo bypass\n",
+            "TestPyPI publish job must not contain: run:",
+        ),
+        (
+            "        password: stored-secret\n",
+            "stored package-index credentials are forbidden",
+        ),
+        (
+            "        skip-existing: true\n",
+            "TestPyPI publish job must not contain: skip-existing:",
+        ),
+    ),
+)
+def test_public_readiness_policy_rejects_testpypi_publish_bypasses(tmp_path, insertion, message):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "release.yml"
+    marker = "      - uses: pypa/gh-action-pypi-publish@"
+    text = workflow.read_text()
+    index = text.index(marker)
+    line_end = text.index("\n", index) + 1
+    write(workflow, text[:line_end] + insertion + text[line_end:])
 
     result = run_policy(root)
 

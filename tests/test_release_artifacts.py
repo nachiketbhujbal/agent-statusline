@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 SCRIPT = Path(__file__).parents[1] / "scripts" / "release_artifacts.py"
-VERSION = "0.3.3"
+VERSION = "0.3.4"
 ARTIFACT_NAME = "release-distributions-" + "a" * 40
 
 
@@ -91,6 +91,7 @@ def test_prepare_records_exact_names_and_hashes(tmp_path):
     assert result.returncode == 0, result.stderr
     assert output.read_text(encoding="utf-8").splitlines() == [
         f"artifact_name={ARTIFACT_NAME}",
+        f"version={VERSION}",
         f"wheel_name={wheel.name}",
         f"wheel_sha256={digest(wheel)}",
         f"sdist_name={sdist.name}",
@@ -156,7 +157,7 @@ def test_verify_accepts_the_unchanged_pair(tmp_path):
     result = verify(directory, wheel, sdist)
 
     assert result.returncode == 0, result.stderr
-    assert "verified exact v0.3.3 release pair" in result.stdout
+    assert "verified exact v0.3.4 release pair" in result.stdout
 
 
 @pytest.mark.parametrize("field", ("wheel_sha256", "sdist_sha256"))
@@ -176,7 +177,7 @@ def test_verify_rejects_disagreeing_versions(tmp_path):
         directory,
         wheel,
         sdist,
-        sdist_name="agent_statusline-0.3.4.tar.gz",
+        sdist_name="agent_statusline-0.3.5.tar.gz",
     )
 
     assert result.returncode == 1

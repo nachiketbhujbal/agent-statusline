@@ -6,8 +6,8 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.3.3, build-once release artifact promotion.
-- Preceding release: v0.3.2, the immutable base for this slice.
+- Current release target: 0.3.4, trusted TestPyPI publication and verification.
+- Preceding release: v0.3.3, the immutable base for this slice.
 - Branch owner: Codex; only the owner changes the release branch.
 - Reviewer role: one independent read-only reviewer, assigned after the exact
   candidate SHA is frozen. No second reviewer or delegated worker runs beside it.
@@ -23,11 +23,11 @@ the roadmap, or accepted ADRs.
   force-push are blocked.
 - Runtime dependencies remain empty and versions remain Git-tag-derived.
 
-The v0.3.3 slice locks the hosted release toolchain, builds and validates one
-exact pair in a read-only job, and promotes only that named and hash-bound pair
-through a dependent GitHub-Release job with repository write permission. It
-changes no runtime source, runtime dependency, display, live configuration,
-hosted environment, package index, or package-name installation claim.
+The v0.3.4 slice preserves v0.3.3's build-once pair, then adds one manually
+approved TestPyPI environment and one two-action publisher with only short-lived
+OIDC authority. A dependent read-only job requires the exact index filenames
+and build hashes, then installs the exact wheel under Python 3.9 and runs its
+isolated self-test. Production PyPI remains a separate v0.3.5 boundary.
 
 ## Stable product boundary
 
@@ -56,7 +56,8 @@ v0.2.14 completed public-CI alignment after conversion. v0.3.0 completed the
 production-ready records-and-metadata milestone promised by ADR 0030. v0.3.1
 completed measured hot-path import reduction and source-hermetic benchmark
 evidence. v0.3.2 completed public package metadata, portable package-page
-rendering, and package-manager guidance.
+rendering, and package-manager guidance. v0.3.3 completed locked build-once
+artifact promotion and exact GitHub Release publication.
 
 The complete sequence and exclusions are authoritative in
 [ROADMAP.md](docs/ROADMAP.md). Do not merge the historical hardening branch as
@@ -64,22 +65,22 @@ a whole or import a later slice into the current release.
 
 ## Resume point
 
-v0.3.2 is complete at tagged merge
-`9f7ef6b090a65c309717f1d95cd30b1f08faae85`. Exact-SHA review, protected PR and
+v0.3.3 is complete at tagged merge
+`8261b0609f7b6a827da7b8dc0a79aebb082d677f`. Exact-SHA review, protected PR and
 merged-main Linux/macOS CI, tag-triggered Release, current package-description
 validation, downloaded asset verification, and an isolated Python 3.9 wheel
 self-test passed. Live Claude Code remains intentionally on exact installed
 v0.3.1 through one status-line command and four managed hooks, with unrelated
 settings and state preserved and no checkout symlink.
 
-The v0.3.3 owner branch starts from exact v0.3.2. Change only the locked release
-tooling, workflow, policy tests, one ADR, and synchronized release records
-described by ADR 0042. The workflow must build once under read-only permission
-and allow its dependent write job to publish only the downloaded exact pair.
-TestPyPI is v0.3.4; production PyPI is v0.3.5; explicit host acquisition and
-Codex evidence move to the next minor track. Runtime behavior, live
-installation, accounts, environments, OIDC, package-index publication,
-accepted pull refs, unreachable objects, and recovery cleanup remain separate.
+The v0.3.4 owner branch starts from exact v0.3.3. Change only the release
+workflow, artifact identity output, package-index verifier and policy tests, one
+ADR, and synchronized release records described by ADR 0043. Configure the
+exact TestPyPI environment and pending publisher only after independent review.
+Do not automate the maintainer's deployment approval. Production PyPI is
+v0.3.5; explicit host acquisition and Codex evidence move to the next minor
+track. Runtime behavior, live installation, accepted pull refs, unreachable
+objects, and recovery cleanup remain separate.
 [PUBLIC_READINESS.md](docs/PUBLIC_READINESS.md) records the protected baseline.
 
 Durable decisions live in [ADRs](docs/adrs/README.md), completed behavior in the
