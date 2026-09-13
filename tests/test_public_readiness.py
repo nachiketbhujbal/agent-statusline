@@ -9,6 +9,11 @@ import pytest
 VERIFY = Path(__file__).parents[1] / "scripts" / "verify_public_readiness.py"
 PIN = "a" * 40
 NO_REPLY = "17068914+nachiketbhujbal@users.noreply.github.com"
+SCOPE_CONDITION = (
+    'git diff --quiet "${BASE_SHA}" HEAD -- . '
+    "':(exclude)docs/**' ':(exclude)**/*.md' "
+    "':(top,glob,exclude)*.md' ':(exclude)LICENSE'"
+)
 
 
 def write(path, text):
@@ -39,7 +44,9 @@ jobs:
       - run: python scripts/audit_reachable_history.py --ref HEAD
       - id: scope
         run: |
-          if git diff --quiet "${{BASE_SHA}}" HEAD -- .; then
+          if [ "${{GITHUB_EVENT_NAME}}" = "workflow_dispatch" ]; then
+            echo "full=true" >> "${{GITHUB_OUTPUT}}"
+          elif {SCOPE_CONDITION}; then
             echo "full=false" >> "${{GITHUB_OUTPUT}}"
           else
             echo "full=true" >> "${{GITHUB_OUTPUT}}"
@@ -671,6 +678,61 @@ def test_public_readiness_policy_requires_both_scope_outputs(tmp_path, output):
 
     assert result.returncode == 1
     assert f"scope step must emit: {output}" in result.stderr
+
+
+def test_public_readiness_policy_requires_root_markdown_scope_exclusion(tmp_path):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "ci.yml"
+    write(
+        workflow,
+        workflow.read_text().replace(" ':(top,glob,exclude)*.md'", "", 1),
+    )
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert "exact reviewed documentation-only path boundary" in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("relative", "expected"),
+    (
+        ("README.md", "false"),
+        ("HANDOFF.md", "false"),
+        ("docs/guide.md", "false"),
+        ("src/example.py", "true"),
+    ),
+)
+def test_ci_scope_classifies_root_and_nested_documentation(tmp_path, relative, expected):
+    root = tmp_path / "repository"
+    for path in ("README.md", "HANDOFF.md", "docs/guide.md", "src/example.py"):
+        write(root / path, "base\n")
+    commit_repository(root)
+    base_sha = git(root, "rev-parse", "HEAD").stdout.strip()
+    write(root / relative, "changed\n")
+    git(root, "add", relative)
+    git(root, "commit", "-m", "change")
+
+    output = tmp_path / "scope-output"
+    script = workflow_step_script(
+        VERIFY.parents[1] / ".github" / "workflows" / "ci.yml",
+        "preserve the documentation-only compute boundary",
+    )
+    result = subprocess.run(
+        ["/bin/sh", "-c", script],
+        cwd=root,
+        env={
+            **os.environ,
+            "BASE_SHA": base_sha,
+            "GITHUB_EVENT_NAME": "pull_request",
+            "GITHUB_OUTPUT": str(output),
+        },
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert output.read_text(encoding="utf-8") == f"full={expected}\n"
 
 
 def test_public_readiness_policy_requires_release_ancestry_audit(tmp_path):

@@ -517,7 +517,6 @@ def check_lean_policy(root: Path) -> list[str]:
         "contents: read",
         "fetch-depth: 0",
         "python scripts/audit_reachable_history.py --ref HEAD",
-        'git diff --quiet "${BASE_SHA}" HEAD --',
         "if: needs.checks.outputs.full == 'true'",
         "macos:",
         "needs: checks",
@@ -555,6 +554,16 @@ def check_lean_policy(root: Path) -> list[str]:
     if checks_job is None or scope_step is None:
         errors.append(".github/workflows/ci.yml: requires one unambiguous scope step")
     else:
+        scope_condition = (
+            'elif git diff --quiet "${BASE_SHA}" HEAD -- . '
+            "':(exclude)docs/**' ':(exclude)**/*.md' "
+            "':(top,glob,exclude)*.md' ':(exclude)LICENSE'; then"
+        )
+        if sum(line.strip() == scope_condition for line in scope_step.splitlines()) != 1:
+            errors.append(
+                ".github/workflows/ci.yml: scope step must use the exact reviewed "
+                "documentation-only path boundary"
+            )
         for output in (
             'echo "full=true" >> "${GITHUB_OUTPUT}"',
             'echo "full=false" >> "${GITHUB_OUTPUT}"',

@@ -41,7 +41,7 @@ jobs:
         run: |
           if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
             echo "full=true" >> "${GITHUB_OUTPUT}"
-          elif git diff --quiet "${BASE_SHA}" HEAD -- . ':(exclude)docs/**' ':(exclude)**/*.md' ':(exclude)LICENSE'; then
+          elif git diff --quiet "${BASE_SHA}" HEAD -- . ':(exclude)docs/**' ':(exclude)**/*.md' ':(top,glob,exclude)*.md' ':(exclude)LICENSE'; then
             echo "full=false" >> "${GITHUB_OUTPUT}"
           else
             echo "full=true" >> "${GITHUB_OUTPUT}"

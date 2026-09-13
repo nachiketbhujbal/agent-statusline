@@ -74,14 +74,16 @@ wheel self-test passed. Live Claude Code remains intentionally on exact
 installed v0.3.1 through one status-line command and four managed hooks, with
 unrelated settings and state preserved and no checkout symlink.
 
-The v0.3.5 owner branch starts from exact v0.3.4. In the current phase change
-only the README, ADR 0044 and its index, and synchronized release records. Run
-the complete local gate and one independent exact-SHA review, then stop for
-maintainer acceptance. Do not configure a production publisher or environment,
-merge, tag, publish, access live state, or alter live installation. Explicit
-host acquisition and Codex evidence remain on the next minor track. Runtime
-behavior, accepted pull refs, unreachable objects, and recovery cleanup remain
-separate.
+The v0.3.5 owner branch starts from exact v0.3.4. The current phase contains the
+README, ADR 0044 and its index, synchronized release records, and the approved
+narrow correction that makes root-level Markdown obey the existing
+documentation-only CI boundary. Exact policy and executable scope regressions
+must accompany that workflow correction. Run the complete local gate and one
+independent exact-SHA review, then stop for maintainer acceptance. Do not
+configure a production publisher or environment, merge, tag, publish, access
+live state, or alter live installation. Explicit host acquisition and Codex
+evidence remain on the next minor track. Runtime behavior, accepted pull refs,
+unreachable objects, and recovery cleanup remain separate.
 [PUBLIC_READINESS.md](docs/PUBLIC_READINESS.md) records the protected baseline.
 
 Durable decisions live in [ADRs](docs/adrs/README.md), completed behavior in the

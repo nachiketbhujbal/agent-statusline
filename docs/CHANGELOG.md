@@ -26,6 +26,13 @@ distinguishes atomically replaced state from the rate-limit log's locked,
 durable append path rather than overstating one persistence mechanism for every
 state file.
 
+The CI documentation-only classifier now explicitly excludes root-level
+Markdown as well as nested documentation. Executable regressions prove that
+`README.md`, `HANDOFF.md`, and nested docs retain the ancestry-only lane while a
+source change still selects the full Linux and macOS gate. Public-readiness
+policy pins the exact reviewed path boundary so the mismatch cannot silently
+return.
+
 ## 0.3.4
 
 The release pipeline now sends the exact build-once artifact pair to TestPyPI

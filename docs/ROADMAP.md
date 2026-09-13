@@ -398,6 +398,9 @@ Current release:
   ([ADR 0044](adrs/0044-keep-the-readme-as-a-product-landing-page.md)).
 - Preserve the detailed handoff, history, review, research, and architecture
   records in the repository without promoting every one from the README.
+- Correct the existing CI scope classifier so root-level Markdown receives the
+  same ancestry-only treatment as nested documentation, with executable and
+  fail-closed policy regressions while preserving full scope for source changes.
 - Stage plain package-name installation and update commands on the unmerged
   release candidate; do not claim production availability on `main` before the
   production publication is authorized.
