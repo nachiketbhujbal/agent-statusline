@@ -4,7 +4,26 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.3.5
+## Unreleased — 0.3.6
+
+Package-index publication is now an explicit post-release promotion rather
+than an automatic continuation of every tag build. Paired manual
+`publish-testpypi.yml` and `publish-pypi.yml` workflows promote the existing
+GitHub Release wheel and source archive without rebuilding them. Each binds an
+annotated tag reachable from exact `main`, revalidates and hashes the two
+release assets, grants OIDC authority only to a two-action environment-gated
+publisher, and then requires exact public-index hashes plus an isolated Python
+3.9 install and self-test. Production preparation also proves that TestPyPI
+already reports those exact hashes. Stored credentials, cross-run artifacts, ambient
+files, collision skipping, conditional evidence, and rebuilds fail closed
+([ADR 0045](adrs/0045-promote-github-releases-through-separate-package-index-workflows.md)).
+
+The production index verifier now supports PyPI's version-specific JSON
+endpoint alongside TestPyPI. The existing v0.3.5 GitHub Release artifacts can
+therefore be promoted unchanged to production PyPI after this workflow-only
+support lands on `main`; its already successful TestPyPI upload is not repeated.
+
+## 0.3.5
 
 The public README is now a focused product landing page and package-index
 description rather than an inventory of internal project records. It leads with
@@ -15,10 +34,9 @@ review, research, and architecture history remains tracked in the repository
 without being promoted as the prospective user's primary journey
 ([ADR 0044](adrs/0044-keep-the-readme-as-a-product-landing-page.md)).
 
-The unmerged candidate stages production package-name commands for `uv tool`,
-`pipx`, and `pip`. Production PyPI configuration, publication, merge, tagging,
-and release remain unapproved and must not occur until the maintainer accepts
-the public copy and separately authorizes that boundary.
+The release stages production package-name commands for `uv tool`, `pipx`, and
+`pip`. Production PyPI publication remains a separate post-release promotion
+of these exact artifacts.
 
 Independent review corrected the retained output example so its process-memory
 percentage, memory bar, and named tool counts agree with the renderer. It also

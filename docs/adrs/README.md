@@ -50,6 +50,7 @@ old one rather than rewriting why the earlier choice was made.
 | [0042](0042-build-once-and-promote-exact-release-artifacts.md) | Build once and promote exact release artifacts |
 | [0043](0043-publish-exact-artifacts-to-testpypi-with-gated-oidc.md) | Publish exact artifacts to TestPyPI with gated OIDC |
 | [0044](0044-keep-the-readme-as-a-product-landing-page.md) | Keep the README as a product landing page |
+| [0045](0045-promote-github-releases-through-separate-package-index-workflows.md) | Promote GitHub Releases through separate package-index workflows |
 
 ## Reading order
 

@@ -32,10 +32,11 @@ installed-artifact evidence.
 | 0.3.2 | PyPI metadata and package-page readiness | **Released** |
 | 0.3.3 | Build-once release artifact promotion | **Released** |
 | 0.3.4 | Trusted TestPyPI publication and verification | **Released** |
-| 0.3.5 | Public README and trusted production PyPI publication | **Current** |
+| 0.3.5 | Public README and production-ready package artifacts | **Released** |
+| 0.3.6 | Separate trusted package-index promotion workflows | **Current** |
 | 0.4.0 | Explicit host-acquisition architecture | Planned |
 
-0.2.1 through 0.2.14 and v0.3.0 through v0.3.4 are tagged and released. The
+0.2.1 through 0.2.14 and v0.3.0 through v0.3.5 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
 production-ready supported public baseline. Each boundary retains its exact
 review and artifact evidence; GitHub Release objects begin at v0.2.4. The
@@ -388,9 +389,9 @@ Released:
   command shape in local policy evidence before the immutable upload boundary.
 - Do not publish to production PyPI or claim package-name installation there.
 
-## 0.3.5 — public README and trusted production PyPI publication
+## 0.3.5 — public README and production-ready package artifacts
 
-Current release:
+Released:
 
 - Replace the exhaustive landing-page documentation catalog and internal
   process narrative with a concise product, output, installation, safety,
@@ -401,18 +402,33 @@ Current release:
 - Correct the existing CI scope classifier so root-level Markdown receives the
   same ancestry-only treatment as nested documentation, with executable and
   fail-closed policy regressions while preserving full scope for source changes.
-- Stage plain package-name installation and update commands on the unmerged
-  release candidate; do not claim production availability on `main` before the
-  production publication is authorized.
-- Configure a separate manually approved production environment and pending
-  trusted publisher for the reviewed workflow only after the maintainer accepts
-  the public README and separately authorizes production publication.
-- Permit production publication only after the same artifacts pass the build,
-  GitHub Release, TestPyPI, and installation-verification boundaries.
-- Publish without a stored API token, verify production hashes and installation,
-  and then make package-name `uv tool`, `pipx`, and `pip` commands current.
-- Treat an immutable publication mistake as a new patch; never replace or reuse
-  an uploaded filename.
+- Stage plain package-name installation and update commands for the separately
+  authorized production promotion.
+- Produce one exact wheel/source pair that passes the build, GitHub Release,
+  TestPyPI, public-hash, and isolated-install boundaries.
+- Keep production upload authority out of the tag-triggered release and retain
+  the immutable-filename rule for the later promotion.
+
+## 0.3.6 — separate trusted package-index promotion workflows
+
+Current:
+
+- Keep tag-triggered `release.yml` responsible only for building and publishing
+  the immutable GitHub Release pair.
+- Add paired manual `publish-testpypi.yml` and `publish-pypi.yml` workflows that
+  promote an existing annotated release tag from exact `main` without rebuilding.
+- Bind the downloaded wheel and source archive to exact filenames and SHA-256
+  values before the environment-gated OIDC job receives them; production also
+  requires the exact pair to exist on TestPyPI first.
+- Give only the two-action publisher `id-token: write`; forbid stored tokens,
+  scripts, checkouts, cross-run artifacts, ambient files, and collision skips in
+  that privileged job.
+- Verify exact public-index files and hashes, then install the exact wheel in a
+  fresh Python 3.9 environment and run the isolated self-test.
+- Use the production lane to promote the already proven v0.3.5 GitHub Release
+  pair. Do not repeat its successful TestPyPI upload or move the v0.3.5 tag.
+- Update TestPyPI's trusted-publisher workflow identity before the next test
+  promotion.
 
 ## 0.4.0 — explicit host-acquisition architecture
 

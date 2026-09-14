@@ -251,6 +251,12 @@ jobs:
         tmp_path / "docs" / "adrs" / "0018-budget-hosted-ci.md",
         "# ADR 0018\n\nExact account measurements remain private.\n",
     )
+    workflow_root = VERIFY.parents[1] / ".github" / "workflows"
+    for name in ("release.yml", "publish-testpypi.yml", "publish-pypi.yml"):
+        write(
+            tmp_path / ".github" / "workflows" / name,
+            (workflow_root / name).read_text(encoding="utf-8"),
+        )
     return tmp_path
 
 
@@ -822,8 +828,8 @@ def test_public_readiness_policy_requires_release_ancestry_audit(tmp_path):
     ("fragment", "replacement", "message"),
     (
         (
-            "permissions:\n  contents: read\nconcurrency:",
-            "permissions:\n  contents: write\nconcurrency:",
+            "permissions:\n  contents: read\n\nconcurrency:",
+            "permissions:\n  contents: write\n\nconcurrency:",
             "workflow permissions must be exactly contents: read",
         ),
         (
@@ -858,9 +864,9 @@ def test_public_readiness_policy_requires_release_ancestry_audit(tmp_path):
             "ambient dist wildcard is forbidden",
         ),
         (
-            "  contents: read\nconcurrency:",
-            "  contents: read\n  id-token: write\nconcurrency:",
-            "exactly one job must receive package-index identity permission",
+            "  contents: read\n\nconcurrency:",
+            "  contents: read\n  id-token: write\n\nconcurrency:",
+            "release workflow must not receive package-index identity",
         ),
         (
             "  build:\n    runs-on: ubuntu-latest",
@@ -888,8 +894,8 @@ def test_public_readiness_policy_enforces_build_once_release_topology(
     ("fragment", "replacement", "message"),
     (
         (
-            "  testpypi-publish:\n    needs: [build, github-release]",
-            "  testpypi-publish:\n    needs: github-release",
+            "  publish:\n    needs: prepare",
+            "  publish:\n    needs: other-job",
             "TestPyPI publish job must use only its canonical direct keys",
         ),
         (
@@ -905,22 +911,22 @@ def test_public_readiness_policy_enforces_build_once_release_topology(
         (
             "          packages-dir: release-dist/",
             "          packages-dir: dist/",
-            "TestPyPI publish job must contain exactly once: packages-dir: release-dist/",
+            "TestPyPI publishing action and inputs must be exact",
         ),
         (
             "          repository-url: https://test.pypi.org/legacy/",
             "          repository-url: https://upload.pypi.org/legacy/",
-            "TestPyPI publish job must contain exactly once: repository-url",
+            "TestPyPI publishing action and inputs must be exact",
         ),
         (
-            "  testpypi-verify:\n    needs: [build, testpypi-publish]",
-            "  testpypi-verify:\n    needs: testpypi-publish",
-            "TestPyPI verification job must use only its canonical direct keys",
+            "  verify:\n    needs: [prepare, publish]",
+            "  verify:\n    needs: publish",
+            "TestPyPI verify job must use only its canonical direct keys",
         ),
         (
             "            --attempts 12",
             "            --attempts 120",
-            "TestPyPI verification job requires exact bounded option: --attempts 12",
+            "TestPyPI verification requires: --attempts 12",
         ),
         (
             "            --no-deps",
@@ -943,7 +949,7 @@ def test_public_readiness_policy_enforces_testpypi_boundaries(
     tmp_path, fragment, replacement, message
 ):
     root = valid_repository(tmp_path)
-    workflow = root / ".github" / "workflows" / "release.yml"
+    workflow = root / ".github" / "workflows" / "publish-testpypi.yml"
     text = workflow.read_text()
     assert fragment in text
     write(workflow, text.replace(fragment, replacement, 1))
@@ -967,13 +973,13 @@ def test_public_readiness_policy_enforces_testpypi_boundaries(
         ),
         (
             "        skip_existing: true\n",
-            "TestPyPI publishing action step must be exact",
+            "TestPyPI publishing action and inputs must be exact",
         ),
     ),
 )
 def test_public_readiness_policy_rejects_testpypi_publish_bypasses(tmp_path, insertion, message):
     root = valid_repository(tmp_path)
-    workflow = root / ".github" / "workflows" / "release.yml"
+    workflow = root / ".github" / "workflows" / "publish-testpypi.yml"
     marker = "        uses: pypa/gh-action-pypi-publish@"
     text = workflow.read_text()
     index = text.index(marker)
@@ -996,30 +1002,128 @@ def test_public_readiness_policy_rejects_testpypi_publish_bypasses(tmp_path, ins
 )
 def test_public_readiness_policy_rejects_cross_run_artifact_sources(tmp_path, extra_input):
     root = valid_repository(tmp_path)
-    workflow = root / ".github" / "workflows" / "release.yml"
+    workflow = root / ".github" / "workflows" / "publish-testpypi.yml"
     text = workflow.read_text()
-    before, publish = text.split("  testpypi-publish:", 1)
+    before, publish = text.split("  publish:", 1)
     marker = "          path: release-dist\n"
     assert marker in publish
-    write(
-        workflow, before + "  testpypi-publish:" + publish.replace(marker, marker + extra_input, 1)
-    )
+    write(workflow, before + "  publish:" + publish.replace(marker, marker + extra_input, 1))
 
     result = run_policy(root)
 
     assert result.returncode == 1
-    assert "TestPyPI download inputs must bind only the current build artifact" in result.stderr
+    assert "TestPyPI download step must bind only this run's prepared pair" in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("fragment", "replacement", "message"),
+    (
+        (
+            "      name: pypi",
+            "      name: testpypi",
+            "PyPI publish environment must be exact",
+        ),
+        (
+            "            --index pypi",
+            "            --index testpypi",
+            "PyPI verification job is missing: --index pypi",
+        ),
+        (
+            "            --index-url https://pypi.org/simple/",
+            "            --index-url https://test.pypi.org/simple/",
+            "PyPI verification job is missing: --index-url https://pypi.org/simple/",
+        ),
+        (
+            '          test "${GITHUB_REF}" = "refs/heads/main"',
+            '          test "${GITHUB_REF}" = "refs/heads/release"',
+            'prepare job must contain exactly once: test "${GITHUB_REF}" = "refs/heads/main"',
+        ),
+        (
+            '          test "$(git cat-file -t "refs/tags/${TAG}")" = "tag"',
+            "          true",
+            'prepare job must contain exactly once: git cat-file -t "refs/tags/${TAG}"',
+        ),
+    ),
+)
+def test_public_readiness_policy_enforces_production_promotion_boundaries(
+    tmp_path, fragment, replacement, message
+):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "publish-pypi.yml"
+    text = workflow.read_text()
+    assert fragment in text
+    write(workflow, text.replace(fragment, replacement, 1))
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert message in result.stderr
+
+
+def test_public_readiness_policy_rejects_production_publisher_extra_input(tmp_path):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "publish-pypi.yml"
+    marker = "          packages-dir: release-dist/\n"
+    text = workflow.read_text()
+    assert marker in text
+    write(workflow, text.replace(marker, marker + "          repository-url: other\n", 1))
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert "PyPI publishing action and inputs must be exact" in result.stderr
+
+
+def test_public_readiness_policy_rejects_package_index_rebuild(tmp_path):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "publish-pypi.yml"
+    marker = "      - run: uv sync --locked --group dev --group release --no-install-project\n"
+    text = workflow.read_text()
+    assert marker in text
+    write(workflow, text.replace(marker, marker + "      - run: uv build\n", 1))
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert "package-index promotion must not rebuild distributions" in result.stderr
 
 
 def test_testpypi_workflow_selftest_command_matches_the_real_cli(tmp_path):
     script = workflow_step_script(
-        VERIFY.parents[1] / ".github" / "workflows" / "release.yml",
+        VERIFY.parents[1] / ".github" / "workflows" / "publish-testpypi.yml",
         "install the exact TestPyPI wheel and run its isolated self-test",
     )
     selftest_line = script.splitlines()[-1]
     assert selftest_line == "testpypi-venv/bin/agent-statusline selftest"
     command = selftest_line.replace(
         "testpypi-venv/bin/agent-statusline",
+        f"{shlex.quote(sys.executable)} -m agent_statusline",
+    )
+    env = os.environ.copy()
+    env["AGENT_STATUSLINE_STATE"] = str(tmp_path / "state")
+    env["PYTHONPATH"] = str(VERIFY.parents[1] / "src")
+
+    result = subprocess.run(
+        ["/bin/sh", "-c", command],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "selftest ok" in result.stdout
+
+
+def test_pypi_workflow_selftest_command_matches_the_real_cli(tmp_path):
+    script = workflow_step_script(
+        VERIFY.parents[1] / ".github" / "workflows" / "publish-pypi.yml",
+        "install the exact PyPI wheel and run its isolated self-test",
+    )
+    selftest_line = script.splitlines()[-1]
+    assert selftest_line == "pypi-venv/bin/agent-statusline selftest"
+    command = selftest_line.replace(
+        "pypi-venv/bin/agent-statusline",
         f"{shlex.quote(sys.executable)} -m agent_statusline",
     )
     env = os.environ.copy()
@@ -1054,7 +1158,8 @@ def test_testpypi_workflow_selftest_command_matches_the_real_cli(tmp_path):
 def test_public_readiness_policy_rejects_conditional_release_evidence(tmp_path, key):
     root = valid_repository(tmp_path)
     workflow = root / ".github" / "workflows" / "release.yml"
-    marker = "      - run: uv run --no-sync pytest tests"
+    marker = "        run: uv run --no-sync pytest tests"
+    assert marker in workflow.read_text()
     write(workflow, workflow.read_text().replace(marker, f"{marker}\n        {key}"))
 
     result = run_policy(root)

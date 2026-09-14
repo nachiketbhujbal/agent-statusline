@@ -11,7 +11,10 @@ import urllib.request
 from collections.abc import Mapping, Sequence
 from typing import NamedTuple, Optional
 
-INDEX_JSON_BASES = {"testpypi": "https://test.pypi.org/pypi"}
+INDEX_JSON_BASES = {
+    "pypi": "https://pypi.org/pypi",
+    "testpypi": "https://test.pypi.org/pypi",
+}
 MAX_RESPONSE_BYTES = 1024 * 1024
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
