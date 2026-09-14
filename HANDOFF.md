@@ -8,7 +8,8 @@ the roadmap, or accepted ADRs.
 
 - Current release target: 0.4.0, explicit host-acquisition architecture.
 - Preceding release: v0.3.6, separate trusted package-index promotion workflows.
-- Branch owner: none; v0.3.6 ownership ended without a handoff.
+- Branch owner: Codex owns the bounded documentation-only v0.4.0 architecture
+  branch `codex/docs/v0.4.0-host-acquisition-research`.
 - Reviewer role: none active.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
@@ -84,8 +85,15 @@ The local uv-managed command was upgraded from production PyPI and reports
 0.3.6; Claude Code's managed command and complete settings bytes were unchanged,
 and an isolated self-test passed without reading live accounting state.
 
-The next planned work is v0.4.0 host-acquisition research and architecture.
-No implementation is authorized yet. Runtime behavior, accepted pull refs,
+The v0.4.0 research boundary is now measured and recorded in ADR 0046. Installed
+Codex still exposes a built-in-widget footer rather than an arbitrary command;
+stable hooks provide a credible acquisition trigger, and local rollouts expose
+exact token/session facts but no exact cost field. The proposed follow-on train
+is 0.4.1 normalized acquisition facts, 0.4.2 a synthetic-fixture Codex parser,
+and only then consideration of an opt-in 0.4.3 collector/query surface.
+
+No implementation, Codex configuration mutation, renderer claim, or Codex
+currency accounting is authorized yet. Runtime behavior, accepted pull refs,
 unreachable objects, and recovery cleanup remain separate.
 [PUBLIC_READINESS.md](docs/PUBLIC_READINESS.md) records the protected baseline.
 

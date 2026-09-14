@@ -75,11 +75,19 @@ Open questions:
 
 ## Host interfaces
 
-A 2026-08-26 inspection of Codex CLI 0.149.1 found only a declarative list of
-built-in status widgets; unknown identifiers were rejected. That measured
-version could not run this Python renderer. The safe adaptation for that version
-is the native widget preset in [PORTING.md](PORTING.md). Re-check the installed
-interface before making a future compatibility claim.
+A 2026-09-14 repeat against installed Codex CLI 0.153.3, with local rollout
+metadata also reporting 0.153.4, confirmed that `tui.status_line` remains an
+ordered list of built-in footer identifiers. It has no arbitrary-command form,
+so Codex still cannot run this Python renderer. This agrees with the earlier
+2026-08-26 measurement of Codex CLI 0.149.1.
+
+The same repeat found that Codex hooks are now a stable installed feature. The
+official event contract supplies a session identifier, transcript path, current
+directory, event name, model, and—where applicable—a turn identifier. This is
+a credible local acquisition trigger, not a presentation surface. The official
+documentation warns that the transcript format itself is not a stable hook
+interface, so any reader must be shape-tolerant and proven with synthetic
+fixtures rather than treating current JSONL as a versioned public schema.
 
 The command-backed status-line request
 [`openai/codex#17827`](https://github.com/openai/codex/issues/17827) was open in
@@ -93,13 +101,26 @@ implementation. Before sharing a monetary ledger across hosts, prove from an
 official or isolated measured contract that the host supplies exact cost. Never
 infer currency from tokens or a drifting price table.
 
-A maintainer-directed local investigation on 2026-09-12 found that Codex session
-JSONL contains substantially richer token and session evidence than the native
-footer exposes; post-hoc analysis could derive total-token figures and
-approximate cost. This establishes a worthwhile v0.3.2 research target, not a
-runtime contract. The field schema, lifecycle, privacy boundary, and installed
-Codex version must be inventoried with synthetic evidence, and approximate cost
-must not acquire a currency label under this project's exact-money rule.
+A privacy-bounded 2026-09-14 inventory covered 496 local JSONL files totaling
+about 2.47 GB without recording message contents, local paths, identifiers, or
+private numeric values. A 48-file structural sample contained 10,217 valid JSON
+records and no malformed rows; a separate 64-file sample found 1,498 token-usage
+records. First-record metadata across 492 rollouts spanned seven observed CLI
+versions from 0.147.0-alpha.6.5 through 0.154.0-alpha.6.2.
+
+The observed token records consistently exposed input, cached-input,
+cache-write-input, output, reasoning-output, and total-token counters at turn
+and thread scopes. Other records exposed session, thread, root-turn and turn
+identifiers, context-window size, rate-limit windows, and response timing. No
+cost, USD, billing, or price field was found. The only money-adjacent key was a
+boolean spend-control boundary, which cannot support an accountable currency
+claim. Post-hoc approximate cost remains useful private analysis, but it cannot
+enter this package's currency ledger or acquire a dollar label.
+
+[ADR 0046](adrs/0046-separate-host-acquisition-from-presentation.md) records the
+resulting architecture: acquisition is independent from presentation, Codex
+tokens may become a local adapter input, and Codex rendering and exact money
+remain separate capability gates.
 
 ## Repository visibility and CI
 

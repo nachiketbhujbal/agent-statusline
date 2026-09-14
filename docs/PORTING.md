@@ -3,7 +3,7 @@
 ## Current Codex boundary: native footer items, not this renderer
 
 Codex's status line is **declarative, not a command.** The current official
-[configuration reference](https://developers.openai.com/codex/config-reference/)
+[configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference)
 defines `tui.status_line` as an ordered list of footer-item identifiers (or
 `null` to disable it):
 
@@ -43,16 +43,18 @@ Representative mappings are:
 
 ### What ships for Codex today
 
-No Codex adapter or hook ships in this package. Codex has an official
-[hooks interface](https://developers.openai.com/codex/hooks/), but this project
-has not established an authoritative Codex cost source or a safe installation
-boundary for it. Claiming cross-agent accounting before those facts are measured
-would violate the exact-money rule.
+No Codex adapter or hook ships in this package. Codex has an official stable
+[hooks interface](https://learn.chatgpt.com/docs/hooks) whose common input
+includes a session identifier and transcript path. That makes a future local
+collector credible, but the same documentation says the transcript format is
+not a stable hook interface. A current local inventory found exact token and
+session evidence but no exact cost field.
 
 The existing Claude ledger remains queryable with `agent-statusline ledger
-show`. A future Codex hook may reuse its host-independent arithmetic only after
-the event contract and cost evidence are verified. That work is research, not a
-current capability.
+show`. A future Codex hook may reuse private locked storage for non-currency
+facts, but it must not update the currency ledger unless Codex supplies an exact
+attributable cost contract. Acquisition would still not make this renderer
+appear in Codex's widget-only footer. See [ADR 0046](adrs/0046-separate-host-acquisition-from-presentation.md).
 
 ## Porting to a third agent
 
@@ -68,7 +70,8 @@ widget list?**
 ### The seam
 
 The package is layered, but several acquisition and installation modules remain
-host-specific:
+host-specific. ADR 0046 makes the acquisition/presentation split explicit;
+the code has not yet been refactored to that boundary:
 
 | module | host-specific? |
 | --- | --- |
@@ -83,26 +86,16 @@ host-specific:
 | `installer.py` / `hooks/` — Claude settings and events | **yes** |
 | `selftest.py` — synthetic Claude payload health check | **yes** |
 
-So a second command-based agent needs a new acquisition layer and reuses everything else.
-The clean refactor is `src/agent_statusline/adapters/<agent>.py`
-exposing one function that returns a normalised dict:
+So a second host needs a new acquisition layer and may reuse host-independent
+components. The normalized fact groups will cover identity, workspace, model,
+context, tokens, limits, activity, and exact money. A group is absent when its
+host does not provide accountable evidence; an adapter never fills gaps with
+another host's assumptions.
 
-```python
-{
-  "model": {"name": str, "effort": str|None},
-  "context": {"used_pct": float, "size": int, "current": {...}},
-  "limits": {"5h": {"pct": float, "resets_at": int}, "7d": {...}},
-  "cost": {"usd": float, "lines_added": int, "lines_removed": int},
-  "session": {"id": str, "name": str|None, "transcript": str|None},
-  "workspace": {"cwd": str, "project_dir": str, "added_dirs": [str]},
-}
-```
-
-Everything downstream consumes that dict, and adding an agent becomes one adapter file
-plus a row-availability table. **This has not been built** — the current code reads the
-Claude payload directly. Do it when the second command-based agent actually arrives, not
-before; a normalisation layer designed against one real consumer and one hypothetical one
-tends to fit neither.
+**This has not been built** — the current code still reads the Claude payload
+directly. The measured Codex evidence now provides a real second acquisition
+consumer, while its widget footer proves that presentation cannot be forced
+through one common host interface.
 
 ### What to keep no matter the agent
 

@@ -6,8 +6,15 @@ string in the source.
 
 ## Unreleased — 0.4.0
 
-Current work is limited to host-acquisition research and architecture planning.
-No Codex adapter or runtime behavior change is implemented or authorized yet.
+Host acquisition is now explicitly separate from host presentation. A current
+Codex inspection confirms that stable lifecycle hooks can trigger future local
+acquisition, while the footer remains limited to built-in widgets and cannot run
+this renderer. A privacy-bounded rollout inventory found exact token and session
+facts but no exact cost field; Codex evidence therefore cannot update the
+currency ledger ([ADR 0046](adrs/0046-separate-host-acquisition-from-presentation.md)).
+
+No adapter, hook, configuration change, display change, or runtime behavior is
+implemented or authorized in this architecture release.
 
 ## 0.3.6
 
