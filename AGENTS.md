@@ -41,6 +41,12 @@ tags through hatch-vcs; never duplicate a version string in source.
 
 ## Development workflow
 
+- Default to proportionate engineering: implement the smallest change needed
+  for the requested outcome. Do not add new hardening, threat-model expansion,
+  adversarial test matrices, policy gates, or release ceremony unless the
+  maintainer explicitly requests it or a concrete observed defect requires it.
+  Preserve existing mandatory safety and release checks, but do not expand
+  them by default.
 - Use uv 0.12 or newer. Commit `uv.lock` and manage development tools in
   `pyproject.toml`; do not add requirements files.
 - Use Hatchling and hatch-vcs with standard PEP 621 metadata.
