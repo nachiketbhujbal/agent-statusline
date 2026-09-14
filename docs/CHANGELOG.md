@@ -39,6 +39,11 @@ a trailing `full=false` override. The policy now exact-matches the complete
 scope step, and mutation tests reject both bypasses before either could skip
 required source or workflow evidence.
 
+A renewed review found the next trust boundary: downstream jobs consumed the
+`checks` job output without policy proof that it came from the reviewed scope
+step. The policy now exact-maps that job and its sole output, rejecting false,
+missing, duplicate, quoted, conditional, and nonblocking overrides.
+
 ## 0.3.4
 
 The release pipeline now sends the exact build-once artifact pair to TestPyPI

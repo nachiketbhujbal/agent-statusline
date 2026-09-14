@@ -39,6 +39,8 @@ permissions:
   contents: read
 jobs:
   checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       full: ${{{{ steps.scope.outputs.full }}}}
     steps:
@@ -694,6 +696,62 @@ def test_public_readiness_policy_requires_exact_scope_classifier(tmp_path, fragm
 
     assert result.returncode == 1
     assert "exactly match the reviewed fail-closed classifier" in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("fragment", "replacement", "message"),
+    (
+        (
+            "      full: ${{ steps.scope.outputs.full }}",
+            "      full: ${{ 'false' }}",
+            "checks outputs must bind exactly to the scope step",
+        ),
+        (
+            "      full: ${{ steps.scope.outputs.full }}",
+            "      full: false",
+            "checks outputs must bind exactly to the scope step",
+        ),
+        (
+            "      full: ${{ steps.scope.outputs.full }}",
+            "      full: ${{ steps.scope.outputs.missing }}",
+            "checks outputs must bind exactly to the scope step",
+        ),
+        (
+            "      full: ${{ steps.scope.outputs.full }}",
+            "      full: ${{ steps.scope.outputs.full }}\n      full: false",
+            "checks outputs must bind exactly to the scope step",
+        ),
+        (
+            "      full: ${{ steps.scope.outputs.full }}",
+            "      'full': false",
+            "checks outputs must bind exactly to the scope step",
+        ),
+        (
+            "    outputs:\n      full: ${{ steps.scope.outputs.full }}",
+            "    outputs:\n      full: ${{ steps.scope.outputs.full }}\n"
+            "    outputs:\n      full: false",
+            "checks job must use only its canonical direct keys",
+        ),
+        (
+            "  checks:\n    runs-on: ubuntu-latest",
+            "  checks:\n    continue-on-error: true\n    runs-on: ubuntu-latest",
+            "checks job must use only its canonical direct keys",
+        ),
+    ),
+)
+def test_public_readiness_policy_binds_checks_scope_output(
+    tmp_path, fragment, replacement, message
+):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "ci.yml"
+    text = workflow.read_text()
+    assert fragment in text
+    write(workflow, text.replace(fragment, replacement, 1))
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert message in result.stderr
 
 
 @pytest.mark.parametrize(

@@ -554,6 +554,28 @@ def check_lean_policy(root: Path) -> list[str]:
     if checks_job is None or scope_step is None:
         errors.append(".github/workflows/ci.yml: requires one unambiguous scope step")
     else:
+        if not _exact_mapping(
+            checks_job,
+            indent=4,
+            expected={
+                "runs-on": "ubuntu-latest",
+                "timeout-minutes": "10",
+                "outputs": "",
+                "steps": "",
+            },
+        ):
+            errors.append(
+                ".github/workflows/ci.yml: checks job must use only its canonical direct keys"
+            )
+        checks_outputs = _yaml_block(checks_job, "outputs:", indent=4)
+        if checks_outputs is None or not _exact_mapping(
+            checks_outputs,
+            indent=6,
+            expected={"full": "${{ steps.scope.outputs.full }}"},
+        ):
+            errors.append(
+                ".github/workflows/ci.yml: checks outputs must bind exactly to the scope step"
+            )
         scope_condition = (
             'elif git diff --quiet "${BASE_SHA}" HEAD -- . '
             "':(exclude)docs/**' ':(exclude)**/*.md' "

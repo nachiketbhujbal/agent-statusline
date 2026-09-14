@@ -80,8 +80,11 @@ narrow correction that makes root-level Markdown obey the existing
 documentation-only CI boundary. Exact policy and executable scope regressions
 must accompany that workflow correction. The policy pins the complete scope
 step, including its trusted base expression and command order, so an appended
-output cannot override a full-scope result. Run the complete local gate and one
-independent exact-SHA review, then stop for maintainer acceptance. Do not
+output cannot override a full-scope result. It also exact-maps the `checks` job
+and binds its sole exported value to that reviewed scope step, preventing the
+downstream matrix from accepting an injected documentation-only result. Run the
+complete local gate and one independent exact-SHA review, then stop for
+maintainer acceptance. Do not
 configure a production publisher or environment, merge, tag, publish, access
 live state, or alter live installation. Explicit host acquisition and Codex
 evidence remain on the next minor track. Runtime behavior, accepted pull refs,
