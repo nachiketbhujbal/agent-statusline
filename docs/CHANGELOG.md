@@ -4,7 +4,12 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.3.6
+## Unreleased — 0.4.0
+
+Current work is limited to host-acquisition research and architecture planning.
+No Codex adapter or runtime behavior change is implemented or authorized yet.
+
+## 0.3.6
 
 Package-index publication is now an explicit post-release promotion rather
 than an automatic continuation of every tag build. Paired manual
@@ -38,6 +43,12 @@ allow no bypass. TestPyPI's sole active publisher now names
 Project instructions now default future work to the smallest proportionate
 change and prohibit unsolicited hardening or expanded release ceremony while
 preserving the existing mandatory safety and release checks.
+
+The independently reviewed release passed protected PR and merged-main CI,
+tag-triggered GitHub Release creation, the renamed TestPyPI publisher, and
+production PyPI promotion. All three public locations report the same wheel and
+source hashes. The local uv-managed installation was upgraded from production
+PyPI to 0.3.6 with unchanged Claude Code settings and an isolated self-test.
 
 ## 0.3.5
 
