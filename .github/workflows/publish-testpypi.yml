@@ -49,6 +49,7 @@ jobs:
         env:
           TAG: ${{ inputs.tag }}
         run: |
+          set -eu
           test "${GITHUB_EVENT_NAME}" = "workflow_dispatch"
           test "${GITHUB_REF}" = "refs/heads/main"
           test "$(git cat-file -t "refs/tags/${TAG}")" = "tag"
@@ -61,6 +62,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
         run: |
+          set -eu
           test "$(gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" --json isDraft --jq .isDraft)" = "false"
           test "$(gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" --json isPrerelease --jq .isPrerelease)" = "false"
           mkdir release-dist
@@ -72,6 +74,7 @@ jobs:
 
       - name: release assets remain valid distributions
         run: |
+          set -eu
           uv run --no-sync python scripts/verify_artifacts.py release-dist/*
           uv run --no-sync twine check --strict release-dist/*
 
@@ -81,6 +84,7 @@ jobs:
           ARTIFACT_NAME: release-distributions-${{ steps.release.outputs.tag_commit }}
           TAG: ${{ inputs.tag }}
         run: |
+          set -eu
           uv run --no-sync python scripts/release_artifacts.py prepare \
             --directory release-dist \
             --tag "${TAG}" \
@@ -137,6 +141,7 @@ jobs:
           SDIST_NAME: ${{ needs.prepare.outputs.sdist_name }}
           SDIST_SHA256: ${{ needs.prepare.outputs.sdist_sha256 }}
         run: |
+          set -eu
           python scripts/verify_package_index.py \
             --index testpypi \
             --project agent-statusline \
@@ -153,6 +158,7 @@ jobs:
           VERSION: ${{ needs.prepare.outputs.version }}
           AGENT_STATUSLINE_STATE: ${{ runner.temp }}/agent-statusline-testpypi-state
         run: |
+          set -eu
           python -m venv testpypi-venv
           testpypi-venv/bin/python -m pip install \
             --disable-pip-version-check \

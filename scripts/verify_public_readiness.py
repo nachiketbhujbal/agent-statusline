@@ -2,6 +2,7 @@
 """Verify static repository boundaries needed before public visibility."""
 
 import argparse
+import hashlib
 import re
 import subprocess
 import sys
@@ -329,6 +330,7 @@ def check_package_publish_pipeline(workflow: str, *, index: str) -> list[str]:
     """Require manual, exact-release promotion with one OIDC-only authority job."""
     settings = {
         "testpypi": {
+            "name": "Publish to TestPyPI",
             "label": "TestPyPI",
             "environment_url": "https://test.pypi.org/p/agent-statusline/",
             "json_index": "testpypi",
@@ -339,8 +341,11 @@ def check_package_publish_pipeline(workflow: str, *, index: str) -> list[str]:
                 "packages-dir": "release-dist/",
                 "repository-url": "https://test.pypi.org/legacy/",
             },
+            "prepare_sha256": "370b854a656c05caccb8f0938a16d206f2d87a08851fe37b804f3322d3b224c8",
+            "verify_sha256": "441f514e889f635572002eab0a8d0dc64b2ed1c086f34d5beda9fc332cb04d96",
         },
         "pypi": {
+            "name": "Publish to PyPI",
             "label": "PyPI",
             "environment_url": "https://pypi.org/p/agent-statusline/",
             "json_index": "pypi",
@@ -348,6 +353,8 @@ def check_package_publish_pipeline(workflow: str, *, index: str) -> list[str]:
             "venv": "pypi-venv",
             "state": "agent-statusline-pypi-state",
             "publish_inputs": {"packages-dir": "release-dist/"},
+            "prepare_sha256": "e130d9658be8ec7269327f2afe75dd698691f0fe45a9396075bc82844ef005bb",
+            "verify_sha256": "caf6f9cf713d6911955b4b0df450759e95acfd3e12c448c9c9b3a1a592323e7f",
         },
     }
     if index not in settings:
@@ -356,6 +363,19 @@ def check_package_publish_pipeline(workflow: str, *, index: str) -> list[str]:
     label = str(config["label"])
     path = f".github/workflows/publish-{index}.yml"
     errors: list[str] = []
+
+    if not _exact_mapping(
+        workflow,
+        indent=0,
+        expected={
+            "name": str(config["name"]),
+            "on": "",
+            "permissions": "",
+            "concurrency": "",
+            "jobs": "",
+        },
+    ):
+        errors.append(f"{path}: workflow must use only its canonical top-level keys")
 
     trigger = _yaml_block(workflow, "on:", indent=0)
     dispatch = _yaml_block(trigger or "", "workflow_dispatch:", indent=2)
@@ -401,6 +421,8 @@ def check_package_publish_pipeline(workflow: str, *, index: str) -> list[str]:
         errors.append(f"{path}: workflow must contain exactly prepare, publish, and verify jobs")
 
     prepare = _yaml_block(workflow, "prepare:", indent=2) or ""
+    if hashlib.sha256(prepare.encode()).hexdigest() != config["prepare_sha256"]:
+        errors.append(f"{path}: prepare steps must match the exact reviewed sequence")
     if not _exact_mapping(
         prepare,
         indent=4,
@@ -565,6 +587,8 @@ def check_package_publish_pipeline(workflow: str, *, index: str) -> list[str]:
             errors.append(f"{path}: {label} publish job must not contain: {forbidden}")
 
     verify = _yaml_block(workflow, "verify:", indent=2) or ""
+    if hashlib.sha256(verify.encode()).hexdigest() != config["verify_sha256"]:
+        errors.append(f"{path}: verify steps must match the exact reviewed sequence")
     if not _exact_mapping(
         verify,
         indent=4,

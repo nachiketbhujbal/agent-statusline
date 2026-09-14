@@ -1088,6 +1088,82 @@ def test_public_readiness_policy_rejects_package_index_rebuild(tmp_path):
     assert "package-index promotion must not rebuild distributions" in result.stderr
 
 
+def test_public_readiness_policy_rejects_workflow_shell_defaults(tmp_path):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "publish-pypi.yml"
+    marker = "permissions:\n  contents: read\n"
+    text = workflow.read_text()
+    assert marker in text
+    write(
+        workflow,
+        text.replace(
+            marker,
+            marker + "defaults:\n  run:\n    shell: bash {0}\n",
+            1,
+        ),
+    )
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert "workflow must use only its canonical top-level keys" in result.stderr
+
+
+def test_public_readiness_policy_rejects_step_shell_override(tmp_path):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "publish-pypi.yml"
+    marker = "        id: release\n"
+    text = workflow.read_text()
+    assert marker in text
+    write(workflow, text.replace(marker, marker + "        shell: bash {0}\n", 1))
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert "prepare steps must match the exact reviewed sequence" in result.stderr
+
+
+def test_public_readiness_policy_rejects_post_hash_file_replacement(tmp_path):
+    root = valid_repository(tmp_path)
+    workflow = root / ".github" / "workflows" / "publish-pypi.yml"
+    marker = "      - uses: actions/upload-artifact@"
+    text = workflow.read_text()
+    assert marker in text
+    replacement = (
+        "      - name: replace files after identity binding\n"
+        "        run: cp unreviewed.whl release-dist/agent_statusline-0.3.5-py3-none-any.whl\n\n"
+        + marker
+    )
+    write(workflow, text.replace(marker, replacement, 1))
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert "prepare steps must match the exact reviewed sequence" in result.stderr
+
+
+def test_promotion_main_binding_fails_under_non_fail_fast_shell(tmp_path):
+    script = workflow_step_script(
+        VERIFY.parents[1] / ".github" / "workflows" / "publish-pypi.yml",
+        "bind promotion to exact main and an immutable release tag",
+    )
+    assert script.splitlines()[0] == "set -eu"
+
+    result = subprocess.run(
+        ["/bin/bash", "-c", script],
+        cwd=tmp_path,
+        env={
+            **os.environ,
+            "GITHUB_EVENT_NAME": "workflow_dispatch",
+            "GITHUB_REF": "refs/heads/not-main",
+        },
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+
+
 def test_testpypi_workflow_selftest_command_matches_the_real_cli(tmp_path):
     script = workflow_step_script(
         VERIFY.parents[1] / ".github" / "workflows" / "publish-testpypi.yml",

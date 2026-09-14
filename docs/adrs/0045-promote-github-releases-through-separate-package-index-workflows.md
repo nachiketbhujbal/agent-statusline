@@ -62,6 +62,12 @@ For the already released v0.3.5, the successful TestPyPI deployment from the
 old topology remains valid and is not repeated. Production uses the new
 `publish-pypi.yml` workflow to promote the exact existing GitHub Release pair.
 
+Both GitHub environments accept deployments only from branch `main`, require
+maintainer approval, and allow no bypass. The `testpypi` environment replaces
+its earlier `v*` tag policy because the separated workflow is dispatched from
+`main`. TestPyPI's trusted publisher changes from `release.yml` to
+`publish-testpypi.yml`; PyPI remains bound to `publish-pypi.yml`.
+
 ## Consequences
 
 Tag creation and GitHub Release publication no longer imply package-index
@@ -73,9 +79,10 @@ still safely promoting v0.3.5: workflow authority and verification come from
 reviewed `main`, while artifact identity and version come from the existing
 annotated tag and GitHub Release. Future releases use the same separated lanes.
 
-TestPyPI's trusted-publisher record must be updated from `release.yml` to
-`publish-testpypi.yml` before a future TestPyPI promotion. Production PyPI is
-bound directly to `publish-pypi.yml` and the `pypi` environment.
+Workflow policy exact-binds the ordered preparation and verification blocks and
+requires each multi-command script to enable fail-fast behavior itself. Global,
+job, or step shell overrides and post-hash mutation steps therefore fail closed
+rather than weakening provenance or changing bytes before upload.
 
 Runtime source, dependencies, the approved ten-row display, accounting, local
 state, live Claude Code configuration, and Codex host behavior do not change.

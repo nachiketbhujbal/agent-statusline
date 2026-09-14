@@ -23,6 +23,16 @@ endpoint alongside TestPyPI. The existing v0.3.5 GitHub Release artifacts can
 therefore be promoted unchanged to production PyPI after this workflow-only
 support lands on `main`; its already successful TestPyPI upload is not repeated.
 
+Independent review demonstrated that a workflow shell default could disable
+implicit fail-fast behavior and that an extra preparation step could replace
+files after their hashes were recorded. Every multi-command evidence script now
+sets its own fail-fast options, canonical top-level structure rejects shell
+defaults, and exact digests lock the ordered preparation and verification
+blocks. Mutations and an executable bad-ref regression prove that shell
+overrides and post-hash replacement fail before publication. The operational
+record also requires both GitHub environments to permit only branch `main`,
+with the TestPyPI publisher migrated to its renamed workflow.
+
 ## 0.3.5
 
 The public README is now a focused product landing page and package-index

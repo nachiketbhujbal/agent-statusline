@@ -428,7 +428,11 @@ Current:
 - Use the production lane to promote the already proven v0.3.5 GitHub Release
   pair. Do not repeat its successful TestPyPI upload or move the v0.3.5 tag.
 - Update TestPyPI's trusted-publisher workflow identity before the next test
-  promotion.
+  promotion, replace its old `v*` environment rule with branch `main`, and give
+  the new `pypi` environment the same `main`-only deployment boundary.
+- Require fail-fast behavior inside every multi-command evidence script and
+  exact-bind the ordered preparation and verification blocks so shell defaults
+  or post-hash file replacement cannot bypass provenance.
 
 ## 0.4.0 — explicit host-acquisition architecture
 

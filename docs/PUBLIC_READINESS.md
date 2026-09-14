@@ -64,11 +64,12 @@ separately. No GitHub Support request is planned.
   that existing release pair without rebuilding, and pass only the hash-bound
   files into a dedicated environment-gated job with short-lived OIDC identity.
   A read-only dependent job proves exact index filenames and hashes before an
-  isolated Python 3.9 wheel self-test.
+  isolated Python 3.9 wheel self-test. Both environments accept deployments
+  only from branch `main`, require maintainer approval, and allow no bypass.
 - `scripts/verify_public_readiness.py` rejects missing private-root ignores,
   mutable workflow action refs, the undefined dependency prefix, drift from the
-  lean CI, two-job release, or separated three-job promotion boundaries, excess
-  package-index authority, stored
+  lean CI, two-job release, or separated three-job promotion boundaries, exact
+  ordered promotion evidence, shell overrides, excess package-index authority, stored
   publisher credentials, and exact billing evidence in the current ADR.
 - `scripts/verify_artifacts.py` rejects private paths and private textual
   evidence from wheel and source-distribution contents, and fails closed rather

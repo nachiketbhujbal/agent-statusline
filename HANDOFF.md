@@ -85,7 +85,10 @@ The current owner branch starts from that exact merge. It separates TestPyPI
 and PyPI into paired manual promotion workflows under ADR 0045, extends the
 exact index verifier to production, and adds deterministic policy mutations.
 Freeze and independently review one exact candidate SHA, merge only after the
-required check passes, create the protected `pypi` environment, then manually
+required check passes, replace `testpypi`'s `v*` deployment rule with branch
+`main`, and update its trusted publisher to `publish-testpypi.yml`. Create the
+`pypi` environment with required maintainer approval, no bypass, and only branch
+`main`; its publisher remains bound to `publish-pypi.yml`. Then manually
 dispatch `publish-pypi.yml` from exact updated `main` with tag `v0.3.5`. Stop at
 the deployment approval if human confirmation is required. After success,
 verify the production page, exact hashes, standard install, command version,
