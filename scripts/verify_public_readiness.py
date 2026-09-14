@@ -2,6 +2,7 @@
 """Verify static repository boundaries needed before public visibility."""
 
 import argparse
+import hashlib
 import re
 import subprocess
 import sys
@@ -199,13 +200,9 @@ def check_release_pipeline(release: str) -> list[str]:
         expected={
             "build": "",
             "github-release": "",
-            "testpypi-publish": "",
-            "testpypi-verify": "",
         },
     ):
-        errors.append(
-            f"{path}: release workflow must contain exactly the four reviewed release jobs"
-        )
+        errors.append(f"{path}: release workflow must contain exactly the two reviewed jobs")
 
     build = _yaml_block(release, "build:", indent=2)
     expected_build = {
@@ -254,58 +251,6 @@ def check_release_pipeline(release: str) -> list[str]:
         publish_permissions, indent=6, expected={"contents": "write"}
     ):
         errors.append(f"{path}: github-release permissions must be exactly contents: write")
-
-    testpypi_publish = _yaml_block(release, "testpypi-publish:", indent=2)
-    expected_testpypi_publish = {
-        "needs": "[build, github-release]",
-        "runs-on": "ubuntu-latest",
-        "timeout-minutes": "5",
-        "environment": "",
-        "permissions": "",
-        "steps": "",
-    }
-    if testpypi_publish is None or not _exact_mapping(
-        testpypi_publish, indent=4, expected=expected_testpypi_publish
-    ):
-        errors.append(f"{path}: TestPyPI publish job must use only its canonical direct keys")
-        testpypi_publish = ""
-
-    testpypi_environment = _yaml_block(testpypi_publish, "environment:", indent=4)
-    if testpypi_environment is None or not _exact_mapping(
-        testpypi_environment,
-        indent=6,
-        expected={
-            "name": "testpypi",
-            "url": "https://test.pypi.org/p/agent-statusline/",
-        },
-    ):
-        errors.append(f"{path}: TestPyPI publish environment must be exact")
-
-    testpypi_permissions = _yaml_block(testpypi_publish, "permissions:", indent=4)
-    if testpypi_permissions is None or not _exact_mapping(
-        testpypi_permissions, indent=6, expected={"id-token": "write"}
-    ):
-        errors.append(f"{path}: TestPyPI publish permission must be exactly id-token: write")
-
-    testpypi_verify = _yaml_block(release, "testpypi-verify:", indent=2)
-    expected_testpypi_verify = {
-        "needs": "[build, testpypi-publish]",
-        "runs-on": "ubuntu-latest",
-        "timeout-minutes": "5",
-        "permissions": "",
-        "steps": "",
-    }
-    if testpypi_verify is None or not _exact_mapping(
-        testpypi_verify, indent=4, expected=expected_testpypi_verify
-    ):
-        errors.append(f"{path}: TestPyPI verification job must use only its canonical direct keys")
-        testpypi_verify = ""
-
-    verify_permissions = _yaml_block(testpypi_verify, "permissions:", indent=4)
-    if verify_permissions is None or not _exact_mapping(
-        verify_permissions, indent=6, expected={"contents": "read"}
-    ):
-        errors.append(f"{path}: TestPyPI verification permissions must be exactly contents: read")
 
     required_once = (
         "uv sync --locked --group dev --group release --no-install-project",
@@ -362,118 +307,8 @@ def check_release_pipeline(release: str) -> list[str]:
         if fragment not in publish:
             errors.append(f"{path}: github-release job is missing: {fragment}")
 
-    required_testpypi_publish = (
-        "actions/download-artifact@",
-        "name: ${{ needs.build.outputs.artifact_name }}",
-        "path: release-dist",
-        "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33",
-        "packages-dir: release-dist/",
-        "repository-url: https://test.pypi.org/legacy/",
-    )
-    for fragment in required_testpypi_publish:
-        if testpypi_publish.count(fragment) != 1:
-            errors.append(f"{path}: TestPyPI publish job must contain exactly once: {fragment}")
-
-    download_action = "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c"
-    download_step = _yaml_step_with_action(testpypi_publish, download_action)
-    if (
-        download_step is None
-        or download_step.splitlines()[0] != f"      - uses: {download_action} # v8.0.1"
-        or not _exact_mapping(download_step, indent=8, expected={"with": ""})
-    ):
-        errors.append(f"{path}: TestPyPI download step must be exact")
-        download_step = ""
-    download_inputs = _yaml_block(download_step, "with:", indent=8)
-    if download_inputs is None or not _exact_mapping(
-        download_inputs,
-        indent=10,
-        expected={
-            "name": "${{ needs.build.outputs.artifact_name }}",
-            "path": "release-dist",
-        },
-    ):
-        errors.append(f"{path}: TestPyPI download inputs must bind only the current build artifact")
-
-    pypi_action = "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33"
-    pypi_step = _yaml_step_with_action(testpypi_publish, pypi_action)
-    if (
-        pypi_step is None
-        or pypi_step.splitlines()[0] != "      - name: publish the exact artifacts to TestPyPI"
-        or not _exact_mapping(
-            pypi_step,
-            indent=8,
-            expected={"uses": pypi_action + " # v1.14.2", "with": ""},
-        )
-    ):
-        errors.append(f"{path}: TestPyPI publishing action step must be exact")
-        pypi_step = ""
-    pypi_inputs = _yaml_block(pypi_step, "with:", indent=8)
-    if pypi_inputs is None or not _exact_mapping(
-        pypi_inputs,
-        indent=10,
-        expected={
-            "packages-dir": "release-dist/",
-            "repository-url": "https://test.pypi.org/legacy/",
-        },
-    ):
-        errors.append(f"{path}: TestPyPI publishing inputs must be exact and credential-free")
-
-    if testpypi_publish.count("\n      - ") != 2:
-        errors.append(f"{path}: TestPyPI publish job must contain exactly two action steps")
-    for forbidden in (
-        "run:",
-        "actions/checkout@",
-        "actions/setup-python@",
-        "uv build",
-        "python -m build",
-        "password:",
-        "user:",
-        "skip-existing:",
-    ):
-        if forbidden in testpypi_publish:
-            errors.append(f"{path}: TestPyPI publish job must not contain: {forbidden}")
-
-    required_testpypi_verify = (
-        "actions/checkout@",
-        "actions/setup-python@",
-        'python-version: "3.9"',
-        "persist-credentials: false",
-        "VERSION: ${{ needs.build.outputs.version }}",
-        "WHEEL_NAME: ${{ needs.build.outputs.wheel_name }}",
-        "WHEEL_SHA256: ${{ needs.build.outputs.wheel_sha256 }}",
-        "SDIST_NAME: ${{ needs.build.outputs.sdist_name }}",
-        "SDIST_SHA256: ${{ needs.build.outputs.sdist_sha256 }}",
-        "python scripts/verify_package_index.py",
-        "--index testpypi",
-        "--project agent-statusline",
-        "python -m venv testpypi-venv",
-        "--disable-pip-version-check",
-        "--no-cache-dir",
-        "--no-deps",
-        "--only-binary=:all:",
-        "--index-url https://test.pypi.org/simple/",
-        "--retries 4",
-        "--timeout 10",
-        '"agent-statusline==${VERSION}"',
-        'test "$(testpypi-venv/bin/agent-statusline --version)" = "${VERSION}"',
-        "AGENT_STATUSLINE_STATE: ${{ runner.temp }}/agent-statusline-testpypi-state",
-        "testpypi-venv/bin/agent-statusline selftest",
-    )
-    for fragment in required_testpypi_verify:
-        if fragment not in testpypi_verify:
-            errors.append(f"{path}: TestPyPI verification job is missing: {fragment}")
-    for exact_line in (
-        "--attempts 12 \\",
-        "--delay-seconds 5 \\",
-        "--timeout-seconds 10",
-    ):
-        if sum(line.strip() == exact_line for line in testpypi_verify.splitlines()) != 1:
-            errors.append(
-                f"{path}: TestPyPI verification job requires exact bounded option: {exact_line}"
-            )
-
-    if len(re.findall(r"^\s*id-token\s*:", release, re.MULTILINE)) != 1:
-        errors.append(f"{path}: exactly one job must receive package-index identity permission")
+    if re.search(r"^\s*id-token\s*:", release, re.MULTILINE):
+        errors.append(f"{path}: release workflow must not receive package-index identity")
     if (
         any(
             _has_yaml_key(release, key)
@@ -491,10 +326,345 @@ def check_release_pipeline(release: str) -> list[str]:
     return errors
 
 
+def check_package_publish_pipeline(workflow: str, *, index: str) -> list[str]:
+    """Require manual, exact-release promotion with one OIDC-only authority job."""
+    settings = {
+        "testpypi": {
+            "name": "Publish to TestPyPI",
+            "label": "TestPyPI",
+            "environment_url": "https://test.pypi.org/p/agent-statusline/",
+            "json_index": "testpypi",
+            "simple_url": "https://test.pypi.org/simple/",
+            "venv": "testpypi-venv",
+            "state": "agent-statusline-testpypi-state",
+            "publish_inputs": {
+                "packages-dir": "release-dist/",
+                "repository-url": "https://test.pypi.org/legacy/",
+            },
+            "prepare_sha256": "370b854a656c05caccb8f0938a16d206f2d87a08851fe37b804f3322d3b224c8",
+            "verify_sha256": "441f514e889f635572002eab0a8d0dc64b2ed1c086f34d5beda9fc332cb04d96",
+        },
+        "pypi": {
+            "name": "Publish to PyPI",
+            "label": "PyPI",
+            "environment_url": "https://pypi.org/p/agent-statusline/",
+            "json_index": "pypi",
+            "simple_url": "https://pypi.org/simple/",
+            "venv": "pypi-venv",
+            "state": "agent-statusline-pypi-state",
+            "publish_inputs": {"packages-dir": "release-dist/"},
+            "prepare_sha256": "e130d9658be8ec7269327f2afe75dd698691f0fe45a9396075bc82844ef005bb",
+            "verify_sha256": "caf6f9cf713d6911955b4b0df450759e95acfd3e12c448c9c9b3a1a592323e7f",
+        },
+    }
+    if index not in settings:
+        raise ValueError(f"unsupported package index: {index}")
+    config = settings[index]
+    label = str(config["label"])
+    path = f".github/workflows/publish-{index}.yml"
+    errors: list[str] = []
+
+    if not _exact_mapping(
+        workflow,
+        indent=0,
+        expected={
+            "name": str(config["name"]),
+            "on": "",
+            "permissions": "",
+            "concurrency": "",
+            "jobs": "",
+        },
+    ):
+        errors.append(f"{path}: workflow must use only its canonical top-level keys")
+
+    trigger = _yaml_block(workflow, "on:", indent=0)
+    dispatch = _yaml_block(trigger or "", "workflow_dispatch:", indent=2)
+    inputs = _yaml_block(dispatch or "", "inputs:", indent=4)
+    tag = _yaml_block(inputs or "", "tag:", indent=6)
+    if trigger is None or not _exact_mapping(trigger, indent=2, expected={"workflow_dispatch": ""}):
+        errors.append(f"{path}: publishing trigger must be exactly workflow_dispatch")
+    if dispatch is None or not _exact_mapping(dispatch, indent=4, expected={"inputs": ""}):
+        errors.append(f"{path}: workflow dispatch must expose exactly one inputs mapping")
+    if inputs is None or not _exact_mapping(inputs, indent=6, expected={"tag": ""}):
+        errors.append(f"{path}: workflow dispatch input must be exactly tag")
+    if tag is None or not _exact_mapping(
+        tag,
+        indent=8,
+        expected={
+            "description": "Exact published release tag (vMAJOR.MINOR.PATCH)",
+            "required": "true",
+            "type": "string",
+        },
+    ):
+        errors.append(f"{path}: tag input contract must be exact")
+
+    permissions = _yaml_block(workflow, "permissions:", indent=0)
+    if permissions is None or not _exact_mapping(
+        permissions, indent=2, expected={"contents": "read"}
+    ):
+        errors.append(f"{path}: workflow permissions must be exactly contents: read")
+    concurrency = _yaml_block(workflow, "concurrency:", indent=0)
+    if concurrency is None or not _exact_mapping(
+        concurrency,
+        indent=2,
+        expected={
+            "group": f"publish-{index}-${{{{ inputs.tag }}}}",
+            "cancel-in-progress": "false",
+        },
+    ):
+        errors.append(f"{path}: concurrency must bind the selected immutable tag")
+
+    jobs = _yaml_block(workflow, "jobs:", indent=0)
+    if jobs is None or not _exact_mapping(
+        jobs, indent=2, expected={"prepare": "", "publish": "", "verify": ""}
+    ):
+        errors.append(f"{path}: workflow must contain exactly prepare, publish, and verify jobs")
+
+    prepare = _yaml_block(workflow, "prepare:", indent=2) or ""
+    if hashlib.sha256(prepare.encode()).hexdigest() != config["prepare_sha256"]:
+        errors.append(f"{path}: prepare steps must match the exact reviewed sequence")
+    if not _exact_mapping(
+        prepare,
+        indent=4,
+        expected={
+            "runs-on": "ubuntu-latest",
+            "timeout-minutes": "10",
+            "permissions": "",
+            "outputs": "",
+            "steps": "",
+        },
+    ):
+        errors.append(f"{path}: prepare job must use only its canonical direct keys")
+    prepare_permissions = _yaml_block(prepare, "permissions:", indent=4)
+    if prepare_permissions is None or not _exact_mapping(
+        prepare_permissions, indent=6, expected={"contents": "read"}
+    ):
+        errors.append(f"{path}: prepare permissions must be exactly contents: read")
+    expected_outputs = {
+        "artifact_name": "${{ steps.identity.outputs.artifact_name }}",
+        "version": "${{ steps.identity.outputs.version }}",
+        "wheel_name": "${{ steps.identity.outputs.wheel_name }}",
+        "wheel_sha256": "${{ steps.identity.outputs.wheel_sha256 }}",
+        "sdist_name": "${{ steps.identity.outputs.sdist_name }}",
+        "sdist_sha256": "${{ steps.identity.outputs.sdist_sha256 }}",
+    }
+    outputs = _yaml_block(prepare, "outputs:", indent=4)
+    if outputs is None or not _exact_mapping(outputs, indent=6, expected=expected_outputs):
+        errors.append(f"{path}: prepare outputs must expose exactly the bound identities")
+
+    required_prepare = (
+        "actions/checkout@",
+        "actions/setup-python@",
+        "astral-sh/setup-uv@",
+        "actions/upload-artifact@",
+        "fetch-depth: 0",
+        "persist-credentials: false",
+        'version: "0.12.5"',
+        "uv sync --locked --group dev --group release --no-install-project",
+        'test "${GITHUB_EVENT_NAME}" = "workflow_dispatch"',
+        'test "${GITHUB_REF}" = "refs/heads/main"',
+        'git cat-file -t "refs/tags/${TAG}"',
+        'git rev-parse "refs/tags/${TAG}^{commit}"',
+        'git merge-base --is-ancestor "${TAG_COMMIT}" "${GITHUB_SHA}"',
+        'gh release download "${TAG}"',
+        "--json isDraft --jq .isDraft",
+        "--json isPrerelease --jq .isPrerelease",
+        "--pattern 'agent_statusline-*.whl'",
+        "--pattern 'agent_statusline-*.tar.gz'",
+        "scripts/verify_artifacts.py release-dist/*",
+        "twine check --strict release-dist/*",
+        "scripts/release_artifacts.py prepare",
+        '--tag "${TAG}"',
+        "ARTIFACT_NAME: release-distributions-${{ steps.release.outputs.tag_commit }}",
+        "          name: ${{ steps.identity.outputs.artifact_name }}",
+        "path: release-dist",
+        "if-no-files-found: error",
+        "include-hidden-files: false",
+        "retention-days: 1",
+    )
+    for fragment in required_prepare:
+        if prepare.count(fragment) != 1:
+            errors.append(f"{path}: prepare job must contain exactly once: {fragment}")
+    if prepare.count('--repo "${GITHUB_REPOSITORY}"') != 3:
+        errors.append(f"{path}: every release query must bind the current repository")
+
+    if index == "pypi":
+        required_test_evidence = (
+            "TestPyPI already reports the exact promotion pair",
+            "VERSION: ${{ steps.identity.outputs.version }}",
+            "WHEEL_NAME: ${{ steps.identity.outputs.wheel_name }}",
+            "WHEEL_SHA256: ${{ steps.identity.outputs.wheel_sha256 }}",
+            "SDIST_NAME: ${{ steps.identity.outputs.sdist_name }}",
+            "SDIST_SHA256: ${{ steps.identity.outputs.sdist_sha256 }}",
+            "python scripts/verify_package_index.py",
+            "--index testpypi",
+            "--attempts 3 \\",
+            "--delay-seconds 2 \\",
+            "--timeout-seconds 10",
+        )
+        for fragment in required_test_evidence:
+            if prepare.count(fragment) != 1:
+                errors.append(
+                    f"{path}: production preparation must contain exactly once: {fragment}"
+                )
+    elif "TestPyPI already reports the exact promotion pair" in prepare:
+        errors.append(f"{path}: TestPyPI promotion must not require prior index publication")
+
+    publish = _yaml_block(workflow, "publish:", indent=2) or ""
+    if not _exact_mapping(
+        publish,
+        indent=4,
+        expected={
+            "needs": "prepare",
+            "runs-on": "ubuntu-latest",
+            "timeout-minutes": "5",
+            "environment": "",
+            "permissions": "",
+            "steps": "",
+        },
+    ):
+        errors.append(f"{path}: {label} publish job must use only its canonical direct keys")
+    environment = _yaml_block(publish, "environment:", indent=4)
+    if environment is None or not _exact_mapping(
+        environment,
+        indent=6,
+        expected={"name": index, "url": str(config["environment_url"])},
+    ):
+        errors.append(f"{path}: {label} publish environment must be exact")
+    publish_permissions = _yaml_block(publish, "permissions:", indent=4)
+    if publish_permissions is None or not _exact_mapping(
+        publish_permissions, indent=6, expected={"id-token": "write"}
+    ):
+        errors.append(f"{path}: {label} publish permission must be exactly id-token: write")
+
+    download_action = "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c"
+    download_step = _yaml_step_with_action(publish, download_action) or ""
+    download_inputs = _yaml_block(download_step, "with:", indent=8)
+    if (
+        not download_step
+        or download_step.splitlines()[0] != f"      - uses: {download_action} # v8.0.1"
+        or not _exact_mapping(download_step, indent=8, expected={"with": ""})
+        or download_inputs is None
+        or not _exact_mapping(
+            download_inputs,
+            indent=10,
+            expected={
+                "name": "${{ needs.prepare.outputs.artifact_name }}",
+                "path": "release-dist",
+            },
+        )
+    ):
+        errors.append(f"{path}: {label} download step must bind only this run's prepared pair")
+
+    pypi_action = "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33"
+    pypi_step = _yaml_step_with_action(publish, pypi_action) or ""
+    pypi_inputs = _yaml_block(pypi_step, "with:", indent=8)
+    if (
+        not pypi_step
+        or pypi_step.splitlines()[0] != f"      - name: publish the exact artifacts to {label}"
+        or not _exact_mapping(
+            pypi_step,
+            indent=8,
+            expected={"uses": pypi_action + " # v1.14.2", "with": ""},
+        )
+        or pypi_inputs is None
+        or not _exact_mapping(pypi_inputs, indent=10, expected=dict(config["publish_inputs"]))
+    ):
+        errors.append(f"{path}: {label} publishing action and inputs must be exact")
+    if publish.count("\n      - ") != 2:
+        errors.append(f"{path}: {label} publish job must contain exactly two action steps")
+    for forbidden in (
+        "run:",
+        "actions/checkout@",
+        "actions/setup-python@",
+        "uv build",
+        "python -m build",
+        "password:",
+        "user:",
+        "skip-existing:",
+    ):
+        if forbidden in publish:
+            errors.append(f"{path}: {label} publish job must not contain: {forbidden}")
+
+    verify = _yaml_block(workflow, "verify:", indent=2) or ""
+    if hashlib.sha256(verify.encode()).hexdigest() != config["verify_sha256"]:
+        errors.append(f"{path}: verify steps must match the exact reviewed sequence")
+    if not _exact_mapping(
+        verify,
+        indent=4,
+        expected={
+            "needs": "[prepare, publish]",
+            "runs-on": "ubuntu-latest",
+            "timeout-minutes": "5",
+            "permissions": "",
+            "steps": "",
+        },
+    ):
+        errors.append(f"{path}: {label} verify job must use only its canonical direct keys")
+    verify_permissions = _yaml_block(verify, "permissions:", indent=4)
+    if verify_permissions is None or not _exact_mapping(
+        verify_permissions, indent=6, expected={"contents": "read"}
+    ):
+        errors.append(f"{path}: {label} verify permissions must be exactly contents: read")
+    venv = str(config["venv"])
+    required_verify = (
+        "actions/checkout@",
+        "actions/setup-python@",
+        'python-version: "3.9"',
+        "persist-credentials: false",
+        "VERSION: ${{ needs.prepare.outputs.version }}",
+        "WHEEL_NAME: ${{ needs.prepare.outputs.wheel_name }}",
+        "WHEEL_SHA256: ${{ needs.prepare.outputs.wheel_sha256 }}",
+        "SDIST_NAME: ${{ needs.prepare.outputs.sdist_name }}",
+        "SDIST_SHA256: ${{ needs.prepare.outputs.sdist_sha256 }}",
+        "python scripts/verify_package_index.py",
+        f"--index {config['json_index']}",
+        "--project agent-statusline",
+        f"python -m venv {venv}",
+        "--disable-pip-version-check",
+        "--no-cache-dir",
+        "--no-deps",
+        "--only-binary=:all:",
+        f"--index-url {config['simple_url']}",
+        "--retries 4",
+        "--timeout 10",
+        '"agent-statusline==${VERSION}"',
+        f'test "$({venv}/bin/agent-statusline --version)" = "${{VERSION}}"',
+        f"AGENT_STATUSLINE_STATE: ${{{{ runner.temp }}}}/{config['state']}",
+        f"{venv}/bin/agent-statusline selftest",
+    )
+    for fragment in required_verify:
+        if fragment not in verify:
+            errors.append(f"{path}: {label} verification job is missing: {fragment}")
+    for exact_line in ("--attempts 12 \\", "--delay-seconds 5 \\", "--timeout-seconds 10"):
+        if sum(line.strip() == exact_line for line in verify.splitlines()) != 1:
+            errors.append(f"{path}: {label} verification requires: {exact_line}")
+
+    if len(re.findall(r"^\s*id-token\s*:", workflow, re.MULTILINE)) != 1:
+        errors.append(f"{path}: exactly one job must receive package-index identity permission")
+    if (
+        any(
+            _has_yaml_key(workflow, key)
+            for key in ("password", "user", "username", "api-token", "secrets")
+        )
+        or "${{ secrets." in workflow
+    ):
+        errors.append(f"{path}: stored package-index credentials are forbidden")
+    if re.search(r"(?:^|\s)dist/\*", workflow):
+        errors.append(f"{path}: ambient dist wildcard is forbidden")
+    if "uv build" in workflow or "python -m build" in workflow:
+        errors.append(f"{path}: package-index promotion must not rebuild distributions")
+    if _has_yaml_key(workflow, "continue-on-error") or _has_yaml_key(workflow, "if"):
+        errors.append(f"{path}: publishing evidence may not be conditional or nonblocking")
+    return errors
+
+
 def check_lean_policy(root: Path) -> list[str]:
     errors: list[str] = []
     ci = _read(root / ".github" / "workflows" / "ci.yml", errors)
     release = _read(root / ".github" / "workflows" / "release.yml", errors)
+    publish_testpypi = _read(root / ".github" / "workflows" / "publish-testpypi.yml", errors)
+    publish_pypi = _read(root / ".github" / "workflows" / "publish-pypi.yml", errors)
     required_step_fragments = (
         "CHECKS_RESULT: ${{ needs.checks.result }}",
         "TEST_RESULT: ${{ needs.test.result }}",
@@ -540,6 +710,8 @@ def check_lean_policy(root: Path) -> list[str]:
                 f".github/workflows/release.yml: missing release-policy fragment: {fragment}"
             )
     errors.extend(check_release_pipeline(release))
+    errors.extend(check_package_publish_pipeline(publish_testpypi, index="testpypi"))
+    errors.extend(check_package_publish_pipeline(publish_pypi, index="pypi"))
     if "paths-ignore:" in ci:
         errors.append(
             ".github/workflows/ci.yml: ancestry audit must not skip documentation-only refs"

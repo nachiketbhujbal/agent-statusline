@@ -149,6 +149,28 @@ def test_verify_fails_after_the_exact_attempt_bound(monkeypatch):
     )
 
 
+def test_production_index_uses_the_exact_versioned_json_endpoint(monkeypatch):
+    calls = []
+
+    def available(url, timeout):
+        calls.append((url, timeout))
+        return payload()
+
+    monkeypatch.setattr(verify_package_index, "_request_json", available)
+
+    verify_package_index.verify_with_retries(
+        index="pypi",
+        project="agent-statusline",
+        version="0.3.4",
+        expected=EXPECTED,
+        attempts=1,
+        delay_seconds=0,
+        timeout_seconds=3,
+    )
+
+    assert calls == [("https://pypi.org/pypi/agent-statusline/0.3.4/json", 3)]
+
+
 @pytest.mark.parametrize(
     ("field", "value", "message"),
     (

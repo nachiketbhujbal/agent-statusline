@@ -58,14 +58,18 @@ separately. No GitHub Support request is planned.
   identity when the full gate applies.
 - Release validates the annotated tagger and peeled commit identities before
   testing, building, or publishing, and audits the tagged commit's ancestry.
-- TestPyPI publication waits for the same tag's successful build and GitHub
-  Release, runs behind a dedicated manual environment approval, receives only
-  short-lived OIDC identity, and publishes the previously bound artifact pair.
-  A read-only dependent job proves the exact index filenames and hashes before
-  an isolated Python 3.9 wheel self-test. Production PyPI remains separate.
+- Package-index publication is separate from tag-triggered build and GitHub
+  Release creation. Paired manual TestPyPI and PyPI workflows require an
+  annotated release tag reachable from exact `main`, download and revalidate
+  that existing release pair without rebuilding, and pass only the hash-bound
+  files into a dedicated environment-gated job with short-lived OIDC identity.
+  A read-only dependent job proves exact index filenames and hashes before an
+  isolated Python 3.9 wheel self-test. Both environments accept deployments
+  only from branch `main`, require maintainer approval, and allow no bypass.
 - `scripts/verify_public_readiness.py` rejects missing private-root ignores,
   mutable workflow action refs, the undefined dependency prefix, drift from the
-  lean CI or four-job release boundary, excess package-index authority, stored
+  lean CI, two-job release, or separated three-job promotion boundaries, exact
+  ordered promotion evidence, shell overrides, excess package-index authority, stored
   publisher credentials, and exact billing evidence in the current ADR.
 - `scripts/verify_artifacts.py` rejects private paths and private textual
   evidence from wheel and source-distribution contents, and fails closed rather
