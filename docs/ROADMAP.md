@@ -439,16 +439,32 @@ Released:
 
 ## 0.4.0 — explicit host-acquisition architecture
 
-Current research and architecture planning:
+Architecture recorded in [ADR 0046](adrs/0046-separate-host-acquisition-from-presentation.md):
 
 - Confine host-specific payload and transcript interpretation to an acquisition
   layer with an explicit internal interface.
 - Keep rendering, storage, ledger arithmetic, paths, and host-independent probes
   free of new Claude-specific assumptions.
-- Inventory Codex's local JSONL evidence with privacy-neutral fixtures before
-  specifying token, session, or cost fields; post-hoc approximate cost analysis
-  is not sufficient evidence for a currency-labelled runtime claim.
-- Re-check Codex's current declarative footer and hook interfaces before choosing
-  an implementation. Do not claim this command renderer runs in Codex unless an
-  installed interface actually supports arbitrary-command status output.
-- Document credible future adapters without shipping a speculative host adapter.
+- The current Codex footer remains a fixed widget list, while stable hooks now
+  provide a credible local acquisition trigger. Hook acquisition does not make
+  this command renderer available in Codex.
+- A privacy-bounded JSONL inventory found exact token, session, context, limit,
+  and timing evidence but no exact cost field. Codex facts therefore cannot
+  update the currency ledger.
+- Keep live rollouts out of tests. Future parser coverage uses privacy-neutral
+  synthetic fixtures and tolerates unknown or malformed records because the
+  transcript format is not a stable hook interface.
+- Ship no adapter, hook, configuration change, or runtime behavior in this
+  architecture release.
+
+Proposed follow-on patches, each requiring separate approval:
+
+- 0.4.1: introduce normalized acquisition facts and a Claude adapter without
+  changing the ten-row output or installer behavior.
+- 0.4.2: add a read-only Codex rollout parser with synthetic token, lifecycle,
+  malformed-row, partial-record, and unknown-record coverage.
+- 0.4.3: consider an opt-in Codex hook collector and local query surface after
+  its configuration ownership and lifecycle behavior are proven.
+- Defer Codex footer rendering until an arbitrary-command interface exists, and
+  defer Codex currency accounting until the host supplies exact attributable
+  cost.

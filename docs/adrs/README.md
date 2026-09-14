@@ -51,6 +51,7 @@ old one rather than rewriting why the earlier choice was made.
 | [0043](0043-publish-exact-artifacts-to-testpypi-with-gated-oidc.md) | Publish exact artifacts to TestPyPI with gated OIDC |
 | [0044](0044-keep-the-readme-as-a-product-landing-page.md) | Keep the README as a product landing page |
 | [0045](0045-promote-github-releases-through-separate-package-index-workflows.md) | Promote GitHub Releases through separate package-index workflows |
+| [0046](0046-separate-host-acquisition-from-presentation.md) | Separate host acquisition from presentation |
 
 ## Reading order
 
