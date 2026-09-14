@@ -8,8 +8,7 @@ the roadmap, or accepted ADRs.
 
 - Current release target: 0.4.0, explicit host-acquisition architecture.
 - Preceding release: v0.3.6, separate trusted package-index promotion workflows.
-- Branch owner: Codex owns the bounded documentation-only v0.4.0 architecture
-  branch `codex/docs/v0.4.0-host-acquisition-research`.
+- Branch owner: none; the v0.4.0 architecture research ended without a handoff.
 - Reviewer role: none active.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
@@ -91,6 +90,12 @@ stable hooks provide a credible acquisition trigger, and local rollouts expose
 exact token/session facts but no exact cost field. The proposed follow-on train
 is 0.4.1 normalized acquisition facts, 0.4.2 a synthetic-fixture Codex parser,
 and only then consideration of an opt-in 0.4.3 collector/query surface.
+
+Exact architecture candidate
+`d8ceb7bb5537b745df070214aafd68c866f226ea` passed the complete local gate and
+one independent no-findings review. PR #28 passed the documentation-only hosted
+gate and merged it as `5fe305a6643b8141dd1874662730b1f020dea32d`;
+automatic main run 34873106649 passed the same lean required lane.
 
 No implementation, Codex configuration mutation, renderer claim, or Codex
 currency accounting is authorized yet. Runtime behavior, accepted pull refs,
