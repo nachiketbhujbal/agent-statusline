@@ -411,7 +411,7 @@ Released:
 
 ## 0.3.6 — separate trusted package-index promotion workflows
 
-Current:
+Current and ready for release:
 
 - Keep tag-triggered `release.yml` responsible only for building and publishing
   the immutable GitHub Release pair.
@@ -425,14 +425,17 @@ Current:
   that privileged job.
 - Verify exact public-index files and hashes, then install the exact wheel in a
   fresh Python 3.9 environment and run the isolated self-test.
-- Use the production lane to promote the already proven v0.3.5 GitHub Release
-  pair. Do not repeat its successful TestPyPI upload or move the v0.3.5 tag.
-- Update TestPyPI's trusted-publisher workflow identity before the next test
-  promotion, replace its old `v*` environment rule with branch `main`, and give
-  the new `pypi` environment the same `main`-only deployment boundary.
+- The production lane has promoted the already proven v0.3.5 GitHub Release
+  pair without repeating its TestPyPI upload or moving the v0.3.5 tag.
+- TestPyPI's trusted publisher now names `publish-testpypi.yml`; both GitHub
+  environments allow only branch `main`, require maintainer approval, and
+  allow no bypass.
 - Require fail-fast behavior inside every multi-command evidence script and
   exact-bind the ordered preparation and verification blocks so shell defaults
   or post-hash file replacement cannot bypass provenance.
+- Publish v0.3.6 through the paired TestPyPI and PyPI lanes, then upgrade the
+  local uv-managed command from production PyPI without touching live ledger
+  state.
 
 ## 0.4.0 — explicit host-acquisition architecture
 
