@@ -33,10 +33,10 @@ installed-artifact evidence.
 | 0.3.3 | Build-once release artifact promotion | **Released** |
 | 0.3.4 | Trusted TestPyPI publication and verification | **Released** |
 | 0.3.5 | Public README and production-ready package artifacts | **Released** |
-| 0.3.6 | Separate trusted package-index promotion workflows | **Current** |
-| 0.4.0 | Explicit host-acquisition architecture | Planned |
+| 0.3.6 | Separate trusted package-index promotion workflows | **Released** |
+| 0.4.0 | Explicit host-acquisition architecture | **Current** |
 
-0.2.1 through 0.2.14 and v0.3.0 through v0.3.5 are tagged and released. The
+0.2.1 through 0.2.14 and v0.3.0 through v0.3.6 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
 production-ready supported public baseline. Each boundary retains its exact
 review and artifact evidence; GitHub Release objects begin at v0.2.4. The
@@ -411,7 +411,7 @@ Released:
 
 ## 0.3.6 — separate trusted package-index promotion workflows
 
-Current and ready for release:
+Released:
 
 - Keep tag-triggered `release.yml` responsible only for building and publishing
   the immutable GitHub Release pair.
@@ -433,13 +433,13 @@ Current and ready for release:
 - Require fail-fast behavior inside every multi-command evidence script and
   exact-bind the ordered preparation and verification blocks so shell defaults
   or post-hash file replacement cannot bypass provenance.
-- Publish v0.3.6 through the paired TestPyPI and PyPI lanes, then upgrade the
-  local uv-managed command from production PyPI without touching live ledger
-  state.
+- v0.3.6 passed GitHub Release, TestPyPI, and PyPI publication through the
+  paired lanes. The local uv-managed command was upgraded from production PyPI
+  without touching live ledger state.
 
 ## 0.4.0 — explicit host-acquisition architecture
 
-Planned:
+Current research and architecture planning:
 
 - Confine host-specific payload and transcript interpretation to an acquisition
   layer with an explicit internal interface.
