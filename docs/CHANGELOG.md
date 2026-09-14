@@ -19,9 +19,10 @@ files, collision skipping, conditional evidence, and rebuilds fail closed
 ([ADR 0045](adrs/0045-promote-github-releases-through-separate-package-index-workflows.md)).
 
 The production index verifier now supports PyPI's version-specific JSON
-endpoint alongside TestPyPI. The existing v0.3.5 GitHub Release artifacts can
-therefore be promoted unchanged to production PyPI after this workflow-only
-support lands on `main`; its already successful TestPyPI upload is not repeated.
+endpoint alongside TestPyPI. The existing v0.3.5 GitHub Release artifacts were
+promoted unchanged to production PyPI after this workflow-only support landed
+on `main`; its already successful TestPyPI upload was not repeated. Production
+run 34797988834 passed exact public hashes and isolated Python 3.9 installation.
 
 Independent review demonstrated that a workflow shell default could disable
 implicit fail-fast behavior and that an extra preparation step could replace
@@ -29,9 +30,14 @@ files after their hashes were recorded. Every multi-command evidence script now
 sets its own fail-fast options, canonical top-level structure rejects shell
 defaults, and exact digests lock the ordered preparation and verification
 blocks. Mutations and an executable bad-ref regression prove that shell
-overrides and post-hash replacement fail before publication. The operational
-record also requires both GitHub environments to permit only branch `main`,
-with the TestPyPI publisher migrated to its renamed workflow.
+overrides and post-hash replacement fail before publication. Both GitHub
+environments now permit only branch `main`, require maintainer approval, and
+allow no bypass. TestPyPI's sole active publisher now names
+`publish-testpypi.yml`; production PyPI remains bound to `publish-pypi.yml`.
+
+Project instructions now default future work to the smallest proportionate
+change and prohibit unsolicited hardening or expanded release ceremony while
+preserving the existing mandatory safety and release checks.
 
 ## 0.3.5
 

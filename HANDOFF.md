@@ -7,10 +7,10 @@ the roadmap, or accepted ADRs.
 ## Current release boundary
 
 - Current release target: 0.3.6, separate trusted package-index promotion workflows.
-- Preceding release: v0.3.5, the immutable artifact source for production promotion.
-- Current operational target: promote the exact v0.3.5 GitHub Release artifacts
-  to production PyPI after the workflow-only v0.3.6 support lands on `main`;
-  this does not move or replace the immutable v0.3.5 tag.
+- Preceding release: v0.3.5, now published on GitHub, TestPyPI, and PyPI.
+- Current operational target: cut v0.3.6 from the completed workflow support on
+  `main`, publish its exact GitHub Release pair through TestPyPI and PyPI, then
+  upgrade the local installed command from production PyPI.
 - Branch owner: Codex; only the owner changes the release branch.
 - Reviewer role: one independent read-only reviewer, assigned after the exact
   candidate SHA is frozen. No second reviewer or delegated worker runs beside it.
@@ -26,11 +26,11 @@ the roadmap, or accepted ADRs.
   force-push are blocked.
 - Runtime dependencies remain empty and versions remain Git-tag-derived.
 
-v0.3.5 is tagged and released with the approved concise README, package-name
-commands, exact GitHub Release artifacts, and successful TestPyPI evidence.
-Production PyPI's pending trusted publisher is registered for exact repository
-`nachiketbhujbal/agent-statusline`, workflow `publish-pypi.yml`, and environment
-`pypi`; no package-index token or secret is stored.
+v0.3.5 is tagged and released with the approved concise README and one exact
+artifact pair on GitHub, TestPyPI, and production PyPI. TestPyPI and PyPI are
+bound respectively to `publish-testpypi.yml` and `publish-pypi.yml`; both
+GitHub environments require maintainer approval, accept only branch `main`,
+and allow no bypass. No package-index token or secret is stored.
 
 ## Stable product boundary
 
@@ -81,22 +81,23 @@ wheel self-test passed. The exact published pair is
 `agent_statusline-0.3.5.tar.gz` at
 `ed77b89ba1d417b995beca5644c284f8e6d25aca9d793dd4266a841c0dc1da24`.
 
-The current owner branch starts from that exact merge. It separates TestPyPI
-and PyPI into paired manual promotion workflows under ADR 0045, extends the
-exact index verifier to production, and adds deterministic policy mutations.
-Freeze and independently review one exact candidate SHA, merge only after the
-required check passes, replace `testpypi`'s `v*` deployment rule with branch
-`main`, and update its trusted publisher to `publish-testpypi.yml`. Create the
-`pypi` environment with required maintainer approval, no bypass, and only branch
-`main`; its publisher remains bound to `publish-pypi.yml`. Then manually
-dispatch `publish-pypi.yml` from exact updated `main` with tag `v0.3.5`. Stop at
-the deployment approval if human confirmation is required. After success,
-verify the production page, exact hashes, standard install, command version,
-and self-test. Do not rebuild, retag, repeat the existing TestPyPI upload,
-access live accounting state, or alter live Claude Code configuration.
-Explicit host acquisition and Codex evidence remain on the next minor track.
-Runtime behavior, accepted pull refs, unreachable objects, and recovery cleanup
-remain separate.
+The paired promotion implementation merged through PR #24 as
+`8030d4353ec71418eb42644275c6e68ad3877d3f`; PR #25 then recorded the durable
+proportionate-engineering default at the following `main` boundary,
+`d438ed3dd08459c69792433e288686942d729ed4`. Production v0.3.5 promotion run
+34797988834 passed exact hash verification and isolated installation, and the
+TestPyPI publisher migration is complete.
+
+Finish v0.3.6 by aligning these current records, running the required local
+gate and one exact-SHA review, merging through protected `main`, and tagging
+the verified merge. Let `release.yml` create the GitHub Release, then manually
+publish that exact pair through `publish-testpypi.yml` followed by
+`publish-pypi.yml`. After production verification, upgrade the local uv-managed
+tool from `agent-statusline==0.3.6`, confirm its version and existing Claude
+Code command path, and do not read or alter live accounting state. Explicit
+host acquisition and Codex evidence remain on the next minor track. Runtime
+behavior, accepted pull refs, unreachable objects, and recovery cleanup remain
+separate.
 [PUBLIC_READINESS.md](docs/PUBLIC_READINESS.md) records the protected baseline.
 
 Durable decisions live in [ADRs](docs/adrs/README.md), completed behavior in the
