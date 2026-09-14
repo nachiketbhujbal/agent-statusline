@@ -517,7 +517,6 @@ def check_lean_policy(root: Path) -> list[str]:
         "contents: read",
         "fetch-depth: 0",
         "python scripts/audit_reachable_history.py --ref HEAD",
-        'git diff --quiet "${BASE_SHA}" HEAD --',
         "if: needs.checks.outputs.full == 'true'",
         "macos:",
         "needs: checks",
@@ -555,12 +554,55 @@ def check_lean_policy(root: Path) -> list[str]:
     if checks_job is None or scope_step is None:
         errors.append(".github/workflows/ci.yml: requires one unambiguous scope step")
     else:
-        for output in (
-            'echo "full=true" >> "${GITHUB_OUTPUT}"',
-            'echo "full=false" >> "${GITHUB_OUTPUT}"',
+        if not _exact_mapping(
+            checks_job,
+            indent=4,
+            expected={
+                "runs-on": "ubuntu-latest",
+                "timeout-minutes": "10",
+                "outputs": "",
+                "steps": "",
+            },
         ):
-            if output not in scope_step:
-                errors.append(f".github/workflows/ci.yml: scope step must emit: {output}")
+            errors.append(
+                ".github/workflows/ci.yml: checks job must use only its canonical direct keys"
+            )
+        checks_outputs = _yaml_block(checks_job, "outputs:", indent=4)
+        if checks_outputs is None or not _exact_mapping(
+            checks_outputs,
+            indent=6,
+            expected={"full": "${{ steps.scope.outputs.full }}"},
+        ):
+            errors.append(
+                ".github/workflows/ci.yml: checks outputs must bind exactly to the scope step"
+            )
+        scope_condition = (
+            'elif git diff --quiet "${BASE_SHA}" HEAD -- . '
+            "':(exclude)docs/**' ':(exclude)**/*.md' "
+            "':(top,glob,exclude)*.md' ':(exclude)LICENSE'; then"
+        )
+        expected_scope_step = "\n".join(
+            (
+                "      - name: preserve the documentation-only compute boundary",
+                "        id: scope",
+                "        env:",
+                "          BASE_SHA: ${{ github.event_name == 'pull_request' "
+                "&& github.event.pull_request.base.sha || github.event.before }}",
+                "        run: |",
+                '          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then',
+                '            echo "full=true" >> "${GITHUB_OUTPUT}"',
+                f"          {scope_condition}",
+                '            echo "full=false" >> "${GITHUB_OUTPUT}"',
+                "          else",
+                '            echo "full=true" >> "${GITHUB_OUTPUT}"',
+                "          fi",
+            )
+        )
+        if scope_step != expected_scope_step:
+            errors.append(
+                ".github/workflows/ci.yml: scope step must exactly match the reviewed "
+                "fail-closed classifier"
+            )
 
     required_job = _yaml_block(ci, "required:", indent=2)
     required_step = _yaml_block(
