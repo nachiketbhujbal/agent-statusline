@@ -21,6 +21,14 @@ The warning threshold is configurable through
 and [32](https://github.com/nachiketbhujbal/agent-statusline/issues/32),
 [ADR 0049](adrs/0049-configure-context-warnings-at-stop-time.md)).
 
+Exact candidate `e4a0d91762fbb1bc08bb891c07766bec0ea86cec` passed independent
+no-findings review and the complete local gate. PR #35 closed both issues; PR
+and merged-main CI passed before the annotated tag and GitHub Release.
+TestPyPI and production PyPI then published and clean-install verified the same
+artifact pair. TestPyPI's first clean-install attempt encountered brief Simple
+Index propagation lag after exact JSON hash verification; its failed-job rerun
+passed.
+
 ## 0.4.2
 
 Each Claude render now atomically publishes a documented, versioned local
