@@ -5,10 +5,11 @@ directly.  A host omits facts it cannot supply; in particular, exact money is
 never inferred from token counts.
 """
 
+import math
 import os
 from collections.abc import Mapping
 
-from agent_statusline.coerce import finite_integer, finite_number
+from agent_statusline.coerce import MAX_DISPLAY_VALUE, finite_integer, finite_number
 from agent_statusline.transcript import dig, transcript_totals
 
 GROUPS = ("identity", "workspace", "model", "context", "tokens", "limits", "activity", "money")
@@ -20,6 +21,29 @@ def _text(value):
 
 def _group(**values):
     return {key: value for key, value in values.items() if value is not None}
+
+
+def _optional_integer(source, key):
+    value = source.get(key)
+    return None if value is None else finite_integer(value)
+
+
+def _optional_number(source, key):
+    value = source.get(key)
+    return None if value is None else finite_number(value)
+
+
+def _optional_exact_number(source, key):
+    value = source.get(key)
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not math.isfinite(parsed) or abs(parsed) > MAX_DISPLAY_VALUE:
+        return None
+    return finite_number(value)
 
 
 def claude_facts(payload, transcript_reader=transcript_totals, default_cwd=None):
@@ -44,24 +68,27 @@ def claude_facts(payload, transcript_reader=transcript_totals, default_cwd=None)
     if not isinstance(permission, str):
         permission = _text(payload.get("permission_mode"))
 
-    current = dig(payload, "context_window", "current_usage", default={})
+    context_node = dig(payload, "context_window", default={})
+    if not isinstance(context_node, Mapping):
+        context_node = {}
+    current = context_node.get("current_usage", {})
     if not isinstance(current, Mapping):
         current = {}
     current_tokens = {
-        key: finite_integer(current.get(key))
+        key: value
         for key in (
             "input_tokens",
             "output_tokens",
             "cache_creation_input_tokens",
             "cache_read_input_tokens",
         )
+        if (value := _optional_integer(current, key)) is not None
     }
 
     cost = dig(payload, "cost", default={})
     if not isinstance(cost, Mapping):
         cost = {}
-    exact_cost = cost.get("total_cost_usd")
-    run_cost = None if exact_cost is None else finite_number(exact_cost)
+    run_cost = _optional_exact_number(cost, "total_cost_usd")
 
     limits = dig(payload, "rate_limits", default={})
     if not isinstance(limits, Mapping):
@@ -90,15 +117,11 @@ def claude_facts(payload, transcript_reader=transcript_totals, default_cwd=None)
             output_style=_text(dig(payload, "output_style", "name")),
             service_tier=_text(activity.get("tier")),
         ),
-        "context": {
-            "window_size": finite_integer(
-                dig(payload, "context_window", "context_window_size", default=0)
-            ),
-            "used_percentage": finite_number(
-                dig(payload, "context_window", "used_percentage", default=0)
-            ),
-            "current_tokens": current_tokens,
-        },
+        "context": _group(
+            window_size=_optional_integer(context_node, "context_window_size"),
+            used_percentage=_optional_number(context_node, "used_percentage"),
+            current_tokens=current_tokens or None,
+        ),
         "tokens": {
             key: activity.get(key)
             for key in ("in", "cw", "cr", "out", "think", "turns", "b1h", "b5m")
@@ -114,9 +137,17 @@ def claude_facts(payload, transcript_reader=transcript_totals, default_cwd=None)
         "activity": dict(activity),
         "money": _group(
             run_cost_usd=run_cost,
-            wall_seconds=max(0.0, finite_number(cost.get("total_duration_ms")) / 1000),
-            api_seconds=max(0.0, finite_number(cost.get("total_api_duration_ms")) / 1000),
-            lines_added=finite_integer(cost.get("total_lines_added")),
-            lines_removed=finite_integer(cost.get("total_lines_removed")),
+            wall_seconds=(
+                max(0.0, value / 1000)
+                if (value := _optional_number(cost, "total_duration_ms")) is not None
+                else None
+            ),
+            api_seconds=(
+                max(0.0, value / 1000)
+                if (value := _optional_number(cost, "total_api_duration_ms")) is not None
+                else None
+            ),
+            lines_added=_optional_integer(cost, "total_lines_added"),
+            lines_removed=_optional_integer(cost, "total_lines_removed"),
         ),
     }

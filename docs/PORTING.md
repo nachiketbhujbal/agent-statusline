@@ -80,6 +80,7 @@ renderer consumes them.
 | `probes.py` — cached `ps` / `vm_stat` / git / `statvfs` | no |
 | `ledger.py` — cross-session cost accounting | no |
 | `storage.py` — locked, private, atomic persistence | no |
+| `session_metrics.py` — documented local snapshot/query contract | no |
 | `paths.py` — where Claude-local state currently lives | partly |
 | `diagnostics.py` — privacy-safe failure evidence | no |
 | `transcript.py` — parses a Claude `.jsonl` | **yes** |
@@ -92,8 +93,9 @@ So a second host needs a new acquisition adapter and may reuse host-independent
 components. Normalized facts cover identity, workspace, model, context, tokens,
 limits, activity, and exact money. A fact is absent when its host does not
 provide accountable evidence; an adapter never fills gaps with another host's
-assumptions. The interface is internal in v0.4.1; v0.4.2 will define the public
-session-metrics contract separately.
+assumptions. The normalized acquisition interface remains internal, while
+v0.4.2 publishes its supported host-neutral subset through
+`agent-statusline metrics <session-id>`.
 
 ### What to keep no matter the agent
 

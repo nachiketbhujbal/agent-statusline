@@ -142,6 +142,29 @@ class TestContent:
         assert seen["accrued_at"] == last_ts
         assert seen["duration"] == payload["cost"]["total_duration_ms"] / 1000
 
+    def test_render_publishes_normalized_session_metrics(self, payload, monkeypatch, capsys):
+        seen = {}
+        monkeypatch.setattr(
+            statusline.session_metrics,
+            "write_snapshot",
+            lambda facts, aggregate: seen.update(facts=facts, aggregate=aggregate),
+        )
+
+        draw(payload, monkeypatch, capsys)
+
+        assert seen["facts"]["identity"]["session_id"] == payload["session_id"]
+        assert seen["aggregate"]["session_complete"]
+
+    def test_session_metrics_failure_does_not_remove_the_status_line(
+        self, payload, monkeypatch, capsys
+    ):
+        def fail(_facts, _aggregate):
+            raise OSError("state unavailable")
+
+        monkeypatch.setattr(statusline.session_metrics, "write_snapshot", fail)
+
+        assert "PROJECT" in labels(draw(payload, monkeypatch, capsys))
+
     @pytest.mark.parametrize("duration", [None, "invalid", -1, 0, 10**15])
     def test_cost_attribution_rejects_unusable_session_duration(
         self, payload, monkeypatch, capsys, duration
@@ -693,6 +716,7 @@ class TestSerializedRuntimeState:
         assert aggregate["d7"] == 2.5
         assert aggregate["d30"] == 2.5
         assert not any(aggregate[key + "_complete"] for key in statusline.ledger.COST_WINDOWS)
+        assert not aggregate["session_complete"]
 
     def test_empty_session_identifier_remains_a_valid_opaque_journal_key(self, monkeypatch):
         now = 1_800_000_000

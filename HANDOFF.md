@@ -6,9 +6,9 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.4.1, normalized Claude acquisition facts.
-- Preceding release: v0.4.0, explicit host-acquisition architecture.
-- Branch owner: Codex on `codex/feat/v0.4.1-normalized-acquisition`.
+- Current release target: 0.4.2, documented local session metrics.
+- Preceding release: v0.4.1, normalized Claude acquisition facts.
+- Branch owner: Codex on `codex/feat/v0.4.2-session-metrics`.
 - Reviewer role: none active.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
@@ -23,7 +23,7 @@ the roadmap, or accepted ADRs.
   force-push are blocked.
 - Runtime dependencies remain empty and versions remain Git-tag-derived.
 
-v0.4.0 is tagged and released with one exact artifact pair on GitHub, TestPyPI,
+v0.4.1 is tagged and released with one exact artifact pair on GitHub, TestPyPI,
 and production PyPI. TestPyPI and PyPI are
 bound respectively to `publish-testpypi.yml` and `publish-pypi.yml`; both
 GitHub environments require maintainer approval, accept only branch `main`,
@@ -61,7 +61,8 @@ artifact promotion and exact GitHub Release publication. v0.3.4 completed
 trusted TestPyPI publication and exact public-index verification. v0.3.5
 completed the public landing page and first production PyPI publication.
 v0.3.6 completed separate, reusable TestPyPI and PyPI promotion workflows.
-v0.4.0 completed the explicit host-acquisition architecture boundary.
+v0.4.0 completed the explicit host-acquisition architecture boundary. v0.4.1
+completed the normalized Claude acquisition adapter without changing display.
 
 The complete sequence and exclusions are authoritative in
 [ROADMAP.md](docs/ROADMAP.md). Do not merge the historical hardening branch as
@@ -69,11 +70,21 @@ a whole or import a later slice into the current release.
 
 ## Resume point
 
-v0.4.1 is the active behavior-preserving implementation of ADR 0046. It adds
-one normalized Claude acquisition adapter and routes the existing renderer
-through it without changing display, accounting, installation, hooks, or
-state. Its complete local gate passed; the exact corrected candidate still
-requires renewed independent review before publication.
+v0.4.2 is the active implementation of issue 30 and ADR 0048. It publishes a
+versioned, private, atomically replaced snapshot per eligible Claude session
+and exposes it through `agent-statusline metrics <session-id>`. The current
+candidate still requires the complete local gate and one independent exact-SHA
+review before publication.
+
+v0.4.1 is complete at tagged merge
+`d7b8341ed9cfea801f8f8d50c9832ead10e7548e`. Exact candidate
+`3193300a70dfc9d8f892cc330d694126c84e37af` passed independent review; PR #33,
+merged-main CI run 35000480030, GitHub Release run 35000669543, TestPyPI run
+35000820947, and production PyPI run 35001447162 passed. GitHub, TestPyPI, and
+PyPI expose the same exact wheel at
+`ffe0f61c134158bc6894590ecc47c1f7509f37bebcf7ae20b31ddd4b5af9266c`
+and source archive at
+`173a95ee032e03f011d0b3638e1bc0945b8fbbce0a28686be5e43ca0c97ad45f`.
 
 v0.4.0 is complete at tagged merge
 `125f60527d44cc3dcf20ff8c384542944dacbf8d`. GitHub Release run 34997267833,

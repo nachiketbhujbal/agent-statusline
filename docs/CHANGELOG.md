@@ -4,7 +4,26 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.4.1
+## Unreleased — 0.4.2
+
+Each Claude render now atomically publishes a documented, versioned local
+snapshot for its session. `agent-statusline metrics <session-id>` returns that
+public JSON contract without requiring consumers to parse internal transcript
+or ledger caches. The snapshot includes supported model, context, exact
+lifetime session cost, turn, line, title, and timestamp facts; unknown optional
+facts are omitted. Files are private, retained for 35 days and at most 512
+sessions, and can be disabled with `AGENT_STATUSLINE_SESSION_METRICS=0`
+([issue 30](https://github.com/nachiketbhujbal/agent-statusline/issues/30),
+[ADR 0048](adrs/0048-publish-versioned-local-session-metrics.md)).
+
+The installed self-test now proves the contract from synthetic data.
+Independent review also ensured malformed/non-finite host cost remains absent
+and that retention revalidates a selected snapshot under its per-file lock, so
+a concurrent refresh cannot be deleted from stale pruning evidence. Cap
+maintenance continues through other candidates when a selected snapshot is
+refreshed, preserving the documented maximum without deleting the refresh.
+
+## 0.4.1
 
 Claude Code payload and transcript interpretation now passes through one
 dependency-free normalized acquisition adapter. The adapter groups identity,
@@ -13,6 +32,11 @@ and omits optional facts the host did not supply. The existing renderer now
 consumes that interface with unchanged rows, fields, ordering, ledger,
 installer, hooks, and state files
 ([ADR 0047](adrs/0047-normalize-claude-acquisition-facts.md)).
+
+Exact candidate `3193300a70dfc9d8f892cc330d694126c84e37af`
+passed independent review and the complete local gate. PR #33 and merged-main
+CI passed before the annotated tag and GitHub Release. TestPyPI and production
+PyPI then published and clean-install verified the same exact artifact pair.
 
 ## 0.4.0
 
