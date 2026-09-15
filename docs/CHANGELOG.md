@@ -4,7 +4,17 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.4.0
+## Unreleased — 0.4.1
+
+Claude Code payload and transcript interpretation now passes through one
+dependency-free normalized acquisition adapter. The adapter groups identity,
+workspace, model, context, token, limit, activity, and exact-money evidence,
+and omits optional facts the host did not supply. The existing renderer now
+consumes that interface with unchanged rows, fields, ordering, ledger,
+installer, hooks, and state files
+([ADR 0047](adrs/0047-normalize-claude-acquisition-facts.md)).
+
+## 0.4.0
 
 Host acquisition is now explicitly separate from host presentation. A current
 Codex inspection confirms that stable lifecycle hooks can trigger future local
@@ -13,8 +23,8 @@ this renderer. A privacy-bounded rollout inventory found exact token and session
 facts but no exact cost field; Codex evidence therefore cannot update the
 currency ledger ([ADR 0046](adrs/0046-separate-host-acquisition-from-presentation.md)).
 
-No adapter, hook, configuration change, display change, or runtime behavior is
-implemented or authorized in this architecture release.
+No adapter, hook, configuration change, display change, or runtime behavior was
+implemented in this architecture release.
 
 ## 0.3.6
 

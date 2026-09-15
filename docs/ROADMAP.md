@@ -34,7 +34,8 @@ installed-artifact evidence.
 | 0.3.4 | Trusted TestPyPI publication and verification | **Released** |
 | 0.3.5 | Public README and production-ready package artifacts | **Released** |
 | 0.3.6 | Separate trusted package-index promotion workflows | **Released** |
-| 0.4.0 | Explicit host-acquisition architecture | **Current** |
+| 0.4.0 | Explicit host-acquisition architecture | **Released** |
+| 0.4.1 | Normalized Claude acquisition facts | **Current** |
 
 0.2.1 through 0.2.14 and v0.3.0 through v0.3.6 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
@@ -457,14 +458,30 @@ Architecture recorded in [ADR 0046](adrs/0046-separate-host-acquisition-from-pre
 - Ship no adapter, hook, configuration change, or runtime behavior in this
   architecture release.
 
-Proposed follow-on patches, each requiring separate approval:
+Follow-on patches:
 
 - 0.4.1: introduce normalized acquisition facts and a Claude adapter without
   changing the ten-row output or installer behavior.
-- 0.4.2: add a read-only Codex rollout parser with synthetic token, lifecycle,
-  malformed-row, partial-record, and unknown-record coverage.
-- 0.4.3: consider an opt-in Codex hook collector and local query surface after
-  its configuration ownership and lifecycle behavior are proven.
+- 0.4.2: publish a documented, local per-session metrics contract built from
+  normalized facts ([issue 30](https://github.com/nachiketbhujbal/agent-statusline/issues/30)).
+- 0.4.3: make the context guard configurable and offer actionable Stop timing
+  without forcing Claude to continue ([issues 31](https://github.com/nachiketbhujbal/agent-statusline/issues/31)
+  and [32](https://github.com/nachiketbhujbal/agent-statusline/issues/32)).
+- Defer the synthetic-fixture Codex rollout parser and any opt-in collector/query
+  surface until after this local integration sequence.
 - Defer Codex footer rendering until an arbitrary-command interface exists, and
   defer Codex currency accounting until the host supplies exact attributable
   cost.
+
+## 0.4.1 — normalized Claude acquisition facts
+
+Current:
+
+- Add one internal, dependency-free acquisition interface grouped by identity,
+  workspace, model, context, tokens, limits, activity, and exact money.
+- Adapt Claude's payload and transcript evidence into that interface, omitting
+  facts the host does not supply.
+- Make the existing renderer consume the adapter without changing its ten rows,
+  fields, ordering, ledger, installer, hooks, or state files.
+- Keep the interface internal until 0.4.2 defines the supported public session
+  metrics schema ([ADR 0047](adrs/0047-normalize-claude-acquisition-facts.md)).

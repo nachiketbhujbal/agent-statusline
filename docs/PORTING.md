@@ -69,9 +69,10 @@ widget list?**
 
 ### The seam
 
-The package is layered, but several acquisition and installation modules remain
-host-specific. ADR 0046 makes the acquisition/presentation split explicit;
-the code has not yet been refactored to that boundary:
+The package is layered, and ADR 0046 makes the acquisition/presentation split
+explicit. ADR 0047 adds the first implementation of that boundary: Claude's
+payload and transcript are normalized by `acquisition.py` before the existing
+renderer consumes them.
 
 | module | host-specific? |
 | --- | --- |
@@ -82,20 +83,17 @@ the code has not yet been refactored to that boundary:
 | `paths.py` — where Claude-local state currently lives | partly |
 | `diagnostics.py` — privacy-safe failure evidence | no |
 | `transcript.py` — parses a Claude `.jsonl` | **yes** |
-| `statusline.py` — reads the Claude payload, builds rows | **yes** |
+| `acquisition.py` — normalizes Claude payload and transcript facts | **yes** |
+| `statusline.py` — builds the approved rows from normalized facts | presentation |
 | `installer.py` / `hooks/` — Claude settings and events | **yes** |
 | `selftest.py` — synthetic Claude payload health check | **yes** |
 
-So a second host needs a new acquisition layer and may reuse host-independent
-components. The normalized fact groups will cover identity, workspace, model,
-context, tokens, limits, activity, and exact money. A group is absent when its
-host does not provide accountable evidence; an adapter never fills gaps with
-another host's assumptions.
-
-**This has not been built** — the current code still reads the Claude payload
-directly. The measured Codex evidence now provides a real second acquisition
-consumer, while its widget footer proves that presentation cannot be forced
-through one common host interface.
+So a second host needs a new acquisition adapter and may reuse host-independent
+components. Normalized facts cover identity, workspace, model, context, tokens,
+limits, activity, and exact money. A fact is absent when its host does not
+provide accountable evidence; an adapter never fills gaps with another host's
+assumptions. The interface is internal in v0.4.1; v0.4.2 will define the public
+session-metrics contract separately.
 
 ### What to keep no matter the agent
 
