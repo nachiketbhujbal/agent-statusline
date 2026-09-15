@@ -22,6 +22,16 @@ def _group(**values):
     return {key: value for key, value in values.items() if value is not None}
 
 
+def _optional_integer(source, key):
+    value = source.get(key)
+    return None if value is None else finite_integer(value)
+
+
+def _optional_number(source, key):
+    value = source.get(key)
+    return None if value is None else finite_number(value)
+
+
 def claude_facts(payload, transcript_reader=transcript_totals, default_cwd=None):
     """Normalize one Claude Code status-line payload and its transcript facts."""
     if not isinstance(payload, Mapping):
@@ -44,17 +54,21 @@ def claude_facts(payload, transcript_reader=transcript_totals, default_cwd=None)
     if not isinstance(permission, str):
         permission = _text(payload.get("permission_mode"))
 
-    current = dig(payload, "context_window", "current_usage", default={})
+    context_node = dig(payload, "context_window", default={})
+    if not isinstance(context_node, Mapping):
+        context_node = {}
+    current = context_node.get("current_usage", {})
     if not isinstance(current, Mapping):
         current = {}
     current_tokens = {
-        key: finite_integer(current.get(key))
+        key: value
         for key in (
             "input_tokens",
             "output_tokens",
             "cache_creation_input_tokens",
             "cache_read_input_tokens",
         )
+        if (value := _optional_integer(current, key)) is not None
     }
 
     cost = dig(payload, "cost", default={})
@@ -90,15 +104,11 @@ def claude_facts(payload, transcript_reader=transcript_totals, default_cwd=None)
             output_style=_text(dig(payload, "output_style", "name")),
             service_tier=_text(activity.get("tier")),
         ),
-        "context": {
-            "window_size": finite_integer(
-                dig(payload, "context_window", "context_window_size", default=0)
-            ),
-            "used_percentage": finite_number(
-                dig(payload, "context_window", "used_percentage", default=0)
-            ),
-            "current_tokens": current_tokens,
-        },
+        "context": _group(
+            window_size=_optional_integer(context_node, "context_window_size"),
+            used_percentage=_optional_number(context_node, "used_percentage"),
+            current_tokens=current_tokens or None,
+        ),
         "tokens": {
             key: activity.get(key)
             for key in ("in", "cw", "cr", "out", "think", "turns", "b1h", "b5m")
@@ -114,9 +124,17 @@ def claude_facts(payload, transcript_reader=transcript_totals, default_cwd=None)
         "activity": dict(activity),
         "money": _group(
             run_cost_usd=run_cost,
-            wall_seconds=max(0.0, finite_number(cost.get("total_duration_ms")) / 1000),
-            api_seconds=max(0.0, finite_number(cost.get("total_api_duration_ms")) / 1000),
-            lines_added=finite_integer(cost.get("total_lines_added")),
-            lines_removed=finite_integer(cost.get("total_lines_removed")),
+            wall_seconds=(
+                max(0.0, value / 1000)
+                if (value := _optional_number(cost, "total_duration_ms")) is not None
+                else None
+            ),
+            api_seconds=(
+                max(0.0, value / 1000)
+                if (value := _optional_number(cost, "total_api_duration_ms")) is not None
+                else None
+            ),
+            lines_added=_optional_integer(cost, "total_lines_added"),
+            lines_removed=_optional_integer(cost, "total_lines_removed"),
         ),
     }

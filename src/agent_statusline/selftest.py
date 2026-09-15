@@ -10,6 +10,7 @@ import sys
 import tempfile
 import time
 
+from agent_statusline.session_metrics import SCHEMA_VERSION, filename_for
 from agent_statusline.statusline import ORDER
 
 EXPECTED_ROWS = tuple(ORDER)
@@ -167,6 +168,35 @@ def _fail(reason):
     return 1
 
 
+def _valid_metrics(state_dir, payload):
+    path = os.path.join(state_dir, filename_for(payload["session_id"]))
+    try:
+        with open(path, encoding="utf-8") as handle:
+            snapshot = json.load(handle)
+    except (OSError, ValueError):
+        return False
+    expected = {
+        "schema_version": SCHEMA_VERSION,
+        "producer": "agent-statusline",
+        "session_id": payload["session_id"],
+        "host": "claude",
+        "model": payload["model"]["display_name"],
+        "context_used_pct": payload["context_window"]["used_percentage"],
+        "context_window_size": payload["context_window"]["context_window_size"],
+        "cost_usd": payload["cost"]["total_cost_usd"],
+        "turns": 1,
+        "lines_added": payload["cost"]["total_lines_added"],
+        "lines_removed": payload["cost"]["total_lines_removed"],
+        "session_title": payload["session_name"],
+    }
+    return (
+        all(snapshot.get(key) == value for key, value in expected.items())
+        and isinstance(snapshot.get("producer_version"), str)
+        and isinstance(snapshot.get("started_at"), str)
+        and isinstance(snapshot.get("updated_at"), str)
+    )
+
+
 def run():
     """Render a full synthetic payload in a fresh process and private state."""
     with tempfile.TemporaryDirectory(prefix="agent-statusline-selftest-") as root:
@@ -206,6 +236,8 @@ def run():
             return _fail("isolated renderer did not emit all approved rows in order")
         if not _has_transcript_evidence(rows):
             return _fail("isolated renderer did not emit the approved transcript evidence")
+        if not _valid_metrics(state_dir, payload):
+            return _fail("isolated renderer did not publish the documented session metrics")
         if not _private_directory(home_dir):
             return _fail("isolated home is missing or not private")
         if not _private_state(state_dir):

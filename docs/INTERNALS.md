@@ -158,6 +158,48 @@ The test suite is the faster development loop:
 uv run --locked pytest tests -v
 ```
 
+## Public per-session metrics
+
+Each render with a non-empty host session ID atomically publishes one local
+snapshot at
+`<state-dir>/session-metrics-v1-<sha256(session-id)>.json`. The bounded hash
+keeps an opaque host identifier out of the filename and avoids treating it as a
+path. Consumers should normally use the supported query instead of constructing
+that path:
+
+```bash
+agent-statusline metrics <session-id>
+```
+
+The command prints one JSON object and exits 1 when no supported snapshot
+exists. Schema version 1 contains these fields; optional fields are omitted
+when their evidence is unknown:
+
+| field | meaning |
+| --- | --- |
+| `schema_version` | integer contract version, currently `1` |
+| `producer` / `producer_version` | `agent-statusline` and the installed package version |
+| `session_id` | the host's opaque session identifier |
+| `host` | acquisition host, currently `claude` |
+| `model` | host model display name, falling back to its identifier |
+| `context_used_pct` / `context_window_size` | current context occupancy and capacity |
+| `cost_usd` | exact ledger-backed lifetime session cost; omitted unless the current host cost and ledger history are exact |
+| `turns` | cumulative assistant responses carrying usage evidence |
+| `lines_added` / `lines_removed` | host-supplied session line counts |
+| `session_title` | host-supplied title |
+| `started_at` / `updated_at` | ISO 8601 local timestamps with UTC offsets |
+
+Changes within schema version 1 are additive. A removal or meaning change
+requires a new schema version and filename prefix. Snapshots and lock files are
+private (`0600`), use the shared locked storage service, and readers never see a
+partial JSON document. Retention matches the transcript cache: 35 days and at
+most 512 session files, checked at most hourly. Set
+`AGENT_STATUSLINE_SESSION_METRICS=0` (also accepts `false`, `no`, or `off`) to
+disable new snapshot writes.
+
+These files can contain a session title, model, cost, and opaque identifier.
+They are a local integration contract, not publication-safe evidence.
+
 `tests/conftest.py` redirects `AGENT_STATUSLINE_STATE` **before** any package import,
 because `paths.STATE_DIR` is resolved at import time. No test may touch the real
 `~/.claude`.

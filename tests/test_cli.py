@@ -37,6 +37,20 @@ class TestDispatch:
         assert run(["--help"], monkeypatch) == 0
         assert "agent-statusline install" in capsys.readouterr().out
 
+    def test_metrics_dispatch(self, monkeypatch):
+        from agent_statusline import session_metrics
+
+        seen = {}
+
+        def fake_metrics(args):
+            seen["args"] = args
+            return 0
+
+        monkeypatch.setattr(session_metrics, "cli", fake_metrics)
+
+        assert run(["metrics", "session-1"], monkeypatch) == 0
+        assert seen["args"] == ["session-1"]
+
     def test_selftest_uses_an_isolated_renderer(self, monkeypatch, capsys):
         assert run(["selftest"], monkeypatch) == 0
         assert "all 10 approved rows with private state" in capsys.readouterr().out
@@ -91,7 +105,31 @@ class TestDispatch:
 
         def succeed(*args, **kwargs):
             seen.update(kwargs)
-            os.makedirs(kwargs["env"]["AGENT_STATUSLINE_STATE"], mode=0o700)
+            from agent_statusline.session_metrics import filename_for
+
+            state_dir = kwargs["env"]["AGENT_STATUSLINE_STATE"]
+            os.makedirs(state_dir, mode=0o700)
+            metrics = {
+                "schema_version": 1,
+                "producer": "agent-statusline",
+                "producer_version": "synthetic",
+                "session_id": "synthetic-session-0001",
+                "host": "claude",
+                "model": "Synthetic Opus",
+                "context_used_pct": 14,
+                "context_window_size": 1_000_000,
+                "cost_usd": 1.25,
+                "turns": 1,
+                "lines_added": 10,
+                "lines_removed": 2,
+                "session_title": "Synthetic smoke session",
+                "started_at": "2026-09-15T10:00:00-04:00",
+                "updated_at": "2026-09-15T10:10:00-04:00",
+            }
+            metrics_path = os.path.join(state_dir, filename_for(metrics["session_id"]))
+            with open(metrics_path, "w", encoding="utf-8") as handle:
+                json.dump(metrics, handle)
+            os.chmod(metrics_path, 0o600)
             rows = []
             for label in selftest.EXPECTED_ROWS:
                 markers = selftest.TRANSCRIPT_EVIDENCE.get(label, ())

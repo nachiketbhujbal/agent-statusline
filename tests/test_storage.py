@@ -62,6 +62,26 @@ def test_private_text_publish_is_atomic_and_modes_are_private(tmp_path):
     assert not list(tmp_path.glob(".state.json.*"))
 
 
+def test_remove_deletes_one_regular_state_entry_under_its_lock(tmp_path):
+    path = tmp_path / "state.json"
+    storage.write_text(path, "{}\n")
+
+    assert storage.remove(path)
+    assert not path.exists()
+    assert not storage.remove(path)
+
+
+def test_remove_refuses_a_symlinked_state_entry(tmp_path):
+    target = tmp_path / "target.json"
+    target.write_text("private")
+    link = tmp_path / "state.json"
+    link.symlink_to(target)
+
+    with pytest.raises(storage.UnsafeStateError):
+        storage.remove(link)
+    assert target.read_text() == "private"
+
+
 def test_private_temporary_retries_a_preexisting_name(tmp_path, monkeypatch):
     path = tmp_path / "state.json"
     monkeypatch.setattr(storage.os, "getpid", lambda: 123)

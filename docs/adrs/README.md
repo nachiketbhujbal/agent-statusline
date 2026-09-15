@@ -53,6 +53,7 @@ old one rather than rewriting why the earlier choice was made.
 | [0045](0045-promote-github-releases-through-separate-package-index-workflows.md) | Promote GitHub Releases through separate package-index workflows |
 | [0046](0046-separate-host-acquisition-from-presentation.md) | Separate host acquisition from presentation |
 | [0047](0047-normalize-claude-acquisition-facts.md) | Normalize Claude acquisition facts before rendering |
+| [0048](0048-publish-versioned-local-session-metrics.md) | Publish versioned local session metrics |
 
 ## Reading order
 

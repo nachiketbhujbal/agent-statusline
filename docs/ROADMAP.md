@@ -35,9 +35,10 @@ installed-artifact evidence.
 | 0.3.5 | Public README and production-ready package artifacts | **Released** |
 | 0.3.6 | Separate trusted package-index promotion workflows | **Released** |
 | 0.4.0 | Explicit host-acquisition architecture | **Released** |
-| 0.4.1 | Normalized Claude acquisition facts | **Current** |
+| 0.4.1 | Normalized Claude acquisition facts | **Released** |
+| 0.4.2 | Documented local session metrics | **Current** |
 
-0.2.1 through 0.2.14 and v0.3.0 through v0.3.6 are tagged and released. The
+0.2.1 through 0.2.14 and v0.3.0 through v0.4.1 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
 production-ready supported public baseline. Each boundary retains its exact
 review and artifact evidence; GitHub Release objects begin at v0.2.4. The
@@ -475,7 +476,7 @@ Follow-on patches:
 
 ## 0.4.1 — normalized Claude acquisition facts
 
-Current:
+Released:
 
 - Add one internal, dependency-free acquisition interface grouped by identity,
   workspace, model, context, tokens, limits, activity, and exact money.
@@ -485,3 +486,27 @@ Current:
   fields, ordering, ledger, installer, hooks, or state files.
 - Keep the interface internal until 0.4.2 defines the supported public session
   metrics schema ([ADR 0047](adrs/0047-normalize-claude-acquisition-facts.md)).
+
+## 0.4.2 — documented local session metrics
+
+Current ([issue 30](https://github.com/nachiketbhujbal/agent-statusline/issues/30)):
+
+- Publish one versioned, private, atomically replaced snapshot per non-empty
+  session identifier on every render.
+- Expose the supported snapshot through `agent-statusline metrics <session-id>`
+  so integrations do not parse internal transcript or ledger state.
+- Include only accountable normalized facts. In particular, expose lifetime
+  session cost only when the current host cost and ledger history are exact.
+- Bound snapshots to 35 days and 512 sessions, and support an environment opt-out.
+- Prove the shape with synthetic self-test, missing-evidence, retention, and
+  concurrent-session coverage ([ADR 0048](adrs/0048-publish-versioned-local-session-metrics.md)).
+
+## 0.4.3 — configurable context guard and Stop timing
+
+Planned ([issues 31](https://github.com/nachiketbhujbal/agent-statusline/issues/31)
+and [32](https://github.com/nachiketbhujbal/agent-statusline/issues/32)):
+
+- Make the context warning threshold and message configurable with safe defaults.
+- Let the guard use the documented per-session snapshot rather than a global
+  last-render payload when a session identifier is available.
+- Support actionable Stop-time warnings without forcing another model turn.

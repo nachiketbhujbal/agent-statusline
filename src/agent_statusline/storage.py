@@ -202,6 +202,16 @@ def write_text(path, text):
         _atomic_publish_unlocked(target, lambda handle: handle.write(text))
 
 
+def remove(path):
+    """Remove one regular state entry while holding its package lock."""
+    with locked(path) as target:
+        if not _validate_entry(target):
+            return False
+        os.unlink(target)
+        _sync_directory(os.path.dirname(target))
+        return True
+
+
 def _tail_record(path):
     """Return the last valid object and whether the existing file ends in newline."""
     try:

@@ -19,7 +19,7 @@ from collections.abc import Mapping
 if __package__ in (None, ""):  # running as a plain script from a checkout
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
-from agent_statusline import ledger
+from agent_statusline import ledger, session_metrics
 from agent_statusline import probes as pr
 from agent_statusline.acquisition import claude_facts
 from agent_statusline.coerce import finite_integer, finite_number
@@ -185,6 +185,8 @@ def ledger_update(
             "session": session_cost,
             "base": sessions.get(sid, {}).get("cost_base", 0.0),
             "runs": sessions.get(sid, {}).get("runs", 1),
+            "started": sessions.get(sid, {}).get("started"),
+            "session_complete": True,
             **rolling,
         }
         computed_result = result
@@ -205,6 +207,7 @@ def ledger_update(
         # historical spend. Never label that fallback as an exact window.
         for key in ledger.COST_WINDOWS:
             fallback[key + "_complete"] = False
+        fallback["session_complete"] = False
         return fallback
 
 
@@ -376,9 +379,9 @@ def _render():
     rows["MODEL"] = row("MODEL", p1)
 
     # ---------- row 2: context + both rate-limit windows ----------
-    size = context["window_size"]
-    upct = context["used_percentage"]
-    cur = context["current_tokens"]
+    size = context.get("window_size", 0)
+    upct = context.get("used_percentage", 0)
+    cur = context.get("current_tokens", {})
     live = sum(
         finite_integer(cur.get(k) or 0)
         for k in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
@@ -596,6 +599,10 @@ def _render():
         accrued_at=t.get("last_ts"),
         duration=wall if 0 < wall <= time.time() else None,
     )
+    try:
+        session_metrics.write_snapshot(facts, agg)
+    except Exception:
+        pass
     p8 = []
     if usd is not None:
         life = agg["session"]

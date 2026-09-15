@@ -80,8 +80,9 @@ documents every value and its source.
 - `agent-statusline selftest` uses isolated synthetic state and never touches the
   live cost ledger.
 
-The last-payload file can contain sensitive paths, titles, costs, and commands.
-Do not publish or attach files from the status-line state directory.
+The last-payload and per-session metrics files can contain sensitive paths,
+titles, costs, identifiers, and commands. Do not publish or attach files from
+the status-line state directory.
 
 ## Commands
 
@@ -90,6 +91,7 @@ Do not publish or attach files from the status-line state directory.
 | `agent-statusline install` | Wire the command and managed hooks into Claude Code |
 | `agent-statusline install --dry-run` | Preview installation without writing anything |
 | `agent-statusline selftest` | Render all ten rows from isolated synthetic data |
+| `agent-statusline metrics <session-id>` | Print the documented local snapshot for one session |
 | `agent-statusline ledger show` | Inspect the local cost ledger |
 | `agent-statusline uninstall` | Remove only configuration owned by this installation |
 | `agent-statusline --version` | Print the installed version |
