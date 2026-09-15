@@ -6,9 +6,9 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.4.0, explicit host-acquisition architecture.
-- Preceding release: v0.3.6, separate trusted package-index promotion workflows.
-- Branch owner: none; the v0.4.0 architecture research ended without a handoff.
+- Current release target: 0.4.1, normalized Claude acquisition facts.
+- Preceding release: v0.4.0, explicit host-acquisition architecture.
+- Branch owner: Codex on `codex/feat/v0.4.1-normalized-acquisition`.
 - Reviewer role: none active.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
@@ -23,7 +23,7 @@ the roadmap, or accepted ADRs.
   force-push are blocked.
 - Runtime dependencies remain empty and versions remain Git-tag-derived.
 
-v0.3.6 is tagged and released with one exact artifact pair on GitHub, TestPyPI,
+v0.4.0 is tagged and released with one exact artifact pair on GitHub, TestPyPI,
 and production PyPI. TestPyPI and PyPI are
 bound respectively to `publish-testpypi.yml` and `publish-pypi.yml`; both
 GitHub environments require maintainer approval, accept only branch `main`,
@@ -61,12 +61,26 @@ artifact promotion and exact GitHub Release publication. v0.3.4 completed
 trusted TestPyPI publication and exact public-index verification. v0.3.5
 completed the public landing page and first production PyPI publication.
 v0.3.6 completed separate, reusable TestPyPI and PyPI promotion workflows.
+v0.4.0 completed the explicit host-acquisition architecture boundary.
 
 The complete sequence and exclusions are authoritative in
 [ROADMAP.md](docs/ROADMAP.md). Do not merge the historical hardening branch as
 a whole or import a later slice into the current release.
 
 ## Resume point
+
+v0.4.1 is the active behavior-preserving implementation of ADR 0046. It adds
+one normalized Claude acquisition adapter and routes the existing renderer
+through it without changing display, accounting, installation, hooks, or
+state. The exact candidate still requires the complete local gate and one
+independent review before publication.
+
+v0.4.0 is complete at tagged merge
+`125f60527d44cc3dcf20ff8c384542944dacbf8d`. GitHub Release run 34997267833,
+TestPyPI run 34997383308, and production PyPI run 34997703359 published and
+verified the same exact artifact pair. The initial PyPI clean-install check ran
+before the Simple Index exposed the already verified files; its isolated rerun
+passed after propagation.
 
 v0.3.6 is complete at tagged merge
 `9a92560be103a56e542a27ce2aee423c4255f9e0`. Exact candidate

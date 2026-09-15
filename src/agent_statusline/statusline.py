@@ -21,6 +21,7 @@ if __package__ in (None, ""):  # running as a plain script from a checkout
 
 from agent_statusline import ledger
 from agent_statusline import probes as pr
+from agent_statusline.acquisition import claude_facts
 from agent_statusline.coerce import finite_integer, finite_number
 from agent_statusline.paths import state
 from agent_statusline.render import (
@@ -279,41 +280,41 @@ def _render():
     if not isinstance(d, Mapping):
         print(f"{D}claude{R}")
         return
+    facts = claude_facts(d, transcript_totals, os.getcwd())
+    identity = facts["identity"]
+    workspace = facts["workspace"]
+    model_facts = facts["model"]
+    context = facts["context"]
+    limits = facts["limits"]
+    money = facts["money"]
     rows = {}
-    transcript_value = d.get("transcript_path")
-    transcript_path = transcript_value if isinstance(transcript_value, str) else None
-    t = transcript_totals(transcript_path)
+    transcript_path = facts["transcript_path"]
+    t = facts["activity"]
 
     # ---------- rows 1-2: project/git, then model + mode flags ----------
     pj = []
     p1 = []
-    model = dig(d, "model", "display_name") or dig(d, "model", "id") or "claude"
-    eff = dig(d, "effort", "level")
+    model = model_facts.get("display_name") or model_facts.get("id") or "claude"
+    eff = model_facts.get("effort")
     p1.append(f"{MAG}{B}{plain(model)}{R}" + (f"{D}:{plain(eff)}{R}" if eff else ""))
-    p1.append(
-        f"{GRN}think{R}" if dig(d, "thinking", "enabled", default=False) else f"{YEL}no-think{R}"
-    )
+    p1.append(f"{GRN}think{R}" if model_facts.get("thinking") else f"{YEL}no-think{R}")
     # fast mode is shown either way: silence would hide that it is on
-    p1.append(f"{RED}{B}FAST ON{R}" if dig(d, "fast_mode") else f"{D}fast off{R}")
-    transcript_perm = t.get("perm")
-    perm_value = transcript_perm if isinstance(transcript_perm, str) else dig(d, "permission_mode")
-    perm = perm_value if isinstance(perm_value, str) else None
+    p1.append(f"{RED}{B}FAST ON{R}" if model_facts.get("fast_mode") else f"{D}fast off{R}")
+    perm = model_facts.get("permission_mode")
     if perm:
         pc, plab = MODES.get(perm, (D, perm))
         p1.append(f"{pc}{plain(plab)}{R}" if perm == "default" else f"{pc}{B}{plain(plab)}{R}")
-    style = dig(d, "output_style", "name")
+    style = model_facts.get("output_style")
     if style and style != "default":
         p1.append(f"{CYN}{plain(style)}{R}")
-    if t.get("tier") and t["tier"] != "standard":
-        p1.append(f"{YEL}{plain(t['tier'])}{R}")
-    ver = dig(d, "version")
+    if model_facts.get("service_tier") and model_facts["service_tier"] != "standard":
+        p1.append(f"{YEL}{plain(model_facts['service_tier'])}{R}")
+    ver = identity.get("client_version")
     if ver:
         p1.append(f"{D}v{plain(ver)}{R}")
 
-    cwd_value = dig(d, "workspace", "current_dir") or dig(d, "cwd")
-    cwd = cwd_value if isinstance(cwd_value, str) else os.getcwd()
-    project_value = dig(d, "workspace", "project_dir")
-    project_path = project_value if isinstance(project_value, str) else cwd
+    cwd = workspace["cwd"]
+    project_path = workspace["project_dir"]
     proj = os.path.basename(project_path)
     here = os.path.basename(cwd)
     pj.append(
@@ -321,8 +322,7 @@ def _render():
         if here == proj
         else f"{BLU}{B}{plain(proj)}{R}{D}/{R}{BLU}{plain(here)}{R}"
     )
-    extra = dig(d, "workspace", "added_dirs") or []
-    extra = extra if isinstance(extra, list) else []
+    extra = workspace["added_dirs"]
     if extra:
         pj.append(f"{D}+{len(extra)} dir{'s' if len(extra)!=1 else ''}{R}")
 
@@ -369,18 +369,16 @@ def _render():
         pj.append(g)
     else:
         pj.append(f"{D}no git{R}")
-    nm = dig(d, "session_name")
+    nm = identity.get("session_title")
     if nm:
         pj.append(f"{D}“{plain(nm)}”{R}")
     rows["PROJECT"] = row("PROJECT", pj)
     rows["MODEL"] = row("MODEL", p1)
 
     # ---------- row 2: context + both rate-limit windows ----------
-    cw = dig(d, "context_window", default={})
-    size = finite_integer(dig(cw, "context_window_size", default=0) or 0)
-    upct = finite_number(dig(cw, "used_percentage", default=0) or 0)
-    cur = dig(cw, "current_usage", default={})
-    cur = cur if isinstance(cur, Mapping) else {}
+    size = context["window_size"]
+    upct = context["used_percentage"]
+    cur = context["current_tokens"]
     live = sum(
         finite_integer(cur.get(k) or 0)
         for k in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
@@ -413,9 +411,8 @@ def _render():
     if segs:
         rows["CONTEXT"] = row("CONTEXT", segs)
 
-    rl = dig(d, "rate_limits", default={})
     lim = []
-    fh_ = dig(rl, "five_hour")
+    fh_ = limits.get("five_hour")
     over_pct = finite_number(dig(fh_, "used_percentage", default=0) or 0) if fh_ else 0.0
     over_active = over_pct >= 100
     if fh_:
@@ -423,11 +420,11 @@ def _render():
         if over_active:
             seg += f" {RED}{B}OVERAGE{R}"
         lim.append(seg)
-    if dig(rl, "seven_day"):
-        lim.append(limit_seg("7d", rl["seven_day"], 168))
+    if limits.get("seven_day"):
+        lim.append(limit_seg("7d", limits["seven_day"], 168))
     if lim:
         rows["USAGE"] = row("USAGE", lim)
-    rl_log(fh_, dig(rl, "seven_day"))
+    rl_log(fh_, limits.get("seven_day"))
 
     # ---------- row 3: cache economics ----------
     if served:
@@ -515,9 +512,8 @@ def _render():
     rows["TOOLS"] = row("TOOLS", r5)
 
     # ---------- row 6: timing ----------
-    cost = dig(d, "cost", default={})
-    wall = max(0.0, finite_number(dig(cost, "total_duration_ms", default=0) or 0) / 1000)
-    api = max(0.0, finite_number(dig(cost, "total_api_duration_ms", default=0) or 0) / 1000)
+    wall = money.get("wall_seconds", 0.0)
+    api = money.get("api_seconds", 0.0)
     r6 = []
     if t["durs"]:
         s = sorted(finite_integer(value) for value in t["durs"])
@@ -545,7 +541,7 @@ def _render():
     # Process results mix machine-wide totals with this session's PID and RSS.
     # Keep host-supplied identifiers opaque and namespace the parent fallback so
     # the two forms cannot collide inside the shared cache.
-    process_session = d.get("session_id")
+    process_session = identity.get("session_id")
     process_scope = (
         f"session:{process_session}"
         if isinstance(process_session, str)
@@ -588,15 +584,13 @@ def _render():
         rows["SYSTEM"] = row("SYSTEM", r7)
 
     # ---------- row 8: money ----------
-    usd_value = dig(cost, "total_cost_usd")
-    usd = None if usd_value is None else finite_number(usd_value)
-    session_value = d.get("session_id")
-    session_id = session_value if isinstance(session_value, str) else "?"
+    usd = money.get("run_cost_usd")
+    session_id = identity.get("session_id", "?")
     agg = ledger_update(
         session_id,
         usd,
         proj,
-        dig(d, "session_name"),
+        identity.get("session_title"),
         conversation_root(transcript_path),
         pid=procs.get("mine_pid"),
         accrued_at=t.get("last_ts"),
@@ -629,8 +623,8 @@ def _render():
         + (f" · {agg['forks']} fork{'s' if agg['forks']!=1 else ''}" if agg["forks"] else "")
         + f"){R}"
     )
-    la = finite_integer(dig(cost, "total_lines_added", default=0) or 0)
-    lr = finite_integer(dig(cost, "total_lines_removed", default=0) or 0)
+    la = money.get("lines_added", 0)
+    lr = money.get("lines_removed", 0)
     p8.append(f"{GRN}+{la}{R}{D}/{R}{RED}-{lr}{R}{D} lines{R}")
 
     # Credits. The balance is NOT obtainable locally (see statusline_probes.account),
