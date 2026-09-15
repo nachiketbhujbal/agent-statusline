@@ -72,8 +72,8 @@ a whole or import a later slice into the current release.
 v0.4.1 is the active behavior-preserving implementation of ADR 0046. It adds
 one normalized Claude acquisition adapter and routes the existing renderer
 through it without changing display, accounting, installation, hooks, or
-state. The exact candidate still requires the complete local gate and one
-independent review before publication.
+state. Its complete local gate passed; the exact corrected candidate still
+requires renewed independent review before publication.
 
 v0.4.0 is complete at tagged merge
 `125f60527d44cc3dcf20ff8c384542944dacbf8d`. GitHub Release run 34997267833,
@@ -101,9 +101,12 @@ and an isolated self-test passed without reading live accounting state.
 The v0.4.0 research boundary is now measured and recorded in ADR 0046. Installed
 Codex still exposes a built-in-widget footer rather than an arbitrary command;
 stable hooks provide a credible acquisition trigger, and local rollouts expose
-exact token/session facts but no exact cost field. The proposed follow-on train
-is 0.4.1 normalized acquisition facts, 0.4.2 a synthetic-fixture Codex parser,
-and only then consideration of an opt-in 0.4.3 collector/query surface.
+exact token/session facts but no exact cost field. ADR 0047 preserves that
+architecture while updating the follow-on order: v0.4.2 will publish local
+per-session metrics for issue 30, and v0.4.3 will address the configurable
+context guard and Stop timing from issues 31 and 32. The synthetic-fixture
+Codex parser and any opt-in Codex collector/query surface follow that local
+integration sequence.
 
 Exact architecture candidate
 `d8ceb7bb5537b745df070214aafd68c866f226ea` passed the complete local gate and
@@ -111,9 +114,9 @@ one independent no-findings review. PR #28 passed the documentation-only hosted
 gate and merged it as `5fe305a6643b8141dd1874662730b1f020dea32d`;
 automatic main run 34873106649 passed the same lean required lane.
 
-No implementation, Codex configuration mutation, renderer claim, or Codex
-currency accounting is authorized yet. Runtime behavior, accepted pull refs,
-unreachable objects, and recovery cleanup remain separate.
+The v0.4.1 adapter does not add a Codex implementation, configuration mutation,
+renderer claim, or Codex currency accounting. Accepted pull refs, unreachable
+objects, and recovery cleanup remain separate.
 [PUBLIC_READINESS.md](docs/PUBLIC_READINESS.md) records the protected baseline.
 
 Durable decisions live in [ADRs](docs/adrs/README.md), completed behavior in the

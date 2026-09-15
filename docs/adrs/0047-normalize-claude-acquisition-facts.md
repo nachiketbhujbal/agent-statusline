@@ -28,3 +28,10 @@ payload or transcript cache.
 Host interpretation now has one explicit seam. The adapter adds no runtime
 dependency, networking, hook, configuration, or public file. Codex parsing and
 public session metrics remain later patches with their own evidence.
+
+ADR 0046's acquisition, presentation, privacy, and exact-money decisions remain
+accepted. This ADR supersedes only its suggested follow-on patch order: the
+maintainer prioritized the local integration needs in issues 30 through 32, so
+v0.4.2 defines public per-session metrics and v0.4.3 addresses configurable
+context warnings and Stop timing. The synthetic-fixture Codex rollout parser
+and any opt-in Codex collector/query surface follow those releases.
