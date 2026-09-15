@@ -9,6 +9,7 @@ import sys
 import pytest
 
 from agent_statusline import session_metrics
+from agent_statusline.acquisition import claude_facts
 
 
 def facts(session_id="session-1"):
@@ -75,6 +76,18 @@ def test_snapshot_omits_money_without_a_complete_exact_session(isolated_state):
     assert "cost_usd" not in snapshot
 
 
+def test_snapshot_omits_a_malformed_host_cost(isolated_state):
+    normalized = claude_facts(
+        {"session_id": "session-1", "cost": {"total_cost_usd": float("nan")}},
+        transcript_reader=lambda _path: {},
+    )
+
+    snapshot = session_metrics.write_snapshot(normalized, aggregate(), now=1_800_000_000)
+
+    assert "run_cost_usd" not in normalized["money"]
+    assert "cost_usd" not in snapshot
+
+
 def test_snapshot_omits_optional_facts_that_are_unknown(isolated_state):
     normalized = {
         "host": "claude",
@@ -133,6 +146,29 @@ def test_retention_prunes_oldest_session_files(isolated_state, monkeypatch):
         session_metrics.filename_for("session-1"),
         session_metrics.filename_for("session-2"),
     }
+
+
+def test_prune_does_not_delete_a_snapshot_refreshed_after_selection(isolated_state, monkeypatch):
+    stale_time = 1_700_000_000
+    now = stale_time + session_metrics.RETENTION_SECONDS + 1
+    session_metrics.write_snapshot(facts("stale"), aggregate(), now=stale_time)
+    path = isolated_state / session_metrics.filename_for("stale")
+    actual_remove = session_metrics.remove_json_if
+    refreshed = False
+
+    def refresh_before_remove(selected_path, predicate):
+        nonlocal refreshed
+        if not refreshed:
+            refreshed = True
+            session_metrics.write_snapshot(facts("stale"), aggregate(), now=now)
+        return actual_remove(selected_path, predicate)
+
+    monkeypatch.setattr(session_metrics, "remove_json_if", refresh_before_remove)
+
+    session_metrics._prune(now, keep="")
+
+    assert path.exists()
+    assert json.loads(path.read_text())["updated_at"] == session_metrics.ledger.iso(now)
 
 
 def test_query_prints_one_snapshot(isolated_state, capsys):

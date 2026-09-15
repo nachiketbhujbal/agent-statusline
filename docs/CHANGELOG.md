@@ -17,6 +17,9 @@ sessions, and can be disabled with `AGENT_STATUSLINE_SESSION_METRICS=0`
 [ADR 0048](adrs/0048-publish-versioned-local-session-metrics.md)).
 
 The installed self-test now proves the contract from synthetic data.
+Independent review also ensured malformed/non-finite host cost remains absent
+and that retention revalidates a selected snapshot under its per-file lock, so
+a concurrent refresh cannot be deleted from stale pruning evidence.
 
 ## 0.4.1
 

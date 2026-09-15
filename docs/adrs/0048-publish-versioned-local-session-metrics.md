@@ -31,8 +31,10 @@ the ledger can account for the session lifetime exactly. It is never inferred
 from tokens or a price table.
 
 Retain snapshots for 35 days and at most 512 sessions, with maintenance claimed
-at most hourly. `AGENT_STATUSLINE_SESSION_METRICS=0` disables new writes. The
-installed self-test exercises the schema from synthetic state.
+at most hourly. A selected old or excess snapshot is re-read and compared under
+its own lock before deletion so a concurrent refresh wins. Set
+`AGENT_STATUSLINE_SESSION_METRICS=0` to disable new writes. The installed
+self-test exercises the schema from synthetic state.
 
 ## Consequences
 

@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from agent_statusline import __version__, ledger
 from agent_statusline.coerce import finite_integer, finite_number
 from agent_statusline.paths import state
-from agent_statusline.storage import read_json, remove, update_json
+from agent_statusline.storage import read_json, remove_json_if, update_json
 
 SCHEMA_VERSION = 1
 RETENTION_SECONDS = 35 * 24 * 60 * 60
@@ -96,16 +96,25 @@ def _prune(now, keep):
             continue
         snapshot = read_json(entry.path, {})
         updated = ledger.epoch(snapshot.get("updated_at")) if snapshot else 0.0
-        if updated <= 0 or now - updated > RETENTION_SECONDS:
+        expired = updated <= 0 or now - updated > RETENTION_SECONDS
+        if expired:
             if entry.path != keep:
-                remove(entry.path)
+                expected = dict(snapshot)
+                remove_json_if(
+                    entry.path,
+                    lambda current, prior=expected: current == prior
+                    and (
+                        ledger.epoch(current.get("updated_at")) <= 0
+                        or now - ledger.epoch(current.get("updated_at")) > RETENTION_SECONDS
+                    ),
+                )
             continue
-        rows.append((updated, entry.name, entry.path))
+        rows.append((updated, entry.name, entry.path, dict(snapshot)))
 
     excess = max(0, len(rows) - MAX_SESSION_FILES)
     candidates = sorted(row for row in rows if row[2] != keep)
-    for _updated, _name, path in candidates[:excess]:
-        remove(path)
+    for _updated, _name, path, snapshot in candidates[:excess]:
+        remove_json_if(path, lambda current, prior=snapshot: current == prior)
 
 
 def _maybe_prune(now, keep):

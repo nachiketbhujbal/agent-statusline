@@ -5,10 +5,11 @@ directly.  A host omits facts it cannot supply; in particular, exact money is
 never inferred from token counts.
 """
 
+import math
 import os
 from collections.abc import Mapping
 
-from agent_statusline.coerce import finite_integer, finite_number
+from agent_statusline.coerce import MAX_DISPLAY_VALUE, finite_integer, finite_number
 from agent_statusline.transcript import dig, transcript_totals
 
 GROUPS = ("identity", "workspace", "model", "context", "tokens", "limits", "activity", "money")
@@ -30,6 +31,19 @@ def _optional_integer(source, key):
 def _optional_number(source, key):
     value = source.get(key)
     return None if value is None else finite_number(value)
+
+
+def _optional_exact_number(source, key):
+    value = source.get(key)
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not math.isfinite(parsed) or abs(parsed) > MAX_DISPLAY_VALUE:
+        return None
+    return finite_number(value)
 
 
 def claude_facts(payload, transcript_reader=transcript_totals, default_cwd=None):
@@ -74,8 +88,7 @@ def claude_facts(payload, transcript_reader=transcript_totals, default_cwd=None)
     cost = dig(payload, "cost", default={})
     if not isinstance(cost, Mapping):
         cost = {}
-    exact_cost = cost.get("total_cost_usd")
-    run_cost = None if exact_cost is None else finite_number(exact_cost)
+    run_cost = _optional_exact_number(cost, "total_cost_usd")
 
     limits = dig(payload, "rate_limits", default={})
     if not isinstance(limits, Mapping):

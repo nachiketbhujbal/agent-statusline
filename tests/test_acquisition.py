@@ -25,6 +25,12 @@ def test_claude_adapter_omits_money_the_host_did_not_supply(payload):
     assert "run_cost_usd" not in facts["money"]
 
 
+def test_claude_adapter_omits_malformed_or_non_finite_money(payload):
+    for invalid in ("invalid", float("nan"), float("inf"), True):
+        payload["cost"]["total_cost_usd"] = invalid
+        assert "run_cost_usd" not in claude_facts(payload)["money"]
+
+
 def test_claude_adapter_uses_safe_shapes_for_malformed_optional_groups(tmp_path):
     facts = claude_facts(
         {

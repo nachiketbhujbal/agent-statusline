@@ -202,14 +202,22 @@ def write_text(path, text):
         _atomic_publish_unlocked(target, lambda handle: handle.write(text))
 
 
-def remove(path):
-    """Remove one regular state entry while holding its package lock."""
+def remove_json_if(path, predicate):
+    """Remove one JSON entry if its current locked value still matches a condition."""
     with locked(path) as target:
         if not _validate_entry(target):
+            return False
+        data = _read_unlocked(target, {})
+        if not predicate(data):
             return False
         os.unlink(target)
         _sync_directory(os.path.dirname(target))
         return True
+
+
+def remove(path):
+    """Remove one regular state entry while holding its package lock."""
+    return remove_json_if(path, lambda _data: True)
 
 
 def _tail_record(path):

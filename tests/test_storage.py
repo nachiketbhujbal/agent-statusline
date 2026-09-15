@@ -82,6 +82,16 @@ def test_remove_refuses_a_symlinked_state_entry(tmp_path):
     assert target.read_text() == "private"
 
 
+def test_conditional_remove_revalidates_current_json_under_the_lock(tmp_path):
+    path = tmp_path / "state.json"
+    storage.write_text(path, '{"updated": 2}\n')
+
+    assert not storage.remove_json_if(path, lambda data: data.get("updated") == 1)
+    assert json.loads(path.read_text()) == {"updated": 2}
+    assert storage.remove_json_if(path, lambda data: data.get("updated") == 2)
+    assert not path.exists()
+
+
 def test_private_temporary_retries_a_preexisting_name(tmp_path, monkeypatch):
     path = tmp_path / "state.json"
     monkeypatch.setattr(storage.os, "getpid", lambda: 123)
