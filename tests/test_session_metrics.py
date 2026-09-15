@@ -171,6 +171,31 @@ def test_prune_does_not_delete_a_snapshot_refreshed_after_selection(isolated_sta
     assert json.loads(path.read_text())["updated_at"] == session_metrics.ledger.iso(now)
 
 
+def test_prune_uses_another_excess_candidate_after_a_refresh(isolated_state, monkeypatch):
+    old_time = 1_800_000_000
+    session_metrics.write_snapshot(facts("oldest"), aggregate(), now=old_time)
+    session_metrics.write_snapshot(facts("newer"), aggregate(), now=old_time + 1)
+    oldest = isolated_state / session_metrics.filename_for("oldest")
+    newer = isolated_state / session_metrics.filename_for("newer")
+    actual_remove = session_metrics.remove_json_if
+    refreshed = False
+
+    def refresh_before_remove(selected_path, predicate):
+        nonlocal refreshed
+        if selected_path == os.fspath(oldest) and not refreshed:
+            refreshed = True
+            session_metrics.write_snapshot(facts("oldest"), aggregate(), now=old_time + 2)
+        return actual_remove(selected_path, predicate)
+
+    monkeypatch.setattr(session_metrics, "MAX_SESSION_FILES", 1)
+    monkeypatch.setattr(session_metrics, "remove_json_if", refresh_before_remove)
+
+    session_metrics._prune(old_time + 2, keep="")
+
+    assert oldest.exists()
+    assert not newer.exists()
+
+
 def test_query_prints_one_snapshot(isolated_state, capsys):
     expected = session_metrics.write_snapshot(facts(), aggregate(), now=1_800_000_000)
 

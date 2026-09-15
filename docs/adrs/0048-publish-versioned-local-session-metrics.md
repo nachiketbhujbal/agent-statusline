@@ -32,7 +32,8 @@ from tokens or a price table.
 
 Retain snapshots for 35 days and at most 512 sessions, with maintenance claimed
 at most hourly. A selected old or excess snapshot is re-read and compared under
-its own lock before deletion so a concurrent refresh wins. Set
+its own lock before deletion so a concurrent refresh wins; cap maintenance
+continues through other ordered candidates until enough removals succeed. Set
 `AGENT_STATUSLINE_SESSION_METRICS=0` to disable new writes. The installed
 self-test exercises the schema from synthetic state.
 

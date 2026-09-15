@@ -113,8 +113,12 @@ def _prune(now, keep):
 
     excess = max(0, len(rows) - MAX_SESSION_FILES)
     candidates = sorted(row for row in rows if row[2] != keep)
-    for _updated, _name, path, snapshot in candidates[:excess]:
-        remove_json_if(path, lambda current, prior=snapshot: current == prior)
+    removed = 0
+    for _updated, _name, path, snapshot in candidates:
+        if removed >= excess:
+            break
+        if remove_json_if(path, lambda current, prior=snapshot: current == prior):
+            removed += 1
 
 
 def _maybe_prune(now, keep):
