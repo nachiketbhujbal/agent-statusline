@@ -36,9 +36,10 @@ installed-artifact evidence.
 | 0.3.6 | Separate trusted package-index promotion workflows | **Released** |
 | 0.4.0 | Explicit host-acquisition architecture | **Released** |
 | 0.4.1 | Normalized Claude acquisition facts | **Released** |
-| 0.4.2 | Documented local session metrics | **Current** |
+| 0.4.2 | Documented local session metrics | **Released** |
+| 0.4.3 | Configurable context guard and Stop timing | **Current** |
 
-0.2.1 through 0.2.14 and v0.3.0 through v0.4.1 are tagged and released. The
+0.2.1 through 0.2.14 and v0.3.0 through v0.4.2 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
 production-ready supported public baseline. Each boundary retains its exact
 review and artifact evidence; GitHub Release objects begin at v0.2.4. The
@@ -489,7 +490,7 @@ Released:
 
 ## 0.4.2 — documented local session metrics
 
-Current ([issue 30](https://github.com/nachiketbhujbal/agent-statusline/issues/30)):
+Released ([issue 30](https://github.com/nachiketbhujbal/agent-statusline/issues/30)):
 
 - Publish one versioned, private, atomically replaced snapshot per non-empty
   session identifier on every render.
@@ -503,10 +504,13 @@ Current ([issue 30](https://github.com/nachiketbhujbal/agent-statusline/issues/3
 
 ## 0.4.3 — configurable context guard and Stop timing
 
-Planned ([issues 31](https://github.com/nachiketbhujbal/agent-statusline/issues/31)
+Current ([issues 31](https://github.com/nachiketbhujbal/agent-statusline/issues/31)
 and [32](https://github.com/nachiketbhujbal/agent-statusline/issues/32)):
 
 - Make the context warning threshold and message configurable with safe defaults.
 - Let the guard use the documented per-session snapshot rather than a global
   last-render payload when a session identifier is available.
 - Support actionable Stop-time warnings without forcing another model turn.
+- Retain prompt-submit warnings as an explicit option and validate every
+  setting through the installed synthetic self-test
+  ([ADR 0049](adrs/0049-configure-context-warnings-at-stop-time.md)).

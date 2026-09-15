@@ -96,6 +96,19 @@ the status-line state directory.
 | `agent-statusline uninstall` | Remove only configuration owned by this installation |
 | `agent-statusline --version` | Print the installed version |
 
+The managed context guard warns after a turn when context reaches 80% by
+default. Configure it in the environment that launches Claude Code:
+
+| Variable | Values |
+| --- | --- |
+| `AGENT_STATUSLINE_CONTEXT_WARN_PCT` | warning threshold from `1` through `100` |
+| `AGENT_STATUSLINE_CONTEXT_WARN_EVENT` | `stop` (default), `submit`, or `both` |
+| `AGENT_STATUSLINE_CONTEXT_WARN_MESSAGE` | custom non-empty message containing `{pct}` |
+
+Run `agent-statusline selftest` after changing these values. Stop warnings are
+user-visible only; `submit` and `both` allow the configured advice to enter the
+next model turn.
+
 If the status line does not appear, run `agent-statusline selftest` first, then
 restart Claude Code. Unexpected renderer failures leave only their time and
 exception type in `~/.claude/statusline-last-error.json`.

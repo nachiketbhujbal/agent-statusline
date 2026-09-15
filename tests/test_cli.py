@@ -59,6 +59,14 @@ class TestDispatch:
         assert run(["selftest", "--live"], monkeypatch) == 2
         assert "unknown option" in capsys.readouterr().err
 
+    def test_selftest_reports_context_guard_misconfiguration(self, monkeypatch, capsys):
+        from agent_statusline.hooks import context_guard
+
+        monkeypatch.setenv(context_guard.THRESHOLD_ENV, "not-a-number")
+
+        assert run(["selftest"], monkeypatch) == 1
+        assert context_guard.THRESHOLD_ENV in capsys.readouterr().err
+
     def test_selftest_never_relays_child_output_on_failure(self, monkeypatch, capsys):
         from agent_statusline import selftest
 
@@ -292,6 +300,7 @@ class TestSettings:
         assert "keep-end" in commands["SessionEnd"]
         assert "keep-submit" in commands["UserPromptSubmit"]
         assert "keep-stop" in commands["Stop"]
+        assert any("context_guard.py" in command for command in commands["Stop"])
         assert commands["PreToolUse"] == ["keep-pre"]
 
     def test_malformed_existing_settings_fail_closed(self, tmp_path, monkeypatch):
@@ -792,7 +801,7 @@ class TestLegacyReleaseCompatibility:
 
         cfg = json.loads(settings.read_text())
         total = sum(len(g["hooks"]) for groups in cfg["hooks"].values() for g in groups)
-        assert total == 4, "the released hooks were replaced, not appended to"
+        assert total == 5, "the released hooks were replaced, not appended to"
         assert cfg["keepMe"] is True
 
     def test_uninstalling_a_release_installation_leaves_nothing_behind(self, home_config):

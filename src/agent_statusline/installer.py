@@ -38,6 +38,7 @@ MIN_PYTHON = (3, 9)
 HOOKS = (
     ("SessionEnd", "session-end", "session_end", 10),
     ("UserPromptSubmit", "context-guard", "context_guard", 10),
+    ("Stop", "context-guard", "context_guard", 10),
 )
 STOPGAP_HOOKS = (
     ("UserPromptSubmit", "timestamp-user", "timestamp_user", 5),

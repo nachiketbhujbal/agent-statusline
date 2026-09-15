@@ -10,6 +10,7 @@ import sys
 import tempfile
 import time
 
+from agent_statusline.hooks.context_guard import configuration as context_guard_configuration
 from agent_statusline.session_metrics import SCHEMA_VERSION, filename_for
 from agent_statusline.statusline import ORDER
 
@@ -199,6 +200,9 @@ def _valid_metrics(state_dir, payload):
 
 def run():
     """Render a full synthetic payload in a fresh process and private state."""
+    _context_guard, config_error = context_guard_configuration()
+    if config_error:
+        return _fail(config_error)
     with tempfile.TemporaryDirectory(prefix="agent-statusline-selftest-") as root:
         workspace = os.path.abspath(root)
         now = time.time()

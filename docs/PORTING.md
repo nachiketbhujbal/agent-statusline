@@ -96,6 +96,10 @@ provide accountable evidence; an adapter never fills gaps with another host's
 assumptions. The normalized acquisition interface remains internal, while
 v0.4.2 publishes its supported host-neutral subset through
 `agent-statusline metrics <session-id>`.
+The v0.4.3 context guard remains Claude-specific installation and event code,
+but its decision input now prefers that host-neutral session snapshot. A
+future host should reuse the metrics contract while mapping warning output to
+its own event semantics; Claude's Stop `systemMessage` shape is not portable.
 
 ### What to keep no matter the agent
 
