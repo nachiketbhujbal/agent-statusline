@@ -6,9 +6,9 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.4.2, documented local session metrics.
-- Preceding release: v0.4.1, normalized Claude acquisition facts.
-- Branch owner: Codex on `codex/feat/v0.4.2-session-metrics`.
+- Current release target: 0.4.3, configurable context guard and Stop timing.
+- Preceding release: v0.4.2, documented local session metrics.
+- Branch owner: Codex on `codex/feat/v0.4.3-context-stop`.
 - Reviewer role: none active.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
@@ -23,7 +23,7 @@ the roadmap, or accepted ADRs.
   force-push are blocked.
 - Runtime dependencies remain empty and versions remain Git-tag-derived.
 
-v0.4.1 is tagged and released with one exact artifact pair on GitHub, TestPyPI,
+v0.4.2 is tagged and released with one exact artifact pair on GitHub, TestPyPI,
 and production PyPI. TestPyPI and PyPI are
 bound respectively to `publish-testpypi.yml` and `publish-pypi.yml`; both
 GitHub environments require maintainer approval, accept only branch `main`,
@@ -63,6 +63,7 @@ completed the public landing page and first production PyPI publication.
 v0.3.6 completed separate, reusable TestPyPI and PyPI promotion workflows.
 v0.4.0 completed the explicit host-acquisition architecture boundary. v0.4.1
 completed the normalized Claude acquisition adapter without changing display.
+v0.4.2 completed the documented local per-session metrics contract.
 
 The complete sequence and exclusions are authoritative in
 [ROADMAP.md](docs/ROADMAP.md). Do not merge the historical hardening branch as
@@ -70,11 +71,24 @@ a whole or import a later slice into the current release.
 
 ## Resume point
 
-v0.4.2 is the active implementation of issue 30 and ADR 0048. It publishes a
-versioned, private, atomically replaced snapshot per eligible Claude session
-and exposes it through `agent-statusline metrics <session-id>`. The current
-candidate still requires the complete local gate and one independent exact-SHA
-review before publication.
+v0.4.3 is the active implementation of issues 31 and 32. The context guard now
+prefers the documented per-session metrics snapshot, defaults to a user-visible
+Stop warning without model-directed output, and supports configured threshold,
+message, and `stop` / `submit` / `both` timing. The current candidate still
+requires the complete local gate and one independent exact-SHA review before
+publication.
+
+v0.4.2 is complete at tagged merge
+`5dcbb5792bb718925a02ca4e9ee6952126184157`. Exact candidate
+`dd4b55d17faf5c7b9b86bf8283b2a1e7437ab62f` passed renewed independent review;
+PR #34 closed issue 30, merged-main CI run 35006217099, GitHub Release run
+35006440871, TestPyPI run 35006652209, and production PyPI run 35008034856
+passed. The production clean-install check initially reached the Simple Index
+before it exposed the already hash-verified files; its rerun passed after
+propagation. GitHub, TestPyPI, and PyPI expose the same exact wheel at
+`a1696f885a880bd15b9c8b2bcad9c51c5ecac33b7b08a02e29b3fd2df94decad`
+and source archive at
+`669124024f6fd3c8f27830395ee9e49a5274cb86330e3d0b5828206be3bbefd1`.
 
 v0.4.1 is complete at tagged merge
 `d7b8341ed9cfea801f8f8d50c9832ead10e7548e`. Exact candidate
@@ -113,8 +127,8 @@ The v0.4.0 research boundary is now measured and recorded in ADR 0046. Installed
 Codex still exposes a built-in-widget footer rather than an arbitrary command;
 stable hooks provide a credible acquisition trigger, and local rollouts expose
 exact token/session facts but no exact cost field. ADR 0047 preserves that
-architecture while updating the follow-on order: v0.4.2 will publish local
-per-session metrics for issue 30, and v0.4.3 will address the configurable
+architecture while updating the follow-on order: v0.4.2 published local
+per-session metrics for issue 30, and v0.4.3 addresses the configurable
 context guard and Stop timing from issues 31 and 32. The synthetic-fixture
 Codex parser and any opt-in Codex collector/query surface follow that local
 integration sequence.

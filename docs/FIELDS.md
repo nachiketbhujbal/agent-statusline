@@ -15,6 +15,9 @@ session `.jsonl` · `probe` = a cached subprocess/file read · `ledger` = `cost-
 Local tools can query the documented subset of session, model, context, cost,
 turn, line, and timestamp fields through `agent-statusline metrics
 <session-id>`; see [INTERNALS.md](INTERNALS.md#public-per-session-metrics).
+The separate context guard prefers that session-scoped context evidence and
+warns on `Stop` at 80% by default; its threshold, message, and event timing are
+documented under [configurable context guard](INTERNALS.md#configurable-context-guard).
 
 Rows appear in the order below, which is `ORDER` in `statusline.py` — sorted by how often
 a row answers a question worth asking, not by how the data happens to arrive.

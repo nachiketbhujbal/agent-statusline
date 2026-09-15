@@ -4,7 +4,24 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.4.2
+## Unreleased — 0.4.3
+
+The context guard now defaults to warning on `Stop`, when its advice is usable,
+and emits only a user-visible message there. Set
+`AGENT_STATUSLINE_CONTEXT_WARN_EVENT` to `submit` or `both` to retain
+model-directed prompt-submit advice. The guard prefers the documented current
+session snapshot over the global last-payload cache and retains the transcript
+fallback when no snapshot is available.
+
+The warning threshold is configurable through
+`AGENT_STATUSLINE_CONTEXT_WARN_PCT` (default `80`), and
+`AGENT_STATUSLINE_CONTEXT_WARN_MESSAGE` accepts a non-empty message containing
+`{pct}`. `agent-statusline selftest` reports invalid values before live use
+([issues 31](https://github.com/nachiketbhujbal/agent-statusline/issues/31)
+and [32](https://github.com/nachiketbhujbal/agent-statusline/issues/32),
+[ADR 0049](adrs/0049-configure-context-warnings-at-stop-time.md)).
+
+## 0.4.2
 
 Each Claude render now atomically publishes a documented, versioned local
 snapshot for its session. `agent-statusline metrics <session-id>` returns that
@@ -22,6 +39,13 @@ and that retention revalidates a selected snapshot under its per-file lock, so
 a concurrent refresh cannot be deleted from stale pruning evidence. Cap
 maintenance continues through other candidates when a selected snapshot is
 refreshed, preserving the documented maximum without deleting the refresh.
+
+Exact candidate `dd4b55d17faf5c7b9b86bf8283b2a1e7437ab62f` passed renewed
+independent review and the complete local gate. PR #34 closed issue 30; PR and
+merged-main CI passed before the annotated tag and GitHub Release. TestPyPI and
+production PyPI then published and clean-install verified the same artifact
+pair. Production's initial install check encountered brief Simple Index
+propagation lag after exact JSON hash verification; its rerun passed.
 
 ## 0.4.1
 

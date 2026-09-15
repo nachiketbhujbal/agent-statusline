@@ -200,6 +200,32 @@ disable new snapshot writes.
 These files can contain a session title, model, cost, and opaque identifier.
 They are a local integration contract, not publication-safe evidence.
 
+## Configurable context guard
+
+Installation registers the package-owned context guard on both Claude
+`Stop` and `UserPromptSubmit`. It runs on `Stop` by default so the warning lands
+while the user is deciding what to do next. Stop output contains only
+`systemMessage`; it does not add model context or force another turn.
+
+The guard prefers `context_used_pct` and `context_window_size` from the current
+session's documented metrics snapshot. When that snapshot is missing or lacks
+usable context evidence, it retains the legacy fallback: occupancy from the
+latest assistant transcript message and window size from the last-render
+payload.
+
+| environment variable | contract |
+| --- | --- |
+| `AGENT_STATUSLINE_CONTEXT_WARN_PCT` | finite number from `1` through `100`; default `80` |
+| `AGENT_STATUSLINE_CONTEXT_WARN_EVENT` | `stop` (default), `submit`, or `both` |
+| `AGENT_STATUSLINE_CONTEXT_WARN_MESSAGE` | non-empty custom message containing literal `{pct}` |
+
+Without a custom message, the established short warning and focused-compaction
+advice remain. On `submit`, the advice is also returned as
+`hookSpecificOutput.additionalContext`; on `Stop`, it is never model-directed.
+Invalid values produce a user-visible configuration message without blocking
+the hook, and `agent-statusline selftest` fails with the same concise reason.
+See [ADR 0049](adrs/0049-configure-context-warnings-at-stop-time.md).
+
 `tests/conftest.py` redirects `AGENT_STATUSLINE_STATE` **before** any package import,
 because `paths.STATE_DIR` is resolved at import time. No test may touch the real
 `~/.claude`.
