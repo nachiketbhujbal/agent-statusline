@@ -3,12 +3,11 @@
 Findings proven on the release branch that fixes them. A row is recorded only
 once the regression that demonstrates it exists in this repository.
 
-v0.3.6 exact candidate `ca4a0af180d24e8e9f5462771447ad97adb5f32f`
-received an independent no-findings review against v0.3.5 after the complete
-local gate. PR #26 and merged-main CI passed before annotated tag v0.3.6;
+v0.4.3 exact candidate `e4a0d91762fbb1bc08bb891c07766bec0ea86cec`
+received an independent no-findings review against v0.4.2 after the complete
+local gate. PR #35 and merged-main CI passed before annotated tag v0.4.3;
 GitHub Release, TestPyPI, and PyPI then published one matching artifact pair.
-
-The current review target is the v0.4.3 configurable context-guard candidate.
+No review target is active.
 
 | ID | Severity | Finding | Release | Status |
 | --- | --- | --- | --- | --- |

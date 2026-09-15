@@ -8,7 +8,7 @@ the roadmap, or accepted ADRs.
 
 - Current release target: 0.4.3, configurable context guard and Stop timing.
 - Preceding release: v0.4.2, documented local session metrics.
-- Branch owner: Codex on `codex/feat/v0.4.3-context-stop`.
+- Branch owner: none; v0.4.3 ownership is complete.
 - Reviewer role: none active.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
@@ -23,7 +23,7 @@ the roadmap, or accepted ADRs.
   force-push are blocked.
 - Runtime dependencies remain empty and versions remain Git-tag-derived.
 
-v0.4.2 is tagged and released with one exact artifact pair on GitHub, TestPyPI,
+v0.4.3 is tagged and released with one exact artifact pair on GitHub, TestPyPI,
 and production PyPI. TestPyPI and PyPI are
 bound respectively to `publish-testpypi.yml` and `publish-pypi.yml`; both
 GitHub environments require maintainer approval, accept only branch `main`,
@@ -63,7 +63,8 @@ completed the public landing page and first production PyPI publication.
 v0.3.6 completed separate, reusable TestPyPI and PyPI promotion workflows.
 v0.4.0 completed the explicit host-acquisition architecture boundary. v0.4.1
 completed the normalized Claude acquisition adapter without changing display.
-v0.4.2 completed the documented local per-session metrics contract.
+v0.4.2 completed the documented local per-session metrics contract. v0.4.3
+completed configurable context warnings and user-visible Stop timing.
 
 The complete sequence and exclusions are authoritative in
 [ROADMAP.md](docs/ROADMAP.md). Do not merge the historical hardening branch as
@@ -71,12 +72,20 @@ a whole or import a later slice into the current release.
 
 ## Resume point
 
-v0.4.3 is the active implementation of issues 31 and 32. The context guard now
-prefers the documented per-session metrics snapshot, defaults to a user-visible
-Stop warning without model-directed output, and supports configured threshold,
-message, and `stop` / `submit` / `both` timing. The current candidate still
-requires the complete local gate and one independent exact-SHA review before
-publication.
+v0.4.3 is complete at tagged merge
+`dc7000b4c2bbb5b659b8837cee28b9055b95787e`. Exact candidate
+`e4a0d91762fbb1bc08bb891c07766bec0ea86cec` passed independent no-findings
+review and the complete local gate. PR #35 closed issues 31 and 32; PR CI run
+35009998711 and merged-main CI run 35010141037 passed before annotated tag
+object `c1d894e5f0b24f3f82c960873df0c9d7fe056292` and GitHub Release run
+35010394642. TestPyPI run 35010556768 and production PyPI run 35011232785
+published and clean-install verified the same exact wheel at
+`adda5eccc1e82279a37608c9aeec06518b9596aef68700009b21ee18fe9d00ae`
+and source archive at
+`bf8637bc0e0ca2877869194e9f5487468bd9e49fe23788604d77631716836b7b`.
+TestPyPI's first clean-install attempt reached its Simple Index before v0.4.3
+appeared there, after its JSON hashes had already matched; the failed-job rerun
+passed after propagation. Production PyPI passed on its first verification.
 
 v0.4.2 is complete at tagged merge
 `5dcbb5792bb718925a02ca4e9ee6952126184157`. Exact candidate
@@ -128,7 +137,7 @@ Codex still exposes a built-in-widget footer rather than an arbitrary command;
 stable hooks provide a credible acquisition trigger, and local rollouts expose
 exact token/session facts but no exact cost field. ADR 0047 preserves that
 architecture while updating the follow-on order: v0.4.2 published local
-per-session metrics for issue 30, and v0.4.3 addresses the configurable
+per-session metrics for issue 30, and v0.4.3 completed the configurable
 context guard and Stop timing from issues 31 and 32. The synthetic-fixture
 Codex parser and any opt-in Codex collector/query surface follow that local
 integration sequence.

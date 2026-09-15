@@ -39,7 +39,7 @@ installed-artifact evidence.
 | 0.4.2 | Documented local session metrics | **Released** |
 | 0.4.3 | Configurable context guard and Stop timing | **Current** |
 
-0.2.1 through 0.2.14 and v0.3.0 through v0.4.2 are tagged and released. The
+0.2.1 through 0.2.14 and v0.3.0 through v0.4.3 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
 production-ready supported public baseline. Each boundary retains its exact
 review and artifact evidence; GitHub Release objects begin at v0.2.4. The
