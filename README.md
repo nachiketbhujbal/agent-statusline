@@ -52,8 +52,9 @@ python -m pip install agent-statusline
 Python environment.
 
 Requirements: Python 3.9 or newer, Claude Code, and macOS or Linux. Git is
-optional and enriches the `PROJECT` row. On Linux, the macOS-specific memory
-probe gracefully reduces the `SYSTEM` row to the information available.
+optional and enriches the `PROJECT` row. The `SYSTEM` row reads native memory
+pressure from macOS or Linux; under WSL it reports the memory available to the
+Linux environment rather than the Windows host's full physical capacity.
 
 ## What it tracks
 

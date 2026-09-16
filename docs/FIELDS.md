@@ -152,6 +152,13 @@ pressure after them and disk last — disk is the first thing worth losing on a 
 | `4.2G compressed` | probe | memory macOS has compressed in place rather than paging to disk |
 | `disk[████░░░░] 48% · 210G free` | probe | the filesystem holding the cwd. Yellow ≥80%, red ≥92% |
 
+The RAM percentage uses each host's native kernel view: active, wired, and
+compressed pages on macOS; `MemTotal - MemAvailable` on Linux. Linux therefore
+does not count readily reclaimable caches as pressure. Under WSL, `MemTotal`
+is the capacity visible to the Linux environment, so a distro limited to 8 GB
+correctly reports pressure against 8 GB rather than all physical Windows RAM.
+Compressed memory remains a macOS-only segment.
+
 The two memory figures answer different questions and routinely disagree:
 
 - **`all claude`** is every claude binary on the machine, across all your windows. It is the

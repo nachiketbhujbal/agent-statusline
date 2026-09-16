@@ -6,9 +6,9 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.4.3, configurable context guard and Stop timing.
-- Preceding release: v0.4.2, documented local session metrics.
-- Branch owner: none; v0.4.3 ownership is complete.
+- Current release target: 0.4.4, native Linux and WSL memory pressure.
+- Preceding release: v0.4.3, configurable context guard and Stop timing.
+- Branch owner: Codex on `codex/feat/v0.4.4-linux-memory`.
 - Reviewer role: none active.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
@@ -24,7 +24,9 @@ the roadmap, or accepted ADRs.
 - Runtime dependencies remain empty and versions remain Git-tag-derived.
 
 v0.4.3 is tagged and released with one exact artifact pair on GitHub, TestPyPI,
-and production PyPI. TestPyPI and PyPI are
+and production PyPI. v0.4.4 changes only the native memory probe, its tests,
+CI assertion, and synchronized public records; it does not alter the approved
+display, accounting, installer, or dependencies. TestPyPI and PyPI are
 bound respectively to `publish-testpypi.yml` and `publish-pypi.yml`; both
 GitHub environments require maintainer approval, accept only branch `main`,
 and allow no bypass. No package-index token or secret is stored.
@@ -64,13 +66,33 @@ v0.3.6 completed separate, reusable TestPyPI and PyPI promotion workflows.
 v0.4.0 completed the explicit host-acquisition architecture boundary. v0.4.1
 completed the normalized Claude acquisition adapter without changing display.
 v0.4.2 completed the documented local per-session metrics contract. v0.4.3
-completed configurable context warnings and user-visible Stop timing.
+completed configurable context warnings and user-visible Stop timing. v0.4.4
+is implementing native Linux and WSL memory pressure parity.
 
 The complete sequence and exclusions are authoritative in
 [ROADMAP.md](docs/ROADMAP.md). Do not merge the historical hardening branch as
 a whole or import a later slice into the current release.
 
 ## Resume point
+
+Authorized v0.4.4 work starts from clean released `main`
+`706d36891709fbb1b1df98f046ca45fec8cbb33d` on
+`codex/feat/v0.4.4-linux-memory`. The bounded requirement is to preserve the
+macOS `sysctl` / `vm_stat` probe and use Linux `/proc/meminfo` values
+`MemTotal - MemAvailable`, with WSL intentionally reporting its Linux-visible
+capacity. The normalized renderer fields and ten-row display stay unchanged;
+compressed memory remains macOS-only. Required evidence is synthetic valid,
+missing, and malformed Linux coverage, retained macOS coverage, direct native
+Linux/macOS CI assertions, the complete locked local gate, one independent
+exact-SHA review, protected PR/main CI, annotated v0.4.4 GitHub Release,
+TestPyPI and PyPI promotion, and clean production-index installation proof.
+No GitHub issue currently tracks this maintainer-requested slice.
+
+If interrupted, inspect the branch status and most recent commit, complete any
+remaining gate, then update this paragraph with exact SHA and evidence before
+requesting independent review. Any correction after review requires a renewed
+review of the new exact SHA. Do not tag until the reviewed candidate is merged
+and exact merged `main` CI passes.
 
 v0.4.3 is complete at tagged merge
 `dc7000b4c2bbb5b659b8837cee28b9055b95787e`. Exact candidate

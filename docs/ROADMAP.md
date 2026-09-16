@@ -37,7 +37,8 @@ installed-artifact evidence.
 | 0.4.0 | Explicit host-acquisition architecture | **Released** |
 | 0.4.1 | Normalized Claude acquisition facts | **Released** |
 | 0.4.2 | Documented local session metrics | **Released** |
-| 0.4.3 | Configurable context guard and Stop timing | **Current** |
+| 0.4.3 | Configurable context guard and Stop timing | **Released** |
+| 0.4.4 | Native Linux and WSL memory pressure | **Current** |
 
 0.2.1 through 0.2.14 and v0.3.0 through v0.4.3 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
@@ -504,7 +505,7 @@ Released ([issue 30](https://github.com/nachiketbhujbal/agent-statusline/issues/
 
 ## 0.4.3 — configurable context guard and Stop timing
 
-Current ([issues 31](https://github.com/nachiketbhujbal/agent-statusline/issues/31)
+Released ([issues 31](https://github.com/nachiketbhujbal/agent-statusline/issues/31)
 and [32](https://github.com/nachiketbhujbal/agent-statusline/issues/32)):
 
 - Make the context warning threshold and message configurable with safe defaults.
@@ -514,3 +515,17 @@ and [32](https://github.com/nachiketbhujbal/agent-statusline/issues/32)):
 - Retain prompt-submit warnings as an explicit option and validate every
   setting through the installed synthetic self-test
   ([ADR 0049](adrs/0049-configure-context-warnings-at-stop-time.md)).
+
+## 0.4.4 — native Linux and WSL memory pressure
+
+Current ([ADR 0050](adrs/0050-report-native-linux-memory-pressure.md)):
+
+- Preserve the existing macOS `sysctl` and `vm_stat` memory calculation.
+- On Linux, derive pressure from `MemTotal - MemAvailable` in `/proc/meminfo`
+  and normalize it to the renderer's existing memory fields.
+- Under WSL, report against the capacity visible to the Linux environment rather
+  than the Windows host's full physical RAM.
+- Retain graceful omission when required evidence is unavailable or malformed,
+  and keep compressed-memory detail macOS-only.
+- Certify both native platform paths in hosted CI without dependencies or a
+  display-layout change.
