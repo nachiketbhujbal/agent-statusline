@@ -77,7 +77,7 @@ renderer consumes them.
 | module | host-specific? |
 | --- | --- |
 | `render.py` — colours, units, bars, width fitting | no |
-| `probes.py` — cached `ps` / `vm_stat` / git / `statvfs` | no |
+| `probes.py` — cached `ps`, native macOS/Linux memory, git, `statvfs` | no |
 | `ledger.py` — cross-session cost accounting | no |
 | `storage.py` — locked, private, atomic persistence | no |
 | `session_metrics.py` — documented local snapshot/query contract | no |

@@ -3,11 +3,9 @@
 Findings proven on the release branch that fixes them. A row is recorded only
 once the regression that demonstrates it exists in this repository.
 
-v0.4.3 exact candidate `e4a0d91762fbb1bc08bb891c07766bec0ea86cec`
-received an independent no-findings review against v0.4.2 after the complete
-local gate. PR #35 and merged-main CI passed before annotated tag v0.4.3;
-GitHub Release, TestPyPI, and PyPI then published one matching artifact pair.
-No review target is active.
+v0.4.4 is active on `codex/feat/v0.4.4-linux-memory` against released v0.4.3.
+The exact candidate, independent verdict, complete local gate, and hosted
+evidence will be recorded before merge and release.
 
 | ID | Severity | Finding | Release | Status |
 | --- | --- | --- | --- | --- |
@@ -117,6 +115,7 @@ No review target is active.
 | METRICS-RETENTION-001 | Medium | Retention selected an old snapshot using an unlocked read and later removed it under a separate lock, so a concurrent renderer could refresh the session between those operations and still have its current snapshot deleted. | 0.4.2 | Resolved by re-reading and comparing the selected snapshot while holding its per-file lock before deletion, with a controlled refresh-between-selection-and-removal regression |
 | METRICS-RETENTION-002 | Medium | After a selected excess snapshot won a concurrent refresh, pruning stopped without removing another candidate and could leave more than 512 snapshots until the next hourly pass. | 0.4.2 | Resolved by continuing through ordered candidates until the required number of conditional deletions succeeds, with a refresh-during-cap-enforcement regression |
 | CONTEXT-GUARD-001 | Medium | The context guard used one fixed threshold and compaction message, depended on a global last-render payload for window size, and warned only after the user submitted another prompt. | 0.4.3 | Resolved by [ADR 0049](adrs/0049-configure-context-warnings-at-stop-time.md): validated threshold/message/event settings, session-scoped metrics with the legacy fallback, and a default Stop warning that emits no model-directed output |
+| PORTABILITY-001 | Medium | Linux and WSL retained process and disk evidence but omitted total RAM, Claude's RAM share, and the RAM bar because the only whole-system memory probe used macOS commands. | 0.4.4 | Resolved by [ADR 0050](adrs/0050-report-native-linux-memory-pressure.md): native `/proc/meminfo` pressure, synthetic parsing/degradation coverage, and direct Linux/macOS CI assertions |
 | PERF-001 | Medium | A fresh renderer process imported CLI-only `argparse`, cold-probe `subprocess`, and `shutil` through width and temporary-file helpers, consuming avoidable work on every redraw. | 0.3.1 | Resolved by [ADR 0040](adrs/0040-remove-avoidable-hot-path-imports.md): lazy cold-path imports, direct width and private temporary primitives, a deterministic import budget, and non-gating isolated benchmark evidence |
 | PERF-002 | Medium | The first v0.3.1 candidate intentionally normalized a zero-column terminal result to the fallback but described terminal-width and renderer output behavior as unchanged, concealing a supported-Python-3.9 edge change. | 0.3.1 | Resolved by retaining the safe cross-version fallback, disclosing the Python 3.9 difference in ADR 0040 and current release records, and keeping the deterministic zero-width regression |
 | PERF-003 | High | The benchmark test passed only when the project was already installed in the test interpreter; every hosted Linux and macOS test lane used a clean source checkout and failed when isolated benchmark children could not import the package. | 0.3.1 | Resolved by explicitly bootstrapping the exact checkout source in benchmark children and exercising the command through a fresh no-pip virtual environment with no project installation |

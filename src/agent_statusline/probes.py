@@ -9,6 +9,7 @@ through `probe()` and reused for a few seconds. Measured costs on this machine:
 import json
 import math
 import os
+import sys
 import time
 from collections.abc import Mapping
 
@@ -16,6 +17,7 @@ from agent_statusline.paths import state
 from agent_statusline.storage import read_json, update_json
 
 STATE = state("statusline-probe-cache.json")
+PROC_MEMINFO = "/proc/meminfo"
 MAX_CACHE_AGE_S = 7 * 24 * 60 * 60
 MAX_CACHE_ENTRIES = 256
 
@@ -166,8 +168,8 @@ def processes():
     }
 
 
-def memory():
-    """System memory: total, and a used fraction from vm_stat page counts."""
+def _macos_memory():
+    """macOS memory from sysctl capacity and vm_stat page counts."""
     total = _run("sysctl", "-n", "hw.memsize").strip()
     total = int(total) if total.isdigit() else 0
     vm = _run("vm_stat")
@@ -199,6 +201,48 @@ def memory():
         "pct": (used / total * 100) if total else None,
         "compressed": vals.get("Pages occupied by compressor", 0),
     }
+
+
+def _linux_memory():
+    """Linux memory pressure from the kernel's /proc/meminfo view."""
+    try:
+        with open(PROC_MEMINFO, encoding="utf-8") as fh:
+            lines = fh
+            vals = {}
+            for line in lines:
+                key, sep, value = line.partition(":")
+                fields = value.split()
+                if not sep or len(fields) != 2 or fields[1] != "kB":
+                    continue
+                try:
+                    amount = int(fields[0]) * 1024
+                except ValueError:
+                    continue
+                if amount >= 0:
+                    vals[key] = amount
+    except OSError:
+        return {"total": 0}
+
+    total = vals.get("MemTotal", 0)
+    available = vals.get("MemAvailable")
+    if not total or available is None:
+        return {"total": total}
+    used = min(total, max(0, total - available))
+    return {"total": total, "used": used, "pct": used / total * 100}
+
+
+def _runtime_platform() -> str:
+    return sys.platform
+
+
+def memory():
+    """System memory normalized from the current host's native kernel view."""
+    platform = _runtime_platform()
+    if platform.startswith("linux"):
+        return _linux_memory()
+    if platform == "darwin":
+        return _macos_memory()
+    return {"total": 0}
 
 
 def disk(path):

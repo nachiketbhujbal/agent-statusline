@@ -4,7 +4,20 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.4.3
+## Unreleased — 0.4.4
+
+The `SYSTEM` row now reports whole-system RAM pressure on Linux and WSL using
+the kernel's `/proc/meminfo` view. Used memory is `MemTotal - MemAvailable`, so
+readily reclaimable caches are not treated as pressure; WSL reports against the
+capacity assigned to its Linux environment. The existing macOS `sysctl` and
+`vm_stat` calculation and the approved display remain unchanged.
+
+Malformed or unavailable platform evidence still degrades by omitting the RAM
+percentage instead of inventing one. Synthetic platform coverage and native
+Linux/macOS CI assertions certify both paths without adding dependencies
+([ADR 0050](adrs/0050-report-native-linux-memory-pressure.md)).
+
+## 0.4.3
 
 The context guard now defaults to warning on `Stop`, when its advice is usable,
 and emits only a user-visible message there. Set

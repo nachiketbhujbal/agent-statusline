@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | **payload** | free | context, rate limits, cost, model, workspace — piped in as JSON on stdin |
 | **transcript** | cheap | cumulative session facts, parsed incrementally from a byte offset |
-| **probe** | a subprocess | git, `ps`, `vm_stat`, `sysctl`, `statvfs`, account flags — always cached |
+| **probe** | local machine state | git, `ps`, macOS `vm_stat` / `sysctl`, Linux `/proc/meminfo`, `statvfs`, account flags — always cached |
 | **ledger** | locked local state | spend history across sessions |
 
 Historical measurements found a roughly 30ms warm redraw against a roughly
@@ -20,6 +20,8 @@ keeps elapsed time outside the release gate.
 In that same historical measurement, cold costs were: `ps` ~29ms · Git bundle
 ~35ms · `vm_stat` ~6ms · `sysctl` ~4ms · `~/.claude.json` ~1ms · `statvfs`
 ~0ms. Cache TTLs remain: Git 3s · processes/memory 8s · disk 30s · account 30s.
+The Linux memory read uses `/proc/meminfo` directly and adds no subprocess or
+runtime dependency.
 
 Probe observations are retained for seven days and capped at 256 rows. The
 active row survives count pruning. Transcript observations are retained for 35

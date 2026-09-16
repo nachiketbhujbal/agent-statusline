@@ -55,6 +55,7 @@ old one rather than rewriting why the earlier choice was made.
 | [0047](0047-normalize-claude-acquisition-facts.md) | Normalize Claude acquisition facts before rendering |
 | [0048](0048-publish-versioned-local-session-metrics.md) | Publish versioned local session metrics |
 | [0049](0049-configure-context-warnings-at-stop-time.md) | Configure context warnings at Stop time |
+| [0050](0050-report-native-linux-memory-pressure.md) | Report native Linux and WSL memory pressure |
 
 ## Reading order
 

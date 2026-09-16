@@ -36,6 +36,86 @@ def test_process_values_come_from_one_snapshot(monkeypatch):
     assert calls == [("ps", "-eo", "pid=,ppid=,rss=,command=")]
 
 
+def test_linux_memory_uses_total_and_available(tmp_path, monkeypatch):
+    meminfo = tmp_path / "meminfo"
+    meminfo.write_text(
+        "MemTotal:        8388608 kB\n"
+        "MemFree:          262144 kB\n"
+        "MemAvailable:    2097152 kB\n"
+        "Cached:          1048576 kB\n"
+    )
+    monkeypatch.setattr(probes.sys, "platform", "linux")
+    monkeypatch.setattr(probes, "PROC_MEMINFO", str(meminfo))
+
+    assert probes.memory() == {
+        "total": 8 * 1024**3,
+        "used": 6 * 1024**3,
+        "pct": 75.0,
+    }
+
+
+@pytest.mark.parametrize(
+    "contents, expected",
+    [
+        ("MemAvailable: 1024 kB\n", {"total": 0}),
+        ("MemTotal: 2048 kB\n", {"total": 2048 * 1024}),
+        ("MemTotal: invalid kB\nMemAvailable: 1024 kB\n", {"total": 0}),
+        ("MemTotal: 2048 MB\nMemAvailable: 1024 kB\n", {"total": 0}),
+    ],
+)
+def test_linux_memory_degrades_when_required_values_are_unusable(
+    tmp_path, monkeypatch, contents, expected
+):
+    meminfo = tmp_path / "meminfo"
+    meminfo.write_text(contents)
+    monkeypatch.setattr(probes.sys, "platform", "linux")
+    monkeypatch.setattr(probes, "PROC_MEMINFO", str(meminfo))
+
+    assert probes.memory() == expected
+
+
+def test_linux_memory_degrades_when_proc_meminfo_is_unavailable(tmp_path, monkeypatch):
+    monkeypatch.setattr(probes.sys, "platform", "linux")
+    monkeypatch.setattr(probes, "PROC_MEMINFO", str(tmp_path / "missing"))
+
+    assert probes.memory() == {"total": 0}
+
+
+def test_macos_memory_retains_native_vm_stat_probe(monkeypatch):
+    calls = []
+    vm_stat = (
+        "Mach Virtual Memory Statistics: (page size of 4096 bytes)\n"
+        "Pages active: 100.\n"
+        "Pages wired down: 50.\n"
+        "Pages occupied by compressor: 25.\n"
+    )
+
+    def fake_run(*args, **_kwargs):
+        calls.append(args)
+        if args == ("sysctl", "-n", "hw.memsize"):
+            return str(1000 * 4096)
+        if args == ("vm_stat",):
+            return vm_stat
+        raise AssertionError(args)
+
+    monkeypatch.setattr(probes.sys, "platform", "darwin")
+    monkeypatch.setattr(probes, "_run", fake_run)
+
+    assert probes.memory() == {
+        "total": 1000 * 4096,
+        "used": 175 * 4096,
+        "pct": 17.5,
+        "compressed": 25 * 4096,
+    }
+    assert calls == [("sysctl", "-n", "hw.memsize"), ("vm_stat",)]
+
+
+def test_memory_degrades_on_an_unknown_platform(monkeypatch):
+    monkeypatch.setattr(probes.sys, "platform", "plan9")
+
+    assert probes.memory() == {"total": 0}
+
+
 def test_fresh_cached_value_avoids_probe(tmp_path, monkeypatch):
     state = tmp_path / "probes.json"
     state.write_text('{"key":{"at":100,"val":"cached"}}')

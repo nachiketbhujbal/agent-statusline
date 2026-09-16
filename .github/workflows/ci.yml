@@ -71,6 +71,17 @@ jobs:
         if: steps.scope.outputs.full == 'true'
         run: PYTHONPATH=src python -c "import agent_statusline.statusline"
 
+      - name: the Linux memory probe actually returns data
+        if: steps.scope.outputs.full == 'true'
+        run: |
+          PYTHONPATH=src python - <<'PY'
+          from agent_statusline import probes
+          mem = probes.memory()
+          assert mem.get("total"), mem
+          assert mem.get("pct") is not None, mem
+          print(f"/proc/meminfo probe ok: {mem['pct']:.0f}% of {mem['total']} bytes")
+          PY
+
       - name: documentation and public-readiness policy
         if: steps.scope.outputs.full == 'true'
         run: |
@@ -162,8 +173,9 @@ jobs:
           path: dist/
 
   # Python-version isolation is the point of this matrix, so it stays split.
-  # Linux covers every supported Python version. The representative macOS job
-  # below covers the platform-specific memory probe without multiplying matrices.
+  # Linux covers every supported Python version. The checks job certifies its
+  # native memory probe once; the representative macOS job below does the same
+  # for macOS without multiplying matrices.
   test:
     needs: checks
     if: needs.checks.outputs.full == 'true'
