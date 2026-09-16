@@ -529,3 +529,7 @@ Current ([ADR 0050](adrs/0050-report-native-linux-memory-pressure.md)):
   and keep compressed-memory detail macOS-only.
 - Certify both native platform paths in hosted CI without dependencies or a
   display-layout change.
+
+The independently reviewed implementation passed protected PR and merged-main
+Linux/macOS CI, annotated v0.4.4 GitHub Release creation, and exact TestPyPI and
+production PyPI publication with clean Python 3.9 installation evidence.

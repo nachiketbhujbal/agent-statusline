@@ -8,7 +8,7 @@ the roadmap, or accepted ADRs.
 
 - Current release target: 0.4.4, native Linux and WSL memory pressure.
 - Preceding release: v0.4.3, configurable context guard and Stop timing.
-- Branch owner: Codex on `codex/feat/v0.4.4-linux-memory`.
+- Branch owner: none; v0.4.4 ownership is complete.
 - Reviewer role: none active.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
@@ -23,9 +23,9 @@ the roadmap, or accepted ADRs.
   force-push are blocked.
 - Runtime dependencies remain empty and versions remain Git-tag-derived.
 
-v0.4.3 is tagged and released with one exact artifact pair on GitHub, TestPyPI,
-and production PyPI. v0.4.4 changes only the native memory probe, its tests,
-CI assertion, and synchronized public records; it does not alter the approved
+v0.4.4 is tagged and released with one exact artifact pair on GitHub, TestPyPI,
+and production PyPI. It changes only the native memory probe, its tests, CI
+assertion, and synchronized public records; it does not alter the approved
 display, accounting, installer, or dependencies. TestPyPI and PyPI are
 bound respectively to `publish-testpypi.yml` and `publish-pypi.yml`; both
 GitHub environments require maintainer approval, accept only branch `main`,
@@ -67,7 +67,7 @@ v0.4.0 completed the explicit host-acquisition architecture boundary. v0.4.1
 completed the normalized Claude acquisition adapter without changing display.
 v0.4.2 completed the documented local per-session metrics contract. v0.4.3
 completed configurable context warnings and user-visible Stop timing. v0.4.4
-is implementing native Linux and WSL memory pressure parity.
+completed native Linux and WSL memory pressure parity.
 
 The complete sequence and exclusions are authoritative in
 [ROADMAP.md](docs/ROADMAP.md). Do not merge the historical hardening branch as
@@ -75,24 +75,27 @@ a whole or import a later slice into the current release.
 
 ## Resume point
 
-Authorized v0.4.4 work starts from clean released `main`
-`706d36891709fbb1b1df98f046ca45fec8cbb33d` on
-`codex/feat/v0.4.4-linux-memory`. The bounded requirement is to preserve the
-macOS `sysctl` / `vm_stat` probe and use Linux `/proc/meminfo` values
-`MemTotal - MemAvailable`, with WSL intentionally reporting its Linux-visible
-capacity. The normalized renderer fields and ten-row display stay unchanged;
-compressed memory remains macOS-only. Required evidence is synthetic valid,
-missing, and malformed Linux coverage, retained macOS coverage, direct native
-Linux/macOS CI assertions, the complete locked local gate, one independent
-exact-SHA review, protected PR/main CI, annotated v0.4.4 GitHub Release,
-TestPyPI and PyPI promotion, and clean production-index installation proof.
-No GitHub issue currently tracks this maintainer-requested slice.
+v0.4.4 is complete at tagged merge
+`d92077d1cb79fc92ae0a296df00ad3fbd3eeb353`. Exact candidate
+`79335ec1360808ff69b6c1292b52a3cae659a6ad` passed independent no-findings
+review and the complete local gate: 714 tests, owner coverage 89.38%, artifact
+privacy and metadata, an isolated Python 3.9 wheel self-test, and the native
+macOS probe. PR #37 CI run 35052560738 and merged-main run 35052651782 passed
+the complete Linux matrix, direct Linux memory assertion, representative
+macOS lane, and required aggregate result.
 
-If interrupted, inspect the branch status and most recent commit, complete any
-remaining gate, then update this paragraph with exact SHA and evidence before
-requesting independent review. Any correction after review requires a renewed
-review of the new exact SHA. Do not tag until the reviewed candidate is merged
-and exact merged `main` CI passes.
+Annotated tag object `ebe8a28001cb608d91afcde088e160340e3dfeeb`
+peels to that exact merge. GitHub Release run 35052809112, TestPyPI run
+35052901590, and production PyPI run 35054311789 published and verified the
+same wheel at
+`ff235e542952438f1b3cf61729e8149b83a7740df5ebc63b7e859a8f0b4e1e45`
+and source archive at
+`425d6a42da5274e8b511ce3e020380cfb903aeab2a741d0918a6153af6c9e489`.
+Production's initial clean-install step reached its Simple Index before v0.4.4
+appeared there, after exact JSON hash verification; the failed verification
+rerun passed after propagation. No GitHub issue tracked this
+maintainer-requested slice. The iMac installation remains v0.3.6; changing it
+or live Claude configuration was outside v0.4.4.
 
 v0.4.3 is complete at tagged merge
 `dc7000b4c2bbb5b659b8837cee28b9055b95787e`. Exact candidate
