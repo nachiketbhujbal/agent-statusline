@@ -3,9 +3,11 @@
 Findings proven on the release branch that fixes them. A row is recorded only
 once the regression that demonstrates it exists in this repository.
 
-v0.4.4 is active on `codex/feat/v0.4.4-linux-memory` against released v0.4.3.
-The exact candidate, independent verdict, complete local gate, and hosted
-evidence will be recorded before merge and release.
+v0.4.4 exact candidate `79335ec1360808ff69b6c1292b52a3cae659a6ad`
+received an independent no-findings review against v0.4.3 after the complete
+local gate. PR #37 and merged-main CI passed before annotated tag v0.4.4;
+GitHub Release, TestPyPI, and PyPI then published one matching artifact pair.
+No review target is active.
 
 | ID | Severity | Finding | Release | Status |
 | --- | --- | --- | --- | --- |

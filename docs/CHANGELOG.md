@@ -17,6 +17,15 @@ percentage instead of inventing one. Synthetic platform coverage and native
 Linux/macOS CI assertions certify both paths without adding dependencies
 ([ADR 0050](adrs/0050-report-native-linux-memory-pressure.md)).
 
+Exact candidate `79335ec1360808ff69b6c1292b52a3cae659a6ad` passed
+independent no-findings review and the complete local gate. PR #37 and
+merged-main CI passed the Linux Python matrix, native Linux memory assertion,
+and representative macOS evidence before the annotated tag and GitHub Release.
+TestPyPI and production PyPI published and clean-install verified the same
+artifact pair. Production's initial clean-install attempt encountered brief
+Simple Index propagation lag after exact JSON hash verification; its failed
+verification rerun passed.
+
 ## 0.4.3
 
 The context guard now defaults to warning on `Stop`, when its advice is usable,
