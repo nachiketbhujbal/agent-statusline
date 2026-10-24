@@ -4,7 +4,7 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.4.5
+## 0.4.5
 
 Context warnings no longer borrow another session's context-window size when
 per-session metrics are absent or unusable. The last-payload fallback requires

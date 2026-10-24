@@ -107,6 +107,53 @@ def test_documentation_policy_accepts_consistent_public_records(tmp_path):
     assert result.returncode == 0, result.stderr
 
 
+def completed_repository(tmp_path):
+    root = valid_repository(tmp_path)
+    roadmap = root / "docs" / "ROADMAP.md"
+    write(roadmap, roadmap.read_text().replace("**Current**", "**Released**"))
+    changelog = root / "docs" / "CHANGELOG.md"
+    write(changelog, changelog.read_text().replace("Unreleased — ", ""))
+    return root
+
+
+def test_documentation_policy_accepts_completed_release_without_inventing_next_target(tmp_path):
+    result = run_policy(completed_repository(tmp_path))
+
+    assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize(
+    "path, old, new, expected",
+    [
+        ("docs/CHANGELOG.md", "## 0.2.8", "## Unreleased — 0.2.8", "needs a Current"),
+        ("docs/CHANGELOG.md", "## 0.2.8", "## 0.2.9", "missing released version 0.2.8"),
+        ("HANDOFF.md", "target: 0.2.8,", "target: 0.2.9,", "target must be 0.2.8"),
+    ],
+)
+def test_completed_release_still_rejects_label_and_version_drift(
+    tmp_path, path, old, new, expected
+):
+    root = completed_repository(tmp_path)
+    target = root / path
+    write(target, target.read_text().replace(old, new))
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert expected in result.stderr
+
+
+def test_documentation_policy_still_rejects_multiple_current_releases(tmp_path):
+    root = valid_repository(tmp_path)
+    roadmap = root / "docs" / "ROADMAP.md"
+    write(roadmap, roadmap.read_text().replace("**Released**", "**Current**"))
+
+    result = run_policy(root)
+
+    assert result.returncode == 1
+    assert "at most one Current release" in result.stderr
+
+
 def test_repository_documentation_is_consistent():
     result = run_policy(REPOSITORY_ROOT)
 

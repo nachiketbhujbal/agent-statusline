@@ -105,7 +105,11 @@ PR #40 independently reviewed record candidate
 publication checkpoint as `0f445937ef007804ac8b3608921632b159005095`;
 PR run 40043985388 and automatic main run 40044032831 passed their deliberate
 documentation-only ancestry lane. This final record closes the now-satisfied
-production prerequisite without moving the release tag.
+production prerequisite without moving the release tag. Final-record review
+also found the development verifier required stale Current/Unreleased labels
+after publication. The post-tag closure accepts a fully released roadmap with
+no selected next target, retaining version-agreement checks with synthetic
+coverage. This development-only correction is not in the immutable v0.4.5 pair.
 
 This patch confines context fallback to matching session evidence and verifies
 compaction boundary/summary counting, schema-4 cache replay, and six concurrent
