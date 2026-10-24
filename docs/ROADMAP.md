@@ -553,3 +553,9 @@ Current ([ADR 0051](adrs/0051-keep-context-fallback-and-compactions-session-scop
 A package-owned configuration file and broader display customization remain a
 separate unversioned slice in [DEFERRED.md](DEFERRED.md). No configuration-file
 design or implementation is included in this patch.
+
+The implementation is independently reviewed and merged through PR #39. Exact
+PR and merged-main Linux/macOS CI passed, and annotated v0.4.5 and its GitHub
+Release pair are verified. TestPyPI published and verified the same pair.
+Production PyPI preparation passed; maintainer approval, production verification,
+and final release closure remain pending.

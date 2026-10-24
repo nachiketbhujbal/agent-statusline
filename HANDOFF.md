@@ -8,8 +8,8 @@ the roadmap, or accepted ADRs.
 
 - Current release target: 0.4.5, session-safe context fallback and compaction counting.
 - Preceding release: v0.4.4, native Linux and WSL memory pressure.
-- Branch owner: codex; sole owner of the v0.4.5 patch branch.
-- Reviewer role: one independent exact-SHA reviewer after the complete local gate.
+- Branch owner: codex; sole owner of v0.4.5 publication and release closure.
+- Reviewer role: implementation review complete; no implementation review active.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
   complete-ancestry audit. Documentation-only refs skip both hosted test lanes;
@@ -75,21 +75,35 @@ a whole or import a later slice into the current release.
 
 ## Resume point
 
-v0.4.5 is being prepared on `codex/fix/v0.4.5-session-isolation` from released
-main `65de55bb5bdae19dd0d2a0379fac2e8aa4ed6c92`. The patch confines context
-fallback to matching session evidence and verifies compaction boundary/summary
-counting, cache migration, and six concurrent synthetic sessions. The owner
-ran the locked all-files gate, 736 tests with subprocess-aware coverage
-(90.18% on Python 3.11), build, artifact privacy/metadata checks, and an isolated
-Python 3.9 installed-wheel self-test. The new fallback and boundary regressions
-also rejected the v0.4.4 implementation. Independent exact-SHA review, hosted
-CI, and publication evidence remain required before calling it released. General configuration-file customization
-is explicitly separate. The live ledger and unrelated Claude settings are not
-inputs to tests or modified by this patch.
+v0.4.5 is tagged at merge `735ed343c1b4a965d7ef7d3d94f3ab56d5a9da28`.
+Exact implementation candidate `1f8605f400f0855423a5b8245d41ab65308917b2`
+passed independent no-findings review against v0.4.4 and the full local gate:
+736 tests, owner coverage 90.18%, independent coverage 89.97% on Python 3.11,
+build, artifact privacy/metadata, and an isolated Python 3.9 installed-wheel
+self-test. New fallback and boundary regressions reject v0.4.4. PR #39 run
+40042908050 and merged-main run 40043090603 passed Linux Python 3.9–3.13,
+macOS, and the required aggregate result.
 
-The installed command was separately upgraded to v0.4.4 and its managed hooks
-refreshed after the v0.4.4 release; unrelated settings and the ledger were
-verified unchanged. No installation change is part of the v0.4.5 implementation.
+Annotated tag object `e494cc7bee182007714e3e98f8676124a4d01ec7` peels to
+that exact merge. GitHub Release run 40043218170 published one exact pair:
+wheel `702f624d570838a7685cb9de06318ccda81b11fc223d5c0532ac853cc32f49e4`
+and source archive
+`e7b5b33b0cff9e71f9c2125c81febddfe86103f1729da4c288cef310729a502b`.
+The downloaded release pair passed privacy/metadata checks; the exact wheel
+reports 0.4.5 and passed an isolated Python 3.9 clean-install self-test.
+
+TestPyPI promotion run 40043331875 passed after maintainer approval, including
+exact artifact hashes and a clean Python 3.9 installation. Production PyPI run
+40043731533 passed artifact preparation and is awaiting its separate required
+human environment approval. Production publication and verification remain
+pending; the owner retains responsibility for them and final release closure.
+
+This patch confines context fallback to matching session evidence and verifies
+compaction boundary/summary counting, schema-4 cache replay, and six concurrent
+synthetic sessions. General configuration-file customization is separate.
+The live ledger and unrelated Claude settings were not test inputs or modified.
+The installed command remains v0.4.4 following the separately authorized upgrade
+and managed-hook refresh; installing v0.4.5 was not part of this release work.
 
 v0.4.4 is complete at tagged merge
 `d92077d1cb79fc92ae0a296df00ad3fbd3eeb353`. Exact candidate
