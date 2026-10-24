@@ -23,6 +23,14 @@ The approved display, exact cost ledger, runtime dependencies, installer, and
 live Claude settings are unchanged. General configuration-file customization
 remains a separate slice.
 
+Exact candidate `1f8605f400f0855423a5b8245d41ab65308917b2` passed
+independent no-findings review and the complete local gate. PR #39 and
+merged-main CI passed the Linux Python matrix and macOS lane before the
+annotated tag and GitHub Release. The exact published wheel passed an isolated
+Python 3.9 clean-install self-test. TestPyPI published and verified that same
+pair after maintainer approval. Production PyPI preparation passed and its
+separate maintainer approval remains pending.
+
 ## 0.4.4
 
 The `SYSTEM` row now reports whole-system RAM pressure on Linux and WSL using
