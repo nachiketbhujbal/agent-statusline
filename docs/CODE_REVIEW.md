@@ -15,8 +15,9 @@ Python 3.11 respectively), build, artifact privacy, and metadata. The owner
 also passed the isolated Python 3.9 wheel self-test. New regressions reject
 v0.4.4. PR #39 and exact merged-main CI passed before annotated tag v0.4.5;
 the GitHub Release pair and its installed Python 3.9 self-test passed.
-TestPyPI published and verified the same pair; production PyPI awaits its
-separate required maintainer approval after successful artifact preparation.
+TestPyPI and production PyPI published and verified the same exact pair after
+separate maintainer approvals, including Python 3.9 clean-install evidence.
+No implementation review or package publication remains pending.
 
 | ID | Severity | Finding | Release | Status |
 | --- | --- | --- | --- | --- |

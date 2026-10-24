@@ -557,5 +557,6 @@ design or implementation is included in this patch.
 The implementation is independently reviewed and merged through PR #39. Exact
 PR and merged-main Linux/macOS CI passed, and annotated v0.4.5 and its GitHub
 Release pair are verified. TestPyPI published and verified the same pair.
-Production PyPI preparation passed; maintainer approval, production verification,
-and final release closure remain pending.
+Production PyPI published and verified the identical pair after its separate
+maintainer approval. GitHub Release run 40043218170, TestPyPI run 40043331875,
+and PyPI run 40043731533 passed; the v0.4.5 release scope is complete.
