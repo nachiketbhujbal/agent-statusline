@@ -11,6 +11,7 @@ if __package__ in (None, ""):  # running as a plain script
         0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
     )
 
+from agent_statusline.coerce import finite_integer
 from agent_statusline.paths import state
 from agent_statusline.session_metrics import read_snapshot
 from agent_statusline.storage import read_json, write_text
@@ -47,12 +48,22 @@ def configuration(environ=None):
     return {"threshold": threshold, "event": event, "message": message}, None
 
 
-def window_size():
+def window_size(current):
+    """Use the last payload only when it belongs to this hook's session."""
     try:
         payload = read_json(state("statusline-last-payload.json"), {})
-        return int(payload["context_window"]["context_window_size"])
+        session = current.get("session_id")
+        path = current.get("transcript_path")
+        if isinstance(session, str) and session:
+            if payload.get("session_id") != session:
+                return 0
+            if path and payload.get("transcript_path") != path:
+                return 0
+        elif not isinstance(path, str) or not path or payload.get("transcript_path") != path:
+            return 0
+        return max(0, finite_integer(payload["context_window"]["context_window_size"]))
     except Exception:
-        return 1_000_000
+        return 0
 
 
 def live_tokens(path):
@@ -85,7 +96,7 @@ def live_tokens(path):
 
 
 def context_usage(payload):
-    """Prefer the public session snapshot, then use the legacy live fallback."""
+    """Prefer session metrics; never borrow another session's window size."""
     session_id = payload.get("session_id")
     try:
         snapshot = read_snapshot(session_id) if session_id else None
@@ -101,7 +112,7 @@ def context_usage(payload):
         except (TypeError, ValueError, OverflowError, KeyError):
             pass
 
-    size = window_size()
+    size = window_size(payload)
     live = live_tokens(payload.get("transcript_path"))
     if not live or not size:
         return None

@@ -154,3 +154,27 @@ credentials, and a verified inability to read unrelated workspaces or mounted
 media. Provisioning intended for clean images must not be run on a working
 desktop without a dedicated virtual machine and a separate destructive-change
 audit.
+
+## Compaction records and session isolation
+
+A bounded read-only structural check on 2026-10-23 examined up to the first
+16 MiB of each of 24 recent top-level Claude transcripts, with a two-MiB
+per-line bound. It found three `system` / `compact_boundary` records and three
+`isCompactSummary: true` records. Each summary's parent identifier matched the
+preceding boundary identifier. No message contents, transcript paths, concrete
+identifiers, or private token/cost values were retained in public evidence.
+This verifies the observed pair shape, not every host version or compaction
+variant. No real compaction was triggered for the experiment.
+
+Synthetic fixtures cover boundaries without summaries, summary-only legacy
+records, boundary/summary pairs split across redraws, partial lines, old-cache
+replay, truncation, and independent compaction counts in six concurrent
+renderer/hook sessions. A shared transcript cache is keyed by transcript path;
+separate sessions must receive distinct transcript paths from the host.
+Inherited history on resume or fork can legitimately produce equal counts.
+
+The context guard's old missing-snapshot fallback reproducibly used a different
+session's last-render window size with the current transcript's token count.
+The v0.4.5 correction requires matching identity and omits the warning when
+current-session window evidence is unavailable. It does not establish that the
+reported real-world equal compaction counts were caused by cache crossover.

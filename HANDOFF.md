@@ -6,10 +6,10 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.4.4, native Linux and WSL memory pressure.
-- Preceding release: v0.4.3, configurable context guard and Stop timing.
-- Branch owner: none; v0.4.4 ownership is complete.
-- Reviewer role: none active.
+- Current release target: 0.4.5, session-safe context fallback and compaction counting.
+- Preceding release: v0.4.4, native Linux and WSL memory pressure.
+- Branch owner: codex; sole owner of the v0.4.5 patch branch.
+- Reviewer role: one independent exact-SHA reviewer after the complete local gate.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
   complete-ancestry audit. Documentation-only refs skip both hosted test lanes;
@@ -74,6 +74,22 @@ The complete sequence and exclusions are authoritative in
 a whole or import a later slice into the current release.
 
 ## Resume point
+
+v0.4.5 is being prepared on `codex/fix/v0.4.5-session-isolation` from released
+main `65de55bb5bdae19dd0d2a0379fac2e8aa4ed6c92`. The patch confines context
+fallback to matching session evidence and verifies compaction boundary/summary
+counting, cache migration, and six concurrent synthetic sessions. The owner
+ran the locked all-files gate, 736 tests with subprocess-aware coverage
+(90.18% on Python 3.11), build, artifact privacy/metadata checks, and an isolated
+Python 3.9 installed-wheel self-test. The new fallback and boundary regressions
+also rejected the v0.4.4 implementation. Independent exact-SHA review, hosted
+CI, and publication evidence remain required before calling it released. General configuration-file customization
+is explicitly separate. The live ledger and unrelated Claude settings are not
+inputs to tests or modified by this patch.
+
+The installed command was separately upgraded to v0.4.4 and its managed hooks
+refreshed after the v0.4.4 release; unrelated settings and the ledger were
+verified unchanged. No installation change is part of the v0.4.5 implementation.
 
 v0.4.4 is complete at tagged merge
 `d92077d1cb79fc92ae0a296df00ad3fbd3eeb353`. Exact candidate

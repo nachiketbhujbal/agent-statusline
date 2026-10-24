@@ -38,9 +38,10 @@ installed-artifact evidence.
 | 0.4.1 | Normalized Claude acquisition facts | **Released** |
 | 0.4.2 | Documented local session metrics | **Released** |
 | 0.4.3 | Configurable context guard and Stop timing | **Released** |
-| 0.4.4 | Native Linux and WSL memory pressure | **Current** |
+| 0.4.4 | Native Linux and WSL memory pressure | **Released** |
+| 0.4.5 | Session-safe context fallback and compaction counting | **Current** |
 
-0.2.1 through 0.2.14 and v0.3.0 through v0.4.3 are tagged and released. The
+0.2.1 through 0.2.14 and v0.3.0 through v0.4.4 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
 production-ready supported public baseline. Each boundary retains its exact
 review and artifact evidence; GitHub Release objects begin at v0.2.4. The
@@ -518,7 +519,7 @@ and [32](https://github.com/nachiketbhujbal/agent-statusline/issues/32)):
 
 ## 0.4.4 — native Linux and WSL memory pressure
 
-Current ([ADR 0050](adrs/0050-report-native-linux-memory-pressure.md)):
+Released ([ADR 0050](adrs/0050-report-native-linux-memory-pressure.md)):
 
 - Preserve the existing macOS `sysctl` and `vm_stat` memory calculation.
 - On Linux, derive pressure from `MemTotal - MemAvailable` in `/proc/meminfo`
@@ -533,3 +534,22 @@ Current ([ADR 0050](adrs/0050-report-native-linux-memory-pressure.md)):
 The independently reviewed implementation passed protected PR and merged-main
 Linux/macOS CI, annotated v0.4.4 GitHub Release creation, and exact TestPyPI and
 production PyPI publication with clean Python 3.9 installation evidence.
+
+## 0.4.5 — session-safe context fallback and compaction counting
+
+Current ([ADR 0051](adrs/0051-keep-context-fallback-and-compactions-session-scoped.md)):
+
+- Keep the session metrics snapshot as the context guard's preferred source.
+- Accept a last-payload window only for the matching session, or matching
+  transcript when the hook lacks a session ID. Omit the warning when a window
+  cannot be established; never guess one million tokens or borrow another chat.
+- Count explicit compaction boundaries and pair their summaries once, including
+  pairs split across redraws. Preserve summary-only transcript support.
+- Rebuild older transcript caches and verify independent counts and context
+  warnings through six concurrent synthetic renderer/hook processes.
+- Preserve all ten rows, exact accounting, private locked storage, dependencies,
+  installer behavior, and live user configuration.
+
+A package-owned configuration file and broader display customization remain a
+separate unversioned slice in [DEFERRED.md](DEFERRED.md). No configuration-file
+design or implementation is included in this patch.
