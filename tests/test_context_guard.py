@@ -16,7 +16,7 @@ def hook_io(monkeypatch, capsys):
         monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(payload)))
         monkeypatch.setattr(context_guard, "read_snapshot", lambda _sid: snapshot)
         monkeypatch.setattr(context_guard, "write_text", lambda _path, _text: None)
-        monkeypatch.setattr(context_guard, "window_size", lambda: 1000)
+        monkeypatch.setattr(context_guard, "window_size", lambda _payload: 1000)
         monkeypatch.setattr(context_guard, "live_tokens", lambda _path: 850)
         monkeypatch.setattr(
             context_guard,
@@ -111,3 +111,67 @@ def test_invalid_live_configuration_is_visible_without_blocking(hook_io):
 
     assert context_guard.THRESHOLD_ENV in output["systemMessage"]
     assert "hookSpecificOutput" not in output
+
+
+@pytest.mark.parametrize(
+    "current, cached, expected",
+    [
+        ({"session_id": "one"}, {"session_id": "one"}, 200_000),
+        ({"session_id": "one"}, {"session_id": "two"}, 0),
+        ({"session_id": "one"}, {}, 0),
+        ({}, {"session_id": "two"}, 0),
+        ({"transcript_path": "/one"}, {"transcript_path": "/one"}, 200_000),
+        ({"transcript_path": "/one"}, {"transcript_path": "/two"}, 0),
+        (
+            {"session_id": "one", "transcript_path": "/one"},
+            {"session_id": "one", "transcript_path": "/old"},
+            0,
+        ),
+    ],
+)
+def test_last_payload_window_requires_matching_identity(monkeypatch, current, cached, expected):
+    cached["context_window"] = {"context_window_size": 200_000}
+    monkeypatch.setattr(context_guard, "read_json", lambda _path, _default: cached)
+
+    assert context_guard.window_size(current) == expected
+
+
+@pytest.mark.parametrize("size", [0, -1, True, "invalid", float("inf")])
+def test_matching_payload_with_invalid_window_is_unavailable(monkeypatch, size):
+    monkeypatch.setattr(
+        context_guard,
+        "read_json",
+        lambda _path, _default: {
+            "session_id": "one",
+            "context_window": {"context_window_size": size},
+        },
+    )
+
+    assert context_guard.window_size({"session_id": "one"}) == 0
+
+
+@pytest.mark.parametrize("snapshot", [None, {"context_used_pct": "invalid"}])
+def test_fallback_never_uses_another_sessions_window(tmp_path, monkeypatch, snapshot):
+    cached = tmp_path / "last-payload.json"
+    path = tmp_path / "one.jsonl"
+    path.write_text(
+        json.dumps({"type": "assistant", "message": {"usage": {"input_tokens": 170_000}}}) + "\n"
+    )
+    monkeypatch.setattr(context_guard, "state", lambda _name: cached)
+    monkeypatch.setattr(context_guard, "read_snapshot", lambda _sid: snapshot)
+    current = {"session_id": "one", "transcript_path": str(path)}
+    for session, size, expected in [
+        ("two", 1_000_000, None),
+        ("one", 200_000, (85.0, 170_000, 200_000)),
+        ("two", 200_000, None),
+    ]:
+        cached.write_text(
+            json.dumps(
+                {
+                    "session_id": session,
+                    "transcript_path": str(path),
+                    "context_window": {"context_window_size": size},
+                }
+            )
+        )
+        assert context_guard.context_usage(current) == expected

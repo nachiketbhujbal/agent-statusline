@@ -34,4 +34,10 @@ visible, and must never be presented as a credit balance.
 - **Files touched through Bash**, which are currently invisible: only
   `Edit`, `Write`, `NotebookEdit` and `Read` register, so a session that changed
   plenty can read `0 files edited`.
-- Compaction verification, once a real compaction actually occurs.
+
+## Package-owned configuration and display customization
+
+A versioned configuration file, its location, override precedence, validation,
+and any display profiles need a separate design and release slice. The v0.4.5
+session-isolation patch retains the existing environment settings and approved
+ten-row display. No configuration-file format or path is committed yet.

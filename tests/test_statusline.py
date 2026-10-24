@@ -8,6 +8,7 @@ import re
 import stat
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -81,6 +82,64 @@ class TestWidth:
 
 
 class TestContent:
+    def test_six_concurrent_sessions_keep_compactions_and_context_separate(self, payload, tmp_path):
+        state = tmp_path / "shared-state"
+        state.mkdir()
+        env = dict(
+            os.environ,
+            AGENT_STATUSLINE_STATE=str(state),
+            HOME=str(tmp_path / "home"),
+            PYTHONPATH=os.path.abspath("src"),
+            COLUMNS="500",
+        )
+        inputs = []
+        for number in range(6):
+            path = tmp_path / f"transcript-{number}.jsonl"
+            entries = []
+            for event in range(number):
+                boundary = f"boundary-{number}-{event}"
+                entries.extend(
+                    [
+                        {"type": "system", "subtype": "compact_boundary", "uuid": boundary},
+                        {"type": "user", "isCompactSummary": True, "parentUuid": boundary},
+                    ]
+                )
+            path.write_text("".join(json.dumps(entry) + "\n" for entry in entries))
+            current = json.loads(json.dumps(payload))
+            current["session_id"] = f"independent-{number}"
+            current["transcript_path"] = str(path)
+            current["context_window"]["used_percentage"] = 81 + number
+            current["context_window"]["context_window_size"] = 200_000 * (number + 1)
+            inputs.append(current)
+
+        def run(current):
+            for _ in range(2):
+                rendered = subprocess.run(
+                    [sys.executable, "-m", "agent_statusline"],
+                    input=json.dumps(current),
+                    capture_output=True,
+                    text=True,
+                    env=env,
+                    check=True,
+                    timeout=30,
+                )
+                number = int(current["session_id"].rsplit("-", 1)[1])
+                output = ANSI.sub("", rendered.stdout)
+                assert f"{number} compactions" in output
+                warned = subprocess.run(
+                    [sys.executable, "-m", "agent_statusline", "hook", "context-guard"],
+                    input=json.dumps({**current, "hook_event_name": "Stop"}),
+                    capture_output=True,
+                    text=True,
+                    env=env,
+                    check=True,
+                    timeout=30,
+                )
+                assert f"{81 + number}% full" in json.loads(warned.stdout)["systemMessage"]
+
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            list(pool.map(run, inputs))
+
     def test_model_and_effort_are_shown(self, payload, monkeypatch, capsys):
         assert "Synthetic Opus" in ANSI.sub("", draw(payload, monkeypatch, capsys)[1])
 
@@ -897,16 +956,17 @@ rl_log(
             context_guard,
             "read_json",
             lambda path, default: {
+                "session_id": "session-1",
                 "context_window": {"context_window_size": 200_000},
                 "path": path,
                 "default": default,
             },
         )
 
-        assert context_guard.window_size() == 200_000
+        assert context_guard.window_size({"session_id": "session-1"}) == 200_000
 
         monkeypatch.setattr("sys.stdin", io.StringIO('{"session_id":"session-1"}'))
-        monkeypatch.setattr(context_guard, "window_size", lambda: 0)
+        monkeypatch.setattr(context_guard, "window_size", lambda _payload: 0)
         monkeypatch.setattr(
             context_guard,
             "write_text",
@@ -918,13 +978,13 @@ rl_log(
         assert seen["record"]["hook"] == "UserPromptSubmit"
         assert seen["record"]["session"] == "session-1"
 
-    def test_context_guard_read_failure_keeps_default_window(self, monkeypatch):
+    def test_context_guard_read_failure_omits_unproven_window(self, monkeypatch):
         def fail_read(_path, _default):
             raise OSError("state unavailable")
 
         monkeypatch.setattr(context_guard, "read_json", fail_read)
 
-        assert context_guard.window_size() == 1_000_000
+        assert context_guard.window_size({"session_id": "session-1"}) == 0
 
     def test_session_end_creates_and_closes_through_one_ledger_call(self, monkeypatch):
         seen = {}

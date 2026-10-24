@@ -284,6 +284,81 @@ class TestTopLevelFlags:
         assert absorb({"type": "user", "isCompactSummary": True})["compact"] == 1
 
 
+class TestCompactions:
+    def test_boundary_and_linked_summary_count_as_one_event(self):
+        totals = absorb(
+            {"type": "system", "subtype": "compact_boundary", "uuid": "boundary-one"},
+            {"type": "user", "isCompactSummary": True, "parentUuid": "boundary-one"},
+            {"type": "system", "subtype": "compact_boundary", "uuid": "boundary-two"},
+            {"type": "user", "isCompactSummary": True, "parentUuid": "boundary-two"},
+        )
+        assert totals["compact"] == 2
+
+    def test_boundary_without_summary_counts(self):
+        assert absorb({"type": "system", "subtype": "compact_boundary"})["compact"] == 1
+
+    def test_legacy_markers_and_summary_only_events_still_count(self):
+        totals = absorb(
+            {"type": "compact"},
+            {"type": "user", "isCompactSummary": True},
+            {"type": "user", "isCompactSummary": True},
+        )
+        assert totals["compact"] == 2
+
+    def test_unrelated_parent_is_a_separate_summary_only_event(self):
+        totals = absorb(
+            {"type": "system", "subtype": "compact_boundary", "uuid": "boundary-one"},
+            {"type": "user", "isCompactSummary": True, "parentUuid": "another-boundary"},
+        )
+        assert totals["compact"] == 2
+
+    def test_unrelated_compact_text_and_non_boolean_flags_do_not_count(self):
+        assert (
+            absorb(
+                {"type": "not_compacted"},
+                {"type": "system", "subtype": "microcompact"},
+                {"type": "user", "isCompactSummary": "false"},
+            )["compact"]
+            == 0
+        )
+
+    def test_pair_split_across_redraws_and_partial_lines_counts_once(self, tmp_path, monkeypatch):
+        path = tmp_path / "one.jsonl"
+        state = tmp_path / "cache.json"
+        monkeypatch.setattr(transcript, "TSTATE", str(state))
+        path.write_text(
+            json.dumps({"type": "system", "subtype": "compact_boundary", "uuid": "boundary"}) + "\n"
+        )
+        assert transcript.transcript_totals(str(path))["compact"] == 1
+        summary = json.dumps({"type": "user", "isCompactSummary": True, "parentUuid": "boundary"})
+        with path.open("a") as handle:
+            handle.write(summary[:20])
+        assert transcript.transcript_totals(str(path))["compact"] == 1
+        with path.open("a") as handle:
+            handle.write(summary[20:] + "\n")
+        assert transcript.transcript_totals(str(path))["compact"] == 1
+        assert transcript.transcript_totals(str(path))["compact"] == 1
+
+    def test_old_cache_is_replayed_and_truncation_resets_compaction_state(
+        self, tmp_path, monkeypatch
+    ):
+        path = tmp_path / "one.jsonl"
+        state = tmp_path / "cache.json"
+        monkeypatch.setattr(transcript, "TSTATE", str(state))
+        path.write_text('{"type":"system","subtype":"compact_boundary"}\n')
+        state.write_text(
+            json.dumps(
+                {str(path): {"schema": 3, "offset": path.stat().st_size, "totals": {"compact": 0}}}
+            )
+        )
+        assert transcript.transcript_totals(str(path))["compact"] == 1
+        path.write_text('{"type":"user","isCompactSummary":true}\n')
+        assert transcript.transcript_totals(str(path))["compact"] == 1
+        cached = json.loads(state.read_text())[str(path)]
+        assert cached["schema"] == transcript.SCHEMA
+        assert cached["totals"]["compact_pending"] is False
+
+
 class TestMissingFiles:
     def test_absent_transcript_yields_blank_totals(self):
         assert transcript.transcript_totals("/nonexistent/x.jsonl") == transcript._blank()

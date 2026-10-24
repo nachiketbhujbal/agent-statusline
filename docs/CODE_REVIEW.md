@@ -7,7 +7,11 @@ v0.4.4 exact candidate `79335ec1360808ff69b6c1292b52a3cae659a6ad`
 received an independent no-findings review against v0.4.3 after the complete
 local gate. PR #37 and merged-main CI passed before annotated tag v0.4.4;
 GitHub Release, TestPyPI, and PyPI then published one matching artifact pair.
-No review target is active.
+The v0.4.5 session-isolation correction passed the owner's locked all-files
+gate, 736 tests (90.18% subprocess-aware coverage on Python 3.11), build,
+artifact privacy/metadata, and isolated Python 3.9 installed-wheel self-test.
+Independent review is pending an immutable candidate SHA. New regression tests
+reject the v0.4.4 fallback and missed-boundary behavior.
 
 | ID | Severity | Finding | Release | Status |
 | --- | --- | --- | --- | --- |
@@ -118,6 +122,8 @@ No review target is active.
 | METRICS-RETENTION-002 | Medium | After a selected excess snapshot won a concurrent refresh, pruning stopped without removing another candidate and could leave more than 512 snapshots until the next hourly pass. | 0.4.2 | Resolved by continuing through ordered candidates until the required number of conditional deletions succeeds, with a refresh-during-cap-enforcement regression |
 | CONTEXT-GUARD-001 | Medium | The context guard used one fixed threshold and compaction message, depended on a global last-render payload for window size, and warned only after the user submitted another prompt. | 0.4.3 | Resolved by [ADR 0049](adrs/0049-configure-context-warnings-at-stop-time.md): validated threshold/message/event settings, session-scoped metrics with the legacy fallback, and a default Stop warning that emits no model-directed output |
 | PORTABILITY-001 | Medium | Linux and WSL retained process and disk evidence but omitted total RAM, Claude's RAM share, and the RAM bar because the only whole-system memory probe used macOS commands. | 0.4.4 | Resolved by [ADR 0050](adrs/0050-report-native-linux-memory-pressure.md): native `/proc/meminfo` pressure, synthetic parsing/degradation coverage, and direct Linux/macOS CI assertions |
+| SESSION-001 | Medium | With missing or unusable session metrics, context warnings combined current-transcript tokens with another session's global last-payload window, or an invented one-million-token default. | 0.4.5 | Corrected by identity-bound fallback and graceful warning omission; matching, mismatched, missing, malformed, and interleaved evidence regressions |
+| COMPACT-001 | Medium | Compaction detection ignored system compact-boundary subtypes and used broad type substrings; naively counting boundaries alongside their summaries would count an event twice. | 0.4.5 | Corrected by explicit markers, paired summaries across redraws, schema-4 replay, and six concurrent renderer/hook sessions; independent review pending |
 | PERF-001 | Medium | A fresh renderer process imported CLI-only `argparse`, cold-probe `subprocess`, and `shutil` through width and temporary-file helpers, consuming avoidable work on every redraw. | 0.3.1 | Resolved by [ADR 0040](adrs/0040-remove-avoidable-hot-path-imports.md): lazy cold-path imports, direct width and private temporary primitives, a deterministic import budget, and non-gating isolated benchmark evidence |
 | PERF-002 | Medium | The first v0.3.1 candidate intentionally normalized a zero-column terminal result to the fallback but described terminal-width and renderer output behavior as unchanged, concealing a supported-Python-3.9 edge change. | 0.3.1 | Resolved by retaining the safe cross-version fallback, disclosing the Python 3.9 difference in ADR 0040 and current release records, and keeping the deterministic zero-width regression |
 | PERF-003 | High | The benchmark test passed only when the project was already installed in the test interpreter; every hosted Linux and macOS test lane used a clean source checkout and failed when isolated benchmark children could not import the package. | 0.3.1 | Resolved by explicitly bootstrapping the exact checkout source in benchmark children and exercising the command through a fresh no-pip virtual environment with no project installation |

@@ -23,7 +23,7 @@ from agent_statusline.storage import update_json
 
 TSTATE = state("statusline-transcript.json")
 
-SCHEMA = 3
+SCHEMA = 4
 CACHE_RETENTION_S = 35 * 24 * 60 * 60
 CACHE_TOUCH_S = 60 * 60
 MAX_CACHED_TRANSCRIPTS = 512
@@ -125,6 +125,8 @@ def _blank():
         "f_read": [],
         "side": 0,
         "compact": 0,
+        "compact_pending": False,
+        "compact_boundary": None,
         "durs": [],
         "hook_runs": 0,
         "hook_ms": [],
@@ -155,7 +157,7 @@ _COUNT_FIELDS = (
 _COUNT_MAP_FIELDS = ("tools", "cmds")
 _PATH_LIST_FIELDS = ("f_edit", "f_read")
 _COUNT_LIST_FIELDS = ("durs", "hook_ms")
-_STRING_FIELDS = ("last_ts", "perm", "tier", "last_bucket")
+_STRING_FIELDS = ("last_ts", "perm", "tier", "last_bucket", "compact_boundary")
 
 
 def _normalized_totals(value):
@@ -187,6 +189,7 @@ def _normalized_totals(value):
             normalized[key] = current
     if normalized["last_bucket"] not in (None, "1h", "5m"):
         normalized["last_bucket"] = None
+    normalized["compact_pending"] = value.get("compact_pending") is True
     return normalized
 
 
@@ -196,8 +199,26 @@ def _absorb(tot, e):
         tot["side"] += 1
     if e.get("permissionMode"):
         tot["perm"] = e["permissionMode"]
-    if (t and "compact" in str(t).lower()) or e.get("isCompactSummary"):
+    if (t == "system" and e.get("subtype") == "compact_boundary") or t in (
+        "compact",
+        "compact_boundary",
+    ):
         tot["compact"] += 1
+        tot["compact_pending"] = True
+        boundary = e.get("uuid")
+        tot["compact_boundary"] = boundary if isinstance(boundary, str) else None
+    elif e.get("isCompactSummary") is True:
+        # A boundary and its following summary describe one compaction, even
+        # when they arrive in separate redraws. Older summary-only logs count.
+        parent = e.get("parentUuid")
+        boundary = tot["compact_boundary"]
+        paired = tot["compact_pending"] and (
+            not isinstance(parent, str) or not boundary or parent == boundary
+        )
+        if not paired:
+            tot["compact"] += 1
+        tot["compact_pending"] = False
+        tot["compact_boundary"] = None
 
     if t == "system":
         st = e.get("subtype")

@@ -53,6 +53,15 @@ trailing line is held back rather than parsed.
 **Bump it whenever you add or change an accumulated field** — without the bump, existing caches keep their old shape
 and the new field stays empty forever, with no error anywhere.
 
+Schema 4 tracks a pending compaction boundary across redraws. An explicit
+`system` / `compact_boundary` marker counts immediately; its following
+`isCompactSummary: true` record does not count again when the parent matches.
+Summary-only records still count. Identifier-free legacy pairs use the pending
+boundary, and unrelated type substrings are not compaction evidence. Cache
+migration replays the transcript rather than retaining old compaction totals.
+Counts describe the supplied transcript, including history inherited on resume
+or fork; they are not a terminal-lifetime counter.
+
 ## Width fitting
 
 The payload carries **no terminal width**, and neither `stdin`, `stdout`, `stderr` nor
@@ -211,9 +220,14 @@ while the user is deciding what to do next. Stop output contains only
 
 The guard prefers `context_used_pct` and `context_window_size` from the current
 session's documented metrics snapshot. When that snapshot is missing or lacks
-usable context evidence, it retains the legacy fallback: occupancy from the
-latest assistant transcript message and window size from the last-render
-payload.
+usable context evidence, it reads occupancy from the current transcript and
+accepts the last-render window only when the session ID matches. If the hook
+also supplies a transcript path, that path must match too. Without a session
+ID, a non-empty matching transcript path is required. Missing, mismatched, or
+malformed window evidence produces no warning; there is no guessed default.
+The last-payload file remains shared diagnostic state, not a cross-session
+source of context evidence
+([ADR 0051](adrs/0051-keep-context-fallback-and-compactions-session-scoped.md)).
 
 | environment variable | contract |
 | --- | --- |

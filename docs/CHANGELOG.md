@@ -4,7 +4,26 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.4.4
+## Unreleased — 0.4.5
+
+Context warnings no longer borrow another session's context-window size when
+per-session metrics are absent or unusable. The last-payload fallback requires
+matching session evidence; with no session ID, it requires the same transcript.
+Unavailable or malformed window evidence suppresses the warning rather than
+assuming a one-million-token window.
+
+Compaction counting recognizes explicit boundary records and counts their linked
+summary as the same event, including across incremental redraws. Summary-only
+transcripts remain supported. Transcript cache schema 4 replays older caches so
+existing compaction totals receive the correction. Six concurrent synthetic
+sessions verify separate rendered counts and context warnings
+([ADR 0051](adrs/0051-keep-context-fallback-and-compactions-session-scoped.md)).
+
+The approved display, exact cost ledger, runtime dependencies, installer, and
+live Claude settings are unchanged. General configuration-file customization
+remains a separate slice.
+
+## 0.4.4
 
 The `SYSTEM` row now reports whole-system RAM pressure on Linux and WSL using
 the kernel's `/proc/meminfo` view. Used memory is `MemTotal - MemAvailable`, so

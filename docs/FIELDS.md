@@ -198,9 +198,12 @@ absorbed rather than relieved, and it is the warning that comes before swapping 
 Bash — `cat`, `sed -i`, a script — is invisible here and will read as `0 files edited`
 during a session that changed plenty. This is a known limitation, not a bug.
 
-**`compactions` is the one to watch.** Nonzero means context was summarised and detail is
-gone. Its detection is written defensively and has never actually fired locally; verify it
-the first time a real compaction happens.
+**`compactions` counts events in this transcript.** An explicit compaction
+boundary and its linked summary count once, including across redraws;
+summary-only transcripts remain supported. Counts include inherited transcript
+history on resume or fork. Separate transcript paths retain independent counts.
+The observed marker relationship and its verification limits are recorded in
+[RESEARCH.md](RESEARCH.md#compaction-records-and-session-isolation).
 
 ## CACHE
 
