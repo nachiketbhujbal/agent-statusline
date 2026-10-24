@@ -15,8 +15,12 @@ Python 3.11 respectively), build, artifact privacy, and metadata. The owner
 also passed the isolated Python 3.9 wheel self-test. New regressions reject
 v0.4.4. PR #39 and exact merged-main CI passed before annotated tag v0.4.5;
 the GitHub Release pair and its installed Python 3.9 self-test passed.
-TestPyPI published and verified the same pair; production PyPI awaits its
-separate required maintainer approval after successful artifact preparation.
+TestPyPI and production PyPI published and verified the same exact pair after
+separate maintainer approvals, including Python 3.9 clean-install evidence.
+No implementation review or package publication remains pending. Final-record
+review identified RECORDS-001: the development verifier forced stale unfinished
+labels after publication. The post-tag closure corrects that check and its tests;
+the immutable published artifact pair remains unchanged.
 
 | ID | Severity | Finding | Release | Status |
 | --- | --- | --- | --- | --- |
@@ -138,6 +142,7 @@ separate required maintainer approval after successful artifact preparation.
 | README-002 | Medium | The simplified privacy summary said all package state was atomically replaced, overstating the guarantee for normal rate-limit-history writes, which use a locked durable append and reserve atomic replacement for compaction. | 0.3.5 | Resolved by stating the shared private-permission and locking guarantee while distinguishing atomic replacement from durable append as appropriate |
 | RECORD-006 | Low | The first aggregate owner record reported 85.22% full-suite coverage from an existing cumulative coverage database rather than the reproducible clean exact-target result of 83.23%. | 0.2.4 | Resolved by withdrawing 85.22%, recording the rejected target's clean 83.23% result, and running the correction suite with a fresh external coverage database |
 | RECORD-007 | Low | The corrected aggregate owner record narrowed clean subprocess-aware coverage to 85.34%-85.44%, but independent runs across supported interpreters and clean checkout shapes produced measurements outside that range. | 0.2.4 | Resolved by removing the unsupported range and retaining only the reproducible fact that the complete 390-test suite passes the enforced 77.0% coverage threshold; individual measurements remain environment-specific evidence |
+| RECORDS-001 | Medium | The documentation verifier required one Current/Unreleased release even after package publication, preventing truthful final release labels. | 0.4.5 | Corrected in post-tag development records: accept a completed release with no selected next target while retaining version-agreement checks; synthetic acceptance and drift regressions |
 
 ## v0.2.4 reviewed release record
 

@@ -191,23 +191,30 @@ def check_release_agreement(root: Path) -> list[str]:
     texts = {name: path.read_text(encoding="utf-8") for name, path in required.items()}
     rows = _release_rows(texts["roadmap"])
     current = [version for version, status in rows if status == "**Current**"]
-    if len(current) != 1:
-        return [f"docs/ROADMAP.md: expected one Current release, found {current}"]
-    current_version = current[0]
+    released = [version for version, status in rows if status == "**Released**"]
+    if len(current) > 1:
+        return [f"docs/ROADMAP.md: expected at most one Current release, found {current}"]
+    if not current and not released:
+        return ["docs/ROADMAP.md: no current or released version"]
+    current_version = current[0] if current else max(released, key=_version_key)
 
     changelog_match = re.search(
         rf"^## Unreleased — ({VERSION_RE})$", texts["changelog"], re.MULTILINE
     )
-    if not changelog_match or changelog_match.group(1) != current_version:
+    if current and (not changelog_match or changelog_match.group(1) != current_version):
         errors.append(
             f"docs/CHANGELOG.md: Unreleased version must be current release {current_version}"
         )
+    if not current:
+        if changelog_match:
+            errors.append("docs/CHANGELOG.md: Unreleased version needs a Current roadmap release")
+        if not re.search(rf"^## {re.escape(current_version)}$", texts["changelog"], re.MULTILINE):
+            errors.append(f"docs/CHANGELOG.md: missing released version {current_version}")
     if f"| {current_version} |" not in texts["review"]:
         errors.append(f"docs/CODE_REVIEW.md: no finding records current release {current_version}")
     if f"- Current release target: {current_version}," not in texts["handoff"]:
         errors.append(f"HANDOFF.md: current release target must be {current_version}")
 
-    released = [version for version, status in rows if status == "**Released**"]
     preceding = max(
         (version for version in released if _version_key(version) < _version_key(current_version)),
         key=_version_key,

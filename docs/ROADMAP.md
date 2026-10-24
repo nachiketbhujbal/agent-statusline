@@ -39,9 +39,9 @@ installed-artifact evidence.
 | 0.4.2 | Documented local session metrics | **Released** |
 | 0.4.3 | Configurable context guard and Stop timing | **Released** |
 | 0.4.4 | Native Linux and WSL memory pressure | **Released** |
-| 0.4.5 | Session-safe context fallback and compaction counting | **Current** |
+| 0.4.5 | Session-safe context fallback and compaction counting | **Released** |
 
-0.2.1 through 0.2.14 and v0.3.0 through v0.4.4 are tagged and released. The
+0.2.1 through 0.2.14 and v0.3.0 through v0.4.5 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
 production-ready supported public baseline. Each boundary retains its exact
 review and artifact evidence; GitHub Release objects begin at v0.2.4. The
@@ -537,7 +537,7 @@ production PyPI publication with clean Python 3.9 installation evidence.
 
 ## 0.4.5 — session-safe context fallback and compaction counting
 
-Current ([ADR 0051](adrs/0051-keep-context-fallback-and-compactions-session-scoped.md)):
+Released ([ADR 0051](adrs/0051-keep-context-fallback-and-compactions-session-scoped.md)):
 
 - Keep the session metrics snapshot as the context guard's preferred source.
 - Accept a last-payload window only for the matching session, or matching
@@ -557,5 +557,10 @@ design or implementation is included in this patch.
 The implementation is independently reviewed and merged through PR #39. Exact
 PR and merged-main Linux/macOS CI passed, and annotated v0.4.5 and its GitHub
 Release pair are verified. TestPyPI published and verified the same pair.
-Production PyPI preparation passed; maintainer approval, production verification,
-and final release closure remain pending.
+Production PyPI published and verified the identical pair after its separate
+maintainer approval. GitHub Release run 40043218170, TestPyPI run 40043331875,
+and PyPI run 40043731533 passed; the v0.4.5 release scope is complete.
+
+The post-tag closure also corrects the development documentation verifier to
+accept a fully released roadmap with no selected next target. Version agreement
+and review/privacy checks remain enforced; no successor release is invented.

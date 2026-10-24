@@ -8,8 +8,8 @@ the roadmap, or accepted ADRs.
 
 - Current release target: 0.4.5, session-safe context fallback and compaction counting.
 - Preceding release: v0.4.4, native Linux and WSL memory pressure.
-- Branch owner: codex; sole owner of v0.4.5 publication and release closure.
-- Reviewer role: implementation review complete; no implementation review active.
+- Branch owner: none; v0.4.5 release ownership is complete.
+- Reviewer role: none active; implementation review is complete.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
   complete-ancestry audit. Documentation-only refs skip both hosted test lanes;
@@ -23,10 +23,11 @@ the roadmap, or accepted ADRs.
   force-push are blocked.
 - Runtime dependencies remain empty and versions remain Git-tag-derived.
 
-v0.4.4 is tagged and released with one exact artifact pair on GitHub, TestPyPI,
-and production PyPI. It changes only the native memory probe, its tests, CI
-assertion, and synchronized public records; it does not alter the approved
-display, accounting, installer, or dependencies. TestPyPI and PyPI are
+v0.4.5 is tagged and released with one exact artifact pair on GitHub, TestPyPI,
+and production PyPI. It corrects session-bound context fallback and compaction
+boundary/summary counting, with schema-4 transcript-cache replay and synthetic
+concurrency coverage. It preserves the approved display, accounting, installer,
+and dependencies. TestPyPI and PyPI are
 bound respectively to `publish-testpypi.yml` and `publish-pypi.yml`; both
 GitHub environments require maintainer approval, accept only branch `main`,
 and allow no bypass. No package-index token or secret is stored.
@@ -67,7 +68,8 @@ v0.4.0 completed the explicit host-acquisition architecture boundary. v0.4.1
 completed the normalized Claude acquisition adapter without changing display.
 v0.4.2 completed the documented local per-session metrics contract. v0.4.3
 completed configurable context warnings and user-visible Stop timing. v0.4.4
-completed native Linux and WSL memory pressure parity.
+completed native Linux and WSL memory pressure parity. v0.4.5 completed
+session-safe context fallback and verified compaction counting.
 
 The complete sequence and exclusions are authoritative in
 [ROADMAP.md](docs/ROADMAP.md). Do not merge the historical hardening branch as
@@ -92,11 +94,22 @@ and source archive
 The downloaded release pair passed privacy/metadata checks; the exact wheel
 reports 0.4.5 and passed an isolated Python 3.9 clean-install self-test.
 
-TestPyPI promotion run 40043331875 passed after maintainer approval, including
-exact artifact hashes and a clean Python 3.9 installation. Production PyPI run
-40043731533 passed artifact preparation and is awaiting its separate required
-human environment approval. Production publication and verification remain
-pending; the owner retains responsibility for them and final release closure.
+TestPyPI promotion run 40043331875 and production PyPI run 40043731533
+passed after their separate maintainer approvals. Both verified the same exact
+artifact hashes and clean Python 3.9 installations, versions and isolated
+self-tests. Direct production-index verification also matched the recorded
+wheel and source hashes. No publication step remains pending.
+
+PR #40 independently reviewed record candidate
+`d0757bec3230904eafa484c366b88815bd7efa90` and merged the earlier pending
+publication checkpoint as `0f445937ef007804ac8b3608921632b159005095`;
+PR run 40043985388 and automatic main run 40044032831 passed their deliberate
+documentation-only ancestry lane. This final record closes the now-satisfied
+production prerequisite without moving the release tag. Final-record review
+also found the development verifier required stale Current/Unreleased labels
+after publication. The post-tag closure accepts a fully released roadmap with
+no selected next target, retaining version-agreement checks with synthetic
+coverage. This development-only correction is not in the immutable v0.4.5 pair.
 
 This patch confines context fallback to matching session evidence and verifies
 compaction boundary/summary counting, schema-4 cache replay, and six concurrent
@@ -124,8 +137,8 @@ and source archive at
 Production's initial clean-install step reached its Simple Index before v0.4.4
 appeared there, after exact JSON hash verification; the failed verification
 rerun passed after propagation. No GitHub issue tracked this
-maintainer-requested slice. The iMac installation remains v0.3.6; changing it
-or live Claude configuration was outside v0.4.4.
+maintainer-requested slice. At that release boundary the iMac installation was
+v0.3.6; changing it or live Claude configuration was outside v0.4.4.
 
 v0.4.3 is complete at tagged merge
 `dc7000b4c2bbb5b659b8837cee28b9055b95787e`. Exact candidate

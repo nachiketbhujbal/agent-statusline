@@ -4,7 +4,7 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.4.5
+## 0.4.5
 
 Context warnings no longer borrow another session's context-window size when
 per-session metrics are absent or unusable. The last-payload fallback requires
@@ -28,8 +28,9 @@ independent no-findings review and the complete local gate. PR #39 and
 merged-main CI passed the Linux Python matrix and macOS lane before the
 annotated tag and GitHub Release. The exact published wheel passed an isolated
 Python 3.9 clean-install self-test. TestPyPI published and verified that same
-pair after maintainer approval. Production PyPI preparation passed and its
-separate maintainer approval remains pending.
+pair after maintainer approval. Production PyPI then published and verified
+the same exact wheel/source pair after its separate approval, including public
+hashes, clean Python 3.9 installation, exact version and isolated self-test.
 
 ## 0.4.4
 
