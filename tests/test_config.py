@@ -66,7 +66,21 @@ def test_file_values_and_per_setting_env_overrides(config_file):
     [
         (b"schema_version = true", "schema_version"),
         (b"schema_version = 2", "schema_version"),
-        (b"schema_version = 1\n[display.fields]", "display: unknown key"),
+        (b"schema_version = 1\n[display]\nprivate_value = true", "display: unknown key"),
+        (b"schema_version = 1\n[display]\nfields = []", "display.fields: expected a table"),
+        (
+            b"schema_version = 1\n[display.fields]\nprivate_value = []",
+            "display.fields: unknown key",
+        ),
+        (b'schema_version = 1\n[display.fields]\nPROJECT = "branch"', "nonempty array"),
+        (b"schema_version = 1\n[display.fields]\nPROJECT = []", "nonempty array"),
+        (b"schema_version = 1\n[display.fields]\nPROJECT = [true]", "unknown field ID"),
+        (b'schema_version = 1\n[display.fields]\nPROJECT = ["private_value"]', "unknown field ID"),
+        (b'schema_version = 1\n[display.fields]\nPROJECT = ["hooks"]', "unknown field ID"),
+        (
+            b'schema_version = 1\n[display.fields]\nPROJECT = ["branch", "branch"]',
+            "duplicate field ID",
+        ),
         (b'schema_version = 1\n[display.rows]\nprivate_value = "show"', "display.rows"),
         (b"schema_version = 1\n[display.rows]\nCOST = false", "display.rows.COST"),
         (b"schema_version = 1\n[context_guard]\nwarn_pct = nan", "context_guard.warn_pct"),
@@ -92,11 +106,22 @@ def test_bad_file_rejects_entire_file_without_echoing_values(config_file, capsys
 
 
 def test_invalid_file_still_allows_environment_override(config_file, monkeypatch):
-    config_file.write_text("schema_version = 1\n[context_guard]\nwarn_pct = 42\n[display.fields]\n")
+    config_file.write_text(
+        "schema_version = 1\n[context_guard]\nwarn_pct = 42\n[display.fields]\nCOST = []\n"
+    )
     monkeypatch.setenv(context_guard.EVENT_ENV, "both")
     resolved, error = context_guard.configuration()
     assert error is None
     assert resolved == {"threshold": 80.0, "event": "both", "message": None}
+
+
+def test_config_check_accepts_field_selection(config_file, capsys):
+    config_file.write_text(
+        'schema_version = 1\n[display.fields]\nPROJECT = ["session_name", "branch"]\n'
+    )
+    assert main(["config", "check"]) == 0
+    assert "valid" in capsys.readouterr().out
+    assert dict(config.load_config().fields) == {"PROJECT": {"session_name", "branch"}}
 
 
 def test_config_path_must_be_a_regular_file(config_file, capsys):

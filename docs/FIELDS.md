@@ -38,6 +38,29 @@ a row answers a question worth asking, not by how the data happens to arrive.
 `PROJECT` is first because it answers "where am I?", the question you ask most often and
 the one with the worst consequences when you get it wrong.
 
+## Configurable field groups
+
+Starting with v0.5.1, a row's list under `[display.fields]` selects from
+these case-sensitive IDs. The table shows renderer priority. Reordering an
+array does not change the display. A group may contain multiple values
+that are presented together and only appears when its normal data is available.
+
+| Row | Field IDs in display priority |
+| --- | --- |
+| `PROJECT` | `directory`, `added_dirs`, `branch` (Git state), `session_name` |
+| `MODEL` | `model` (with effort), `thinking`, `fast_mode`, `permission_mode`, `output_style`, `service_tier`, `version` |
+| `CONTEXT` | `window` (with usage, token count and visual warning), `session_throughput` |
+| `USAGE` | `five_hour`, `seven_day` (each includes its window's rate, projection and reset when available) |
+| `COST` | `session` (with resume details), `rolling` (24h/7d/30d), `history` (last5, all, and counts), `lines`, `credits` |
+| `SYSTEM` | `session_processes`, `all_claude`, `memory`, `disk` |
+| `TOOLS` | `calls`, `top_tools`, `tool_errors`, `api_errors`, `files`, `subagents`, `compactions`, `commands` |
+| `CACHE` | `hit_rate`, `ttl` (with expiry), `relative_cost`, `writes` |
+| `TOKENS` | `total`, `turn` |
+| `TIMING` | `turn_duration`, `wall_api`, `hooks` |
+
+Omit a row's list to show all its groups as usual. Use `[display.rows]` to
+hide a whole row. Empty lists, duplicate IDs, and unknown IDs are invalid.
+
 ---
 
 ## PROJECT

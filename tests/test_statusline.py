@@ -88,6 +88,49 @@ def test_render_metrics_config_opt_out_retains_existing_snapshot(
     assert statusline.session_metrics.read_snapshot(sid)["session_title"] == "next"
 
 
+def test_selecting_fields_preserves_priority_and_accounting(payload, monkeypatch, capsys, tmp_path):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    monkeypatch.delenv(statusline.session_metrics.OPT_OUT_ENV, raising=False)
+    monkeypatch.setattr(statusline.ledger, "LEDGER", tmp_path / "ledger.json")
+    monkeypatch.setattr(statusline.session_metrics, "state", lambda name: tmp_path / name)
+    payload["session_name"] = "Synthetic title"
+    path = tmp_path / "agent-statusline/config.toml"
+    path.parent.mkdir()
+    path.write_text(
+        'schema_version = 1\n[display]\ncolor = "plain"\n[display.rows]\nCACHE = "hide"\n'
+        '[display.fields]\nPROJECT = ["session_name", "branch"]\nCOST = ["lines"]\n'
+        'CACHE = ["hit_rate"]\nMODEL = ["output_style"]\n'
+    )
+    lines = draw(payload, monkeypatch, capsys, cols=240)
+    project = next(line for line in lines if line.startswith("PROJECT"))
+    assert re.fullmatch(r"PROJECT\s+no git\s+│\s+“Synthetic title”", project)
+    cost = next(line for line in lines if line.startswith("COST"))
+    assert "lines" in cost and "$" not in cost
+    assert "CACHE" not in labels(lines)
+    assert "MODEL" not in labels(lines)
+    sid = payload["session_id"]
+    assert statusline.ledger.load()["sessions"][sid]["cost"] == 1.25
+    assert statusline.session_metrics.read_snapshot(sid)["cost_usd"] == 1.25
+    for line in draw(payload, monkeypatch, capsys, cols=14):
+        assert "\033" not in line and render.vis(line) <= 14
+
+
+@pytest.mark.parametrize("columns", [1, 28, 240])
+def test_all_field_ids_preserve_styled_output(payload, monkeypatch, capsys, tmp_path, columns):
+    from agent_statusline.config import FIELD_IDS
+
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    monkeypatch.setattr(statusline.time, "time", lambda: 1_800_000_000)
+    path = tmp_path / "agent-statusline/config.toml"
+    path.parent.mkdir()
+    default = draw(payload, monkeypatch, capsys, cols=columns)
+    path.write_text(
+        "schema_version = 1\n[display.fields]\n"
+        + "".join(f"{row} = {json.dumps(ids)}\n" for row, ids in FIELD_IDS.items())
+    )
+    assert draw(payload, monkeypatch, capsys, cols=columns) == default
+
+
 class TestRowOrder:
     def test_committed_fixture_exercises_exact_transcript_backed_contract(
         self, payload, monkeypatch, capsys

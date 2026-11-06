@@ -287,6 +287,16 @@ def _render():
     limits = facts["limits"]
     money = facts["money"]
     rows = {}
+    field_selections = dict(config.fields)
+
+    def display_row(label, segments):
+        if label in config.hidden_rows:
+            return ""
+        selected = field_selections.get(label)
+        return row(
+            label, [value for field, value in segments if selected is None or field in selected]
+        )
+
     transcript_path = facts["transcript_path"]
     t = facts["activity"]
 
@@ -295,35 +305,49 @@ def _render():
     p1 = []
     model = model_facts.get("display_name") or model_facts.get("id") or "claude"
     eff = model_facts.get("effort")
-    p1.append(f"{MAG}{B}{plain(model)}{R}" + (f"{D}:{plain(eff)}{R}" if eff else ""))
-    p1.append(f"{GRN}think{R}" if model_facts.get("thinking") else f"{YEL}no-think{R}")
+    p1.append(("model", f"{MAG}{B}{plain(model)}{R}" + (f"{D}:{plain(eff)}{R}" if eff else "")))
+    p1.append(
+        ("thinking", f"{GRN}think{R}" if model_facts.get("thinking") else f"{YEL}no-think{R}")
+    )
     # fast mode is shown either way: silence would hide that it is on
-    p1.append(f"{RED}{B}FAST ON{R}" if model_facts.get("fast_mode") else f"{D}fast off{R}")
+    p1.append(
+        ("fast_mode", f"{RED}{B}FAST ON{R}" if model_facts.get("fast_mode") else f"{D}fast off{R}")
+    )
     perm = model_facts.get("permission_mode")
     if perm:
         pc, plab = MODES.get(perm, (D, perm))
-        p1.append(f"{pc}{plain(plab)}{R}" if perm == "default" else f"{pc}{B}{plain(plab)}{R}")
+        p1.append(
+            (
+                "permission_mode",
+                f"{pc}{plain(plab)}{R}" if perm == "default" else f"{pc}{B}{plain(plab)}{R}",
+            )
+        )
     style = model_facts.get("output_style")
     if style and style != "default":
-        p1.append(f"{CYN}{plain(style)}{R}")
+        p1.append(("output_style", f"{CYN}{plain(style)}{R}"))
     if model_facts.get("service_tier") and model_facts["service_tier"] != "standard":
-        p1.append(f"{YEL}{plain(model_facts['service_tier'])}{R}")
+        p1.append(("service_tier", f"{YEL}{plain(model_facts['service_tier'])}{R}"))
     ver = identity.get("client_version")
     if ver:
-        p1.append(f"{D}v{plain(ver)}{R}")
+        p1.append(("version", f"{D}v{plain(ver)}{R}"))
 
     cwd = workspace["cwd"]
     project_path = workspace["project_dir"]
     proj = os.path.basename(project_path)
     here = os.path.basename(cwd)
     pj.append(
-        f"{BLU}{B}{plain(proj)}{R}"
-        if here == proj
-        else f"{BLU}{B}{plain(proj)}{R}{D}/{R}{BLU}{plain(here)}{R}"
+        (
+            "directory",
+            (
+                f"{BLU}{B}{plain(proj)}{R}"
+                if here == proj
+                else f"{BLU}{B}{plain(proj)}{R}{D}/{R}{BLU}{plain(here)}{R}"
+            ),
+        )
     )
     extra = workspace["added_dirs"]
     if extra:
-        pj.append(f"{D}+{len(extra)} dir{'s' if len(extra)!=1 else ''}{R}")
+        pj.append(("added_dirs", f"{D}+{len(extra)} dir{'s' if len(extra)!=1 else ''}{R}"))
 
     # One cached probe covers branch, dirtiness, ahead/behind, worktree and stash.
     gs = pr.probe(f"git:{cwd}", 3, lambda c=cwd: pr.git_state(c))
@@ -365,14 +389,14 @@ def _render():
             g += f"{D}(no upstream){R}"
         if gs.get("stash"):
             g += f" {D}stash{R}{YEL}{gs['stash']}{R}"
-        pj.append(g)
+        pj.append(("branch", g))
     else:
-        pj.append(f"{D}no git{R}")
+        pj.append(("branch", f"{D}no git{R}"))
     nm = identity.get("session_title")
     if nm:
-        pj.append(f"{D}“{plain(nm)}”{R}")
-    rows["PROJECT"] = row("PROJECT", pj)
-    rows["MODEL"] = row("MODEL", p1)
+        pj.append(("session_name", f"{D}“{plain(nm)}”{R}"))
+    rows["PROJECT"] = display_row("PROJECT", pj)
+    rows["MODEL"] = display_row("MODEL", p1)
 
     # ---------- row 2: context + both rate-limit windows ----------
     size = context.get("window_size", 0)
@@ -397,7 +421,7 @@ def _render():
         c = f"{D}ctx{R}{bar(upct)} {grade(upct)}{B}{upct:4.0f}%{R} {D}{tok(live)}/{tok(size)}{R}"
         if upct >= 80:
             c += f" {RED}{B}⚠{R}"
-        segs.append(c)
+        segs.append(("window", c))
     sess = [f"{D}session{R} {CYN}{tok(served)}{R}{D} in{R}", f"{CYN}{tok(t_out)}{R}{D} out{R}"]
     if t_think:
         sess.append(f"{MAG}{tok(t_think)}{R}{D} thinking{R}")
@@ -406,9 +430,9 @@ def _render():
         sess.append(
             f"{D}avg{R} {tok(served//t_turns)}{D}/{R}{tok(t_out//t_turns)}" f"{D} per turn{R}"
         )
-    segs.append(f" {D}·{R} ".join(sess))
+    segs.append(("session_throughput", f" {D}·{R} ".join(sess)))
     if segs:
-        rows["CONTEXT"] = row("CONTEXT", segs)
+        rows["CONTEXT"] = display_row("CONTEXT", segs)
 
     lim = []
     fh_ = limits.get("five_hour")
@@ -418,18 +442,18 @@ def _render():
         seg = limit_seg("5h", fh_, 5)
         if over_active:
             seg += f" {RED}{B}OVERAGE{R}"
-        lim.append(seg)
+        lim.append(("five_hour", seg))
     if limits.get("seven_day"):
-        lim.append(limit_seg("7d", limits["seven_day"], 168))
+        lim.append(("seven_day", limit_seg("7d", limits["seven_day"], 168)))
     if lim:
-        rows["USAGE"] = row("USAGE", lim)
+        rows["USAGE"] = display_row("USAGE", lim)
     rl_log(fh_, limits.get("seven_day"))
 
     # ---------- row 3: cache economics ----------
     if served:
         hit = t_cr / served * 100
         hc = GRN if hit >= 80 else YEL if hit >= 50 else RED
-        r3 = [f"{hc}{B}{hit:.1f}%{R}{D} hit{R}"]
+        r3 = [("hit_rate", f"{hc}{B}{hit:.1f}%{R}{D} hit{R}")]
         # TTL is detected from which ephemeral bucket the writes landed in, so this
         # is observed rather than assumed. Falls back to CACHE_TTL_S if neither.
         ttl = CACHE_TTL_S
@@ -453,62 +477,75 @@ def _render():
                 w += (
                     f"{D} ▸ expires {R}{time.strftime('%H:%M',time.localtime(time.time()-age+ttl))}"
                 )
-        r3.append(w)
+        r3.append(("ttl", w))
         eff = (t_cr * W_READ + t_cw * W_WRITE + t_in * W_FRESH) / served
         ec = GRN if eff <= 0.4 else YEL if eff <= 0.8 else RED
-        r3.append(f"{ec}{eff:.2f}x{R}{D} vs all-uncached{R}")
+        r3.append(("relative_cost", f"{ec}{eff:.2f}x{R}{D} vs all-uncached{R}"))
         t_b1h = finite_integer(t.get("b1h"))
         t_b5m = finite_integer(t.get("b5m"))
         if t_b1h or t_b5m:
-            r3.append(f"{D}writes{R} {tok(t_b1h)}{D} 1h ·{R} {tok(t_b5m)}{D} 5m{R}")
-        rows["CACHE"] = row("CACHE", r3)
+            r3.append(("writes", f"{D}writes{R} {tok(t_b1h)}{D} 1h ·{R} {tok(t_b5m)}{D} 5m{R}"))
+        rows["CACHE"] = display_row("CACHE", r3)
 
         # ---------- row 4: token flow ----------
         cur_cr = finite_integer(cur.get("cache_read_input_tokens"))
         cur_cw = finite_integer(cur.get("cache_creation_input_tokens"))
         cur_in = finite_integer(cur.get("input_tokens"))
-        rows["TOKENS"] = row(
+        rows["TOKENS"] = display_row(
             "TOKENS",
             [
-                f"{D}total{R} {GRN}{tok(t_cr)}{R}{D} reused{R} {D}·{R} "
-                f"{YEL}{tok(t_cw)}{R}{D} written{R} {D}·{R} "
-                f"{RED}{tok(t_in)}{R}{D} uncached{R}",
-                f"{D}turn{R} {GRN}{tok(cur_cr)}{R}{D} reused{R} "
-                f"{D}·{R} "
-                f"{YEL}{tok(cur_cw)}{R}{D} written{R} {D}·{R} "
-                f"{RED}{tok(cur_in)}{R}{D} uncached{R}",
+                (
+                    "total",
+                    f"{D}total{R} {GRN}{tok(t_cr)}{R}{D} reused{R} {D}·{R} "
+                    f"{YEL}{tok(t_cw)}{R}{D} written{R} {D}·{R} "
+                    f"{RED}{tok(t_in)}{R}{D} uncached{R}",
+                ),
+                (
+                    "turn",
+                    f"{D}turn{R} {GRN}{tok(cur_cr)}{R}{D} reused{R} "
+                    f"{D}·{R} "
+                    f"{YEL}{tok(cur_cw)}{R}{D} written{R} {D}·{R} "
+                    f"{RED}{tok(cur_in)}{R}{D} uncached{R}",
+                ),
             ],
         )
 
     # ---------- row 5: what this session actually did ----------
     tools = t["tools"]
     ntool = sum(tools.values())
-    r5 = [f"{B}{ntool}{R}{D} calls{R}"]
+    r5 = [("calls", f"{B}{ntool}{R}{D} calls{R}")]
     if tools:
         top = sorted(tools.items(), key=lambda kv: -kv[1])[:4]
-        r5.append(" ".join(f"{D}{plain(n)}{R}{CYN}{c}{R}" for n, c in top))
+        r5.append(("top_tools", " ".join(f"{D}{plain(n)}{R}{CYN}{c}{R}" for n, c in top)))
     ec_ = RED if t["errors"] else D
-    r5.append(f"{ec_}{t['errors']}{R}{D} tool errors{R}")
+    r5.append(("tool_errors", f"{ec_}{t['errors']}{R}{D} tool errors{R}"))
     if t["synth"]:
-        r5.append(f"{RED}{t['synth']}{R}{D} api errors{R}")
+        r5.append(("api_errors", f"{RED}{t['synth']}{R}{D} api errors{R}"))
     r5.append(
-        f"{GRN}{len(t['f_edit'])}{R}{D} files edited{R} {D}·{R} " f"{len(t['f_read'])}{D} read{R}"
+        (
+            "files",
+            f"{GRN}{len(t['f_edit'])}{R}{D} files edited{R} {D}·{R} "
+            f"{len(t['f_read'])}{D} read{R}",
+        )
     )
     if t["side"]:
-        r5.append(f"{MAG}{t['side']}{R}{D} subagent msgs{R}")
+        r5.append(("subagents", f"{MAG}{t['side']}{R}{D} subagent msgs{R}"))
     else:
-        r5.append(f"{D}0 subagents{R}")
+        r5.append(("subagents", f"{D}0 subagents{R}"))
     cc = RED if t["compact"] else D
-    r5.append(f"{cc}{t['compact']}{R}{D} compactions{R}")
+    r5.append(("compactions", f"{cc}{t['compact']}{R}{D} compactions{R}"))
     if t["cmds"]:
         r5.append(
-            f"{D}cmds{R} "
-            + " ".join(
-                f"{D}{plain(k)}{R}{CYN}{v}{R}"
-                for k, v in sorted(t["cmds"].items(), key=lambda kv: -kv[1])[:3]
+            (
+                "commands",
+                f"{D}cmds{R} "
+                + " ".join(
+                    f"{D}{plain(k)}{R}{CYN}{v}{R}"
+                    for k, v in sorted(t["cmds"].items(), key=lambda kv: -kv[1])[:3]
+                ),
             )
         )
-    rows["TOOLS"] = row("TOOLS", r5)
+    rows["TOOLS"] = display_row("TOOLS", r5)
 
     # ---------- row 6: timing ----------
     wall = money.get("wall_seconds", 0.0)
@@ -520,21 +557,30 @@ def _render():
         last = finite_integer(t["durs"][-1]) / 1000
         mx = max(s) / 1000
         r6.append(
-            f"{D}turn{R} {dur(last)}{D} last · {dur(med)} median · {dur(mx)} max"
-            f" ({len(t['durs'])} timed){R}"
+            (
+                "turn_duration",
+                f"{D}turn{R} {dur(last)}{D} last · {dur(med)} median · {dur(mx)} max"
+                f" ({len(t['durs'])} timed){R}",
+            )
         )
     r6.append(
-        f"{D}wall{R} {dur(wall)} {D}· api{R} {dur(api)}"
-        + (f" {D}({api/wall*100:.0f}% busy){R}" if wall else "")
+        (
+            "wall_api",
+            f"{D}wall{R} {dur(wall)} {D}· api{R} {dur(api)}"
+            + (f" {D}({api/wall*100:.0f}% busy){R}" if wall else ""),
+        )
     )
     if t["hook_runs"]:
         hs = sorted(t["hook_ms"]) or [0]
         he = RED if t["hook_errs"] else D
         r6.append(
-            f"{D}hooks{R} {t['hook_runs']}{D} runs · {hs[len(hs)//2]}ms median · {R}"
-            f"{he}{t['hook_errs']}{R}{D} errors{R}"
+            (
+                "hooks",
+                f"{D}hooks{R} {t['hook_runs']}{D} runs · {hs[len(hs)//2]}ms median · {R}"
+                f"{he}{t['hook_errs']}{R}{D} errors{R}",
+            )
         )
-    rows["TIMING"] = row("TIMING", r6)
+    rows["TIMING"] = display_row("TIMING", r6)
 
     # ---------- row 7: machine pressure ----------
     # Process results mix machine-wide totals with this session's PID and RSS.
@@ -555,8 +601,11 @@ def _render():
     r7 = []
     if procs.get("mine_rss"):
         r7.append(
-            f"{D}this session{R} {CYN}{gb(procs['mine_rss'])}{R}"
-            f"{D} · {procs.get('mine_procs',1)} proc · pid {procs.get('mine_pid')}{R}"
+            (
+                "session_processes",
+                f"{D}this session{R} {CYN}{gb(procs['mine_rss'])}{R}"
+                f"{D} · {procs.get('mine_procs',1)} proc · pid {procs.get('mine_pid')}{R}",
+            )
         )
     if procs.get("all_rss") is not None:
         c7 = (
@@ -565,7 +614,7 @@ def _render():
         )
         if mem.get("total"):
             c7 += f"{D} · {procs['all_rss']/mem['total']*100:.1f}% of ram{R}"
-        r7.append(c7)
+        r7.append(("all_claude", c7))
     if mem.get("pct") is not None:
         m7 = (
             f"{D}ram{R}{bar(mem['pct'],8,70,88)} {grade(mem['pct'],70,88)}"
@@ -573,14 +622,17 @@ def _render():
         )
         if mem.get("compressed"):
             m7 += f"{D} · {gb(mem['compressed'])} compressed{R}"
-        r7.append(m7)
+        r7.append(("memory", m7))
     if dsk.get("pct") is not None:
         r7.append(
-            f"{D}disk{R}{bar(dsk['pct'],8,80,92)} {grade(dsk['pct'],80,92)}"
-            f"{dsk['pct']:.0f}%{R}{D} · {gb(dsk.get('free'))} free{R}"
+            (
+                "disk",
+                f"{D}disk{R}{bar(dsk['pct'],8,80,92)} {grade(dsk['pct'],80,92)}"
+                f"{dsk['pct']:.0f}%{R}{D} · {gb(dsk.get('free'))} free{R}",
+            )
         )
     if r7:
-        rows["SYSTEM"] = row("SYSTEM", r7)
+        rows["SYSTEM"] = display_row("SYSTEM", r7)
 
     # ---------- row 8: money ----------
     usd = money.get("run_cost_usd")
@@ -607,29 +659,38 @@ def _render():
         # lifetime. Show both when they differ so the run's own spend stays visible.
         if agg["base"] > 1e-9:
             p8.append(
-                f"{CYN}${life:.2f}{R}{D} session{R} "
-                f"{D}(run {R}{CYN}${usd:.2f}{R}{D} · {agg['runs']} runs){R}"
+                (
+                    "session",
+                    f"{CYN}${life:.2f}{R}{D} session{R} "
+                    f"{D}(run {R}{CYN}${usd:.2f}{R}{D} · {agg['runs']} runs){R}",
+                )
             )
         else:
-            p8.append(f"{CYN}${life:.2f}{R}{D} session{R}")
+            p8.append(("session", f"{CYN}${life:.2f}{R}{D} session{R}"))
 
     def rolling_amount(label, key):
         marker = "" if agg[key + "_complete"] else f"{D}≥{R}"
         return f"{D}{label}{R} {marker}${agg[key]:.2f}"
 
     p8.append(
-        f"{rolling_amount('24h', 'd1')} {D}·{R} "
-        f"{rolling_amount('7d', 'd7')} {D}·{R} {rolling_amount('30d', 'd30')}"
+        (
+            "rolling",
+            f"{rolling_amount('24h', 'd1')} {D}·{R} "
+            f"{rolling_amount('7d', 'd7')} {D}·{R} {rolling_amount('30d', 'd30')}",
+        )
     )
     p8.append(
-        f"{D}last5{R} ${agg['last5']:.2f} {D}·{R} {D}all{R} ${agg['all']:.2f} "
-        f"{D}({agg['convos']} convo{'s' if agg['convos']!=1 else ''} · {agg['n']} sess"
-        + (f" · {agg['forks']} fork{'s' if agg['forks']!=1 else ''}" if agg["forks"] else "")
-        + f"){R}"
+        (
+            "history",
+            f"{D}last5{R} ${agg['last5']:.2f} {D}·{R} {D}all{R} ${agg['all']:.2f} "
+            f"{D}({agg['convos']} convo{'s' if agg['convos']!=1 else ''} · {agg['n']} sess"
+            + (f" · {agg['forks']} fork{'s' if agg['forks']!=1 else ''}" if agg["forks"] else "")
+            + f"){R}",
+        )
     )
     la = money.get("lines_added", 0)
     lr = money.get("lines_removed", 0)
-    p8.append(f"{GRN}+{la}{R}{D}/{R}{RED}-{lr}{R}{D} lines{R}")
+    p8.append(("lines", f"{GRN}+{la}{R}{D}/{R}{RED}-{lr}{R}{D} lines{R}"))
 
     # Credits. The balance is NOT obtainable locally (see statusline_probes.account),
     # and a spend-since-crossing figure was deliberately removed: it could not be
@@ -640,21 +701,22 @@ def _render():
     if acct:
         inc = [str(x).lower() for x in (acct.get("included_models") or [])]
         if acct.get("disabled_reason"):
-            p8.append(f"{RED}{B}credits OFF{R}{D} ({plain(acct['disabled_reason'])}){R}")
+            p8.append(
+                ("credits", f"{RED}{B}credits OFF{R}{D} ({plain(acct['disabled_reason'])}){R}")
+            )
         elif not acct.get("enabled"):
-            p8.append(f"{YEL}credits off{R}")
+            p8.append(("credits", f"{YEL}credits off{R}"))
         elif over_active and str(model).lower() not in inc:
-            p8.append(f"{RED}{B}on credits{R}{D} · balance only via /usage-credits{R}")
+            p8.append(("credits", f"{RED}{B}on credits{R}{D} · balance only via /usage-credits{R}"))
         elif over_active:
-            p8.append(f"{GRN}overage included{R}{D} for {plain(model)}{R}")
+            p8.append(("credits", f"{GRN}overage included{R}{D} for {plain(model)}{R}"))
         else:
-            p8.append(f"{D}credits on{R}")
-    rows["COST"] = row("COST", p8)
+            p8.append(("credits", f"{D}credits on{R}"))
+    rows["COST"] = display_row("COST", p8)
 
-    if all_hidden:
-        return
-    output = "\n".join(rows[k] for k in ORDER if k not in config.hidden_rows and rows.get(k))
-    print(ANSI.sub("", output) if config.color == "plain" else output)
+    output = "\n".join(rows[k] for k in ORDER if rows.get(k))
+    if output:
+        print(ANSI.sub("", output) if config.color == "plain" else output)
 
 
 def main():

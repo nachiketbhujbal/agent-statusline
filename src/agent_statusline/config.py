@@ -18,6 +18,35 @@ ROW_IDS = (
     "TOKENS",
     "TIMING",
 )
+FIELD_IDS = {
+    "PROJECT": ("directory", "added_dirs", "branch", "session_name"),
+    "MODEL": (
+        "model",
+        "thinking",
+        "fast_mode",
+        "permission_mode",
+        "output_style",
+        "service_tier",
+        "version",
+    ),
+    "CONTEXT": ("window", "session_throughput"),
+    "USAGE": ("five_hour", "seven_day"),
+    "COST": ("session", "rolling", "history", "lines", "credits"),
+    "SYSTEM": ("session_processes", "all_claude", "memory", "disk"),
+    "TOOLS": (
+        "calls",
+        "top_tools",
+        "tool_errors",
+        "api_errors",
+        "files",
+        "subagents",
+        "compactions",
+        "commands",
+    ),
+    "CACHE": ("hit_rate", "ttl", "relative_cost", "writes"),
+    "TOKENS": ("total", "turn"),
+    "TIMING": ("turn_duration", "wall_api", "hooks"),
+}
 MAX_BYTES = 64 * 1024
 DEFAULT_WARN = 80.0
 VALID_EVENTS = frozenset({"stop", "submit", "both"})
@@ -31,6 +60,7 @@ class Config:
     metrics_enabled: bool = True
     color: str = "default"
     hidden_rows: frozenset[str] = frozenset()
+    fields: tuple[tuple[str, frozenset[str]], ...] = ()
 
 
 DEFAULTS = Config()
@@ -80,7 +110,7 @@ def _validate(doc) -> Config:
     if not isinstance(enabled, bool):
         raise InvalidConfig("session_metrics.enabled: expected a boolean")
 
-    display = _table(doc.get("display", {}), "display", {"color", "rows"})
+    display = _table(doc.get("display", {}), "display", {"color", "rows", "fields"})
     color = display.get("color", DEFAULTS.color)
     if color not in ("default", "plain"):
         raise InvalidConfig("display.color: expected default or plain")
@@ -89,6 +119,18 @@ def _validate(doc) -> Config:
         if visibility not in ("show", "hide"):
             raise InvalidConfig(f"display.rows.{row_id}: expected show or hide")
 
+    fields = _table(display.get("fields", {}), "display.fields", set(FIELD_IDS))
+    selections = []
+    for row_id, ids in fields.items():
+        key = f"display.fields.{row_id}"
+        if not isinstance(ids, list) or not ids:
+            raise InvalidConfig(f"{key}: expected a nonempty array of field IDs")
+        if any(not isinstance(field, str) or field not in FIELD_IDS[row_id] for field in ids):
+            raise InvalidConfig(f"{key}: unknown field ID")
+        if len(set(ids)) != len(ids):
+            raise InvalidConfig(f"{key}: duplicate field ID")
+        selections.append((row_id, frozenset(ids)))
+
     return Config(
         float(pct),
         event,
@@ -96,6 +138,7 @@ def _validate(doc) -> Config:
         enabled,
         color,
         frozenset(key for key, visibility in rows.items() if visibility == "hide"),
+        tuple(selections),
     )
 
 

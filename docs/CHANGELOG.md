@@ -4,6 +4,12 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
+## Unreleased — 0.5.1
+
+- Add `[display.fields]` allowlists for the existing field groups in each row.
+  Field selection keeps the existing render order and affects display only.
+  A hidden row stays hidden, and omitted rows keep all their existing fields.
+
 ## 0.5.0
 
 - Add an optional schema-versioned TOML file for context warnings, session

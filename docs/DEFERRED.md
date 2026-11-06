@@ -37,9 +37,6 @@ visible, and must never be presented as a credit balance.
 
 ## Further display customization
 
-Field visibility is a possible follow-up to the
-[planned 0.5.0 configuration slice](ROADMAP.md#050--package-owned-toml-configuration).
-[ADR 0052](adrs/0052-add-opt-in-toml-configuration-at-v0-5.md) sketches a
-separate field allowlist that preserves row switches. A stable field inventory
-and explicit approval are still needed. Profiles, themes and layout
-reordering have no committed release.
+Profiles, themes, custom rows and layout reordering have no committed release.
+The [0.5.x roadmap](ROADMAP.md#05x--display-customization) tracks field visibility
+and the related configuration commands.

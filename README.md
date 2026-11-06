@@ -124,12 +124,18 @@ color = "plain"
 
 [display.rows]
 CACHE = "hide"
+
+[display.fields]
+PROJECT = ["directory", "branch", "session_name"]
 ```
 
 Rows accept `"show"` or `"hide"`. Omitted rows keep their default visibility
 and visible rows keep their original order. Hiding a row does not stop data
 collection or cost accounting. Omit `color` or use `"default"` for styled
-output. The file also accepts `[context_guard]` with `warn_pct`, `warn_event`,
+output. Field lists select existing groups within a visible row. Omitted lists
+keep all fields, and a list never changes their priority. See the
+[field IDs](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/FIELDS.md#configurable-field-groups).
+Field lists require v0.5.1 or later. The file also accepts `[context_guard]` with `warn_pct`, `warn_event`,
 and `warn_message`, and `[session_metrics]` with `enabled = false` to stop new
 snapshots. Existing environment overrides take precedence over file values.
 Run `agent-statusline config check` to validate the file. An invalid file is

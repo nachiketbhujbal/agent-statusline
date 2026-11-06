@@ -5,6 +5,7 @@ once the regression that demonstrates it exists in this repository.
 
 | Release | Candidate scope | Evidence boundary |
 | --- | --- | --- |
+| 0.5.1 | Display-only selection of existing field groups | Exact candidate review pending |
 | 0.5.0 | Optional TOML, display-only visibility, plain output and a Python 3.11 minimum | Exact candidate `0ceafa28683ebd2109c647952d4c47f926502284` passed independent review with no blockers |
 
 The v0.5.0 owner and reviewer passed 763 tests with 90.33% and 90.29%
