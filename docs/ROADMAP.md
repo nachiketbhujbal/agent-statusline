@@ -40,6 +40,7 @@ installed-artifact evidence.
 | 0.4.3 | Configurable context guard and Stop timing | **Released** |
 | 0.4.4 | Native Linux and WSL memory pressure | **Released** |
 | 0.4.5 | Session-safe context fallback and compaction counting | **Released** |
+| 0.5.0 | Package-owned TOML configuration and Python 3.11 minimum | **Current** |
 
 0.2.1 through 0.2.14 and v0.3.0 through v0.4.5 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
@@ -550,9 +551,7 @@ Released ([ADR 0051](adrs/0051-keep-context-fallback-and-compactions-session-sco
 - Preserve all ten rows, exact accounting, private locked storage, dependencies,
   installer behavior, and live user configuration.
 
-A package-owned configuration file and broader display customization remain a
-separate unversioned slice in [DEFERRED.md](DEFERRED.md). No configuration-file
-design or implementation is included in this patch.
+Package-owned configuration is planned separately for 0.5.0.
 
 The implementation is independently reviewed and merged through PR #39. Exact
 PR and merged-main Linux/macOS CI passed, and annotated v0.4.5 and its GitHub
@@ -564,3 +563,18 @@ and PyPI run 40043731533 passed; the v0.4.5 release scope is complete.
 The post-tag closure also corrects the development documentation verifier to
 accept a fully released roadmap with no selected next target. Version agreement
 and review/privacy checks remain enforced; no successor release is invented.
+
+## 0.5.0 — package-owned TOML configuration
+
+Implemented in the candidate branch; not released. [ADR 0052](adrs/0052-add-opt-in-toml-configuration-at-v0-5.md)
+defines the contract and acceptance evidence.
+
+- Raise the minimum to Python 3.11 and use its TOML reader with no runtime
+  dependencies. Keep 0.4.x on Python 3.9+ without TOML; no configuration
+  prerequisite or follow-up patch is planned on that line.
+- Add optional user configuration for existing context warnings and metrics
+  enablement, retaining defaults and existing environment precedence.
+- Add plain output, explicit `"show"` / `"hide"` row visibility and read-only
+  `config check`. Preserve default output, data collection and accounting.
+- Verify installation and behavior using disposable state and Claude settings.
+  Leave field selection for a later additive slice with no version assigned.

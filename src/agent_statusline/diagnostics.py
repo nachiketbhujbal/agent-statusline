@@ -14,7 +14,7 @@ def record_render_failure(error):
     """Record only fixed and non-sensitive failure metadata."""
     record = {
         "schema": ERROR_SCHEMA,
-        "occurred_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "occurred_at": datetime.datetime.now(datetime.UTC).isoformat(),
         "phase": "render",
         "error_type": type(error).__name__,
     }

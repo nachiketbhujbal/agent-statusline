@@ -63,7 +63,7 @@ def check_commit_identities(root: Path, refs: Sequence[str]) -> list[str]:
         if len(fields) != 2:
             errors.append(f"commit {commit}: malformed identity metadata")
             continue
-        for role, email in zip(("author", "committer"), fields):
+        for role, email in zip(("author", "committer"), fields, strict=True):
             if not _email_allowed(email):
                 errors.append(f"commit {commit}: {role} email is not an approved no-reply identity")
     return errors

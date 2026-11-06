@@ -9,7 +9,7 @@ import time
 import urllib.parse
 import urllib.request
 from collections.abc import Mapping, Sequence
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 
 INDEX_JSON_BASES = {
     "pypi": "https://pypi.org/pypi",
@@ -125,7 +125,7 @@ def verify_with_retries(
         raise ValueError("retry delay must be nonnegative and timeout must be positive")
 
     url = _release_url(index, project, version)
-    last_error: Optional[Exception] = None
+    last_error: Exception | None = None
     for attempt in range(1, attempts + 1):
         try:
             payload = _request_json(url, timeout_seconds)

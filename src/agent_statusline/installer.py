@@ -33,7 +33,7 @@ import tempfile
 import time
 
 PKG = os.path.dirname(os.path.realpath(__file__))
-MIN_PYTHON = (3, 9)
+MIN_PYTHON = (3, 11)
 
 HOOKS = (
     ("SessionEnd", "session-end", "session_end", 10),

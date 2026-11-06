@@ -6,10 +6,10 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.4.5, session-safe context fallback and compaction counting.
-- Preceding release: v0.4.4, native Linux and WSL memory pressure.
-- Branch owner: none; v0.4.5 release ownership is complete.
-- Reviewer role: none active; implementation review is complete.
+- Current release target: 0.5.0, package-owned TOML configuration.
+- Preceding release: v0.4.5, session-safe context fallback and compaction counting.
+- Branch owner: codex, `codex/feat/v0.5.0-toml-config`.
+- Reviewer role: independent exact-SHA review of the implementation candidate.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
   complete-ancestry audit. Documentation-only refs skip both hosted test lanes;
@@ -77,6 +77,14 @@ a whole or import a later slice into the current release.
 
 ## Resume point
 
+The 0.5.0 candidate implements optional TOML, plain output, display-only
+row switches and read-only configuration validation, with a Python 3.11
+minimum and no runtime dependencies. See [ADR 0052](docs/adrs/0052-add-opt-in-toml-configuration-at-v0-5.md)
+and the [roadmap](docs/ROADMAP.md#050--package-owned-toml-configuration).
+No tag or publication has been created. The 0.4.x line retains Python 3.9
+support; no configuration patch is planned on that line. The iMac stays on
+v0.4.5 while candidate checks run against disposable state and settings.
+
 v0.4.5 is tagged at merge `735ed343c1b4a965d7ef7d3d94f3ab56d5a9da28`.
 Exact implementation candidate `1f8605f400f0855423a5b8245d41ab65308917b2`
 passed independent no-findings review against v0.4.4 and the full local gate:
@@ -115,8 +123,8 @@ This patch confines context fallback to matching session evidence and verifies
 compaction boundary/summary counting, schema-4 cache replay, and six concurrent
 synthetic sessions. General configuration-file customization is separate.
 The live ledger and unrelated Claude settings were not test inputs or modified.
-The installed command remains v0.4.4 following the separately authorized upgrade
-and managed-hook refresh; installing v0.4.5 was not part of this release work.
+The iMac was separately upgraded to v0.4.5 after release, with managed hooks
+refreshed and the live ledger and Claude settings verified unchanged.
 
 v0.4.4 is complete at tagged merge
 `d92077d1cb79fc92ae0a296df00ad3fbd3eeb353`. Exact candidate

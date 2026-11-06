@@ -210,7 +210,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@{PIN} # v7.0.0
         with:
-          python-version: "3.9"
+          python-version: "3.11"
       - env:
           VERSION: ${{{{ needs.build.outputs.version }}}}
           WHEEL_NAME: ${{{{ needs.build.outputs.wheel_name }}}}

@@ -42,7 +42,7 @@ def test_materialization_resolves_paths_and_dynamic_windows(tmp_path):
     assert Path(payload["workspace"]["project_dir"]) == workspace
     assert payload["rate_limits"]["five_hour"]["resets_at"] == now + 4 * 3600
     assert payload["rate_limits"]["seven_day"]["resets_at"] == now + 5 * 86400
-    expected_stamp = datetime.datetime.fromtimestamp(now, datetime.timezone.utc).isoformat()
+    expected_stamp = datetime.datetime.fromtimestamp(now, datetime.UTC).isoformat()
     assert expected_stamp in transcript_text
     assert str(workspace / "README.md") in transcript_text
     assert str(workspace / "example.py") in transcript_text

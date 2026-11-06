@@ -57,6 +57,7 @@ old one rather than rewriting why the earlier choice was made.
 | [0049](0049-configure-context-warnings-at-stop-time.md) | Configure context warnings at Stop time |
 | [0050](0050-report-native-linux-memory-pressure.md) | Report native Linux and WSL memory pressure |
 | [0051](0051-keep-context-fallback-and-compactions-session-scoped.md) | Keep context fallback and compactions session scoped |
+| [0052](0052-add-opt-in-toml-configuration-at-v0-5.md) | Add opt-in TOML configuration at v0.5 |
 
 ## Reading order
 
