@@ -4,7 +4,7 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.5.0
+## 0.5.0
 
 - Add an optional schema-versioned TOML file for context warnings, session
   metrics, plain output and display-only row visibility. Existing defaults
@@ -13,6 +13,11 @@ string in the source.
   ignore an invalid file and keep existing environment behavior.
 - Require Python 3.11+ for the standard-library TOML reader. Runtime
   dependencies remain empty. The 0.4.x line retains Python 3.9 support.
+
+The independently reviewed [PR #42](https://github.com/nachiketbhujbal/agent-statusline/pull/42)
+and exact merged main passed the required Linux/macOS checks. GitHub Releases,
+TestPyPI and production PyPI published and verified the same artifacts,
+including isolated Python 3.11 installation and self-test.
 
 ## 0.4.5
 

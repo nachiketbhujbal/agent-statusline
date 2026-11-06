@@ -5,7 +5,16 @@ once the regression that demonstrates it exists in this repository.
 
 | Release | Candidate scope | Evidence boundary |
 | --- | --- | --- |
-| 0.5.0 | Optional TOML, display-only visibility, plain output and a Python 3.11 minimum | Synthetic config validation, compatibility and isolated renderer/installer checks; exact-SHA review recorded separately |
+| 0.5.0 | Optional TOML, display-only visibility, plain output and a Python 3.11 minimum | Exact candidate `0ceafa28683ebd2109c647952d4c47f926502284` passed independent review with no blockers |
+
+The v0.5.0 owner and reviewer passed 763 tests with 90.33% and 90.29%
+subprocess-aware coverage respectively, locked checks, artifact builds,
+privacy and metadata. The exact wheel upgrade from v0.4.5 preserved synthetic
+ledger and settings bytes. Default output matched v0.4.5 byte-for-byte at 1,
+28 and 240 columns; plain output matched with styling removed. The nonblocking
+checkout interpreter migration advisory is documented in the release notes
+and README. PR #42 and merged-main full CI passed; the verified GitHub Release
+pair was promoted and verified on both package indexes.
 
 v0.4.4 exact candidate `79335ec1360808ff69b6c1292b52a3cae659a6ad`
 received an independent no-findings review against v0.4.3 after the complete
