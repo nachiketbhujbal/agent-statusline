@@ -8,8 +8,8 @@ the roadmap, or accepted ADRs.
 
 - Current release target: 0.5.6, synthetic display preview.
 - Preceding release: v0.5.5, starter TOML on stdout.
-- Branch owner: Codex, on `codex/feat/v0.5.6-synthetic-preview`.
-- Reviewer role: exact implementation candidate review pending.
+- Branch owner: none; the final configuration slice is released on GitHub.
+- Reviewer role: none active; exact candidate review is complete.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
   complete-ancestry audit. Documentation-only refs skip both hosted test lanes;
@@ -77,6 +77,19 @@ a whole or import a later slice into the current release.
 
 ## Resume point
 
+The planned 0.5.x customization work is complete on GitHub. Promote each
+verified artifact pair through TestPyPI and then PyPI. Both environments
+retain separate maintainer approvals.
+
+v0.5.6 is tagged on verified merge `49683fadce56849c50d1f64d3a1fbe2931fcfa5e`.
+PR #49, main CI run 42308292382 and GitHub Release run 42308425622 passed.
+The exact published artifacts and isolated Python 3.11 install were verified.
+The [TestPyPI promotion](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42308556413)
+is pending. The v0.5.6 wheel SHA-256 is
+`99359df3ed04828f0f346d43543d18e8134141bf5dd24aae28ba18b58cc83a02`.
+The source SHA-256 is
+`ea4d385832115754d3ea3976ef6dda7718cf3bb53b7fc9c66495e320228c24f5`.
+
 v0.5.5 is tagged on verified merge `983f30c1b543f1020654944c5f0fb4d685184f1c`.
 PR #48, main CI run 42307385464 and GitHub Release run 42307518017 passed.
 The exact published artifacts and isolated Python 3.11 install were verified.
@@ -99,8 +112,7 @@ v0.5.2 is tagged on verified merge `87986702fd299e517c9eeb35a85178d55e021122`.
 PR #45, main CI run 42304934591 and GitHub Release run 42305097692 passed.
 Exact artifact digests and isolated Python 3.11 install were verified. The
 [TestPyPI promotion](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42305217679)
-is pending. The v0.5.3 slice lists existing field IDs and descriptions without
-reading the user config or runtime state.
+is pending.
 
 v0.5.1 is tagged on verified merge `1bf785270cfc4cb419c8e781fc37e7851ef62ec0`.
 PR #44, main CI run 42304002628 and GitHub Release run 42304141003 passed.
@@ -110,8 +122,8 @@ self-test and configuration check passed. The
 is pending. Production promotion follows its verification. The iMac
 installation and live state were outside the release tests.
 
-v0.5.2 handles a reproduced width violation in the malformed-input fallback.
-The remaining feature slots moved forward by one.
+v0.5.2 corrected a reproduced width violation in the malformed-input fallback.
+It took the next patch slot, shifting the remaining features forward by one.
 
 v0.5.0 implements optional TOML, plain output, display-only
 row switches and read-only configuration validation, with a Python 3.11
