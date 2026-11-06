@@ -96,6 +96,7 @@ the status-line state directory.
 | `agent-statusline config check` | Validate the optional TOML file without rendering or changing state |
 | `agent-statusline config fields [ROW]` | List field IDs and descriptions for all rows or one row |
 | `agent-statusline config show` | Show effective settings and the source of each value |
+| `agent-statusline config example` | Print a commented starter config that preserves defaults as written |
 | `agent-statusline ledger show` | Inspect the local cost ledger |
 | `agent-statusline uninstall` | Remove only configuration owned by this installation |
 | `agent-statusline --version` | Print the installed version |
@@ -116,7 +117,9 @@ next model turn.
 ## Configure the view
 
 Create `~/.config/agent-statusline/config.toml` (or use the same relative path
-under an absolute `XDG_CONFIG_HOME`). The file is optional. For example:
+under an absolute `XDG_CONFIG_HOME`). The file is optional. Use
+`agent-statusline config example` to print a starter file. Save it and
+uncomment the settings you want to change. A configured view can look like this.
 
 ```toml
 schema_version = 1

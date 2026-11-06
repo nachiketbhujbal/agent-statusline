@@ -314,13 +314,38 @@ def _show_config():
     return 0
 
 
+EXAMPLE = """# Optional agent-statusline settings. Uncomment entries to change the view.
+schema_version = 1
+
+[display]
+# color = "plain"
+
+[display.rows]
+# CACHE = "hide"
+
+[display.fields]
+# PROJECT = ["directory", "branch", "session_name"]
+
+[context_guard]
+# warn_pct = 80
+# warn_event = "stop"
+# warn_message = "Context is at {pct}%."
+
+[session_metrics]
+# enabled = false
+"""
+
+
 def cli(argv):
+    if argv == ["example"]:
+        print(EXAMPLE, end="")
+        return 0
     if argv == ["show"]:
         return _show_config()
     if argv[:1] == ["fields"]:
         return _list_fields(argv[1:])
     if argv != ["check"]:
-        print("usage: agent-statusline config {check,fields [ROW],show}", file=sys.stderr)
+        print("usage: agent-statusline config {check,fields [ROW],show,example}", file=sys.stderr)
         return 2
     try:
         config = read_config(config_path())
