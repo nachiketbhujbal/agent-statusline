@@ -583,7 +583,7 @@ defines the contract and acceptance evidence.
 - Add plain output, explicit `"show"` / `"hide"` row visibility and read-only
   `config check`. Preserve default output, data collection and accounting.
 - Verify installation and behavior using disposable state and Claude settings.
-  Leave field selection for a later additive slice with no version assigned.
+  Field selection shipped separately in v0.5.1.
 
 PR #42, exact merged-main CI, annotated tag, GitHub Release, TestPyPI and
 production PyPI verification passed.

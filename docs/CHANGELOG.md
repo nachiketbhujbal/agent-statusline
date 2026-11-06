@@ -69,7 +69,8 @@ artifacts and isolated Python 3.11 installation were verified.
 
 - Add an optional schema-versioned TOML file for context warnings, session
   metrics, plain output and display-only row visibility. Existing defaults
-  and environment overrides are preserved. Field controls remain deferred.
+  and environment overrides are preserved. Field controls were deferred from
+  this release.
 - Add read-only `agent-statusline config check`. Normal rendering and hooks
   ignore an invalid file and keep existing environment behavior.
 - Require Python 3.11+ for the standard-library TOML reader. Runtime
