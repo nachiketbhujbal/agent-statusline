@@ -53,7 +53,11 @@ def test_file_values_and_per_setting_env_overrides(config_file):
     environ[context_guard.THRESHOLD_ENV] = "92"
     resolved, error = context_guard.configuration(environ)
     assert error is None
-    assert resolved == {"threshold": 92.0, "event": "submit", "message": "Now at {pct}%"}
+    assert resolved == {
+        "threshold": 92.0,
+        "event": "submit",
+        "message": "Now at {pct}%",
+    }
     file_default = config.load_config(environ).metrics_enabled
     assert not session_metrics.enabled(environ, file_default=file_default)
     assert session_metrics.enabled(
@@ -66,8 +70,14 @@ def test_file_values_and_per_setting_env_overrides(config_file):
     [
         (b"schema_version = true", "schema_version"),
         (b"schema_version = 2", "schema_version"),
-        (b"schema_version = 1\n[display]\nprivate_value = true", "display: unknown key"),
-        (b"schema_version = 1\n[display]\nfields = []", "display.fields: expected a table"),
+        (
+            b"schema_version = 1\n[display]\nprivate_value = true",
+            "display: unknown key",
+        ),
+        (
+            b"schema_version = 1\n[display]\nfields = []",
+            "display.fields: expected a table",
+        ),
         (
             b"schema_version = 1\n[display.fields]\nprivate_value = []",
             "display.fields: unknown key",
@@ -75,21 +85,36 @@ def test_file_values_and_per_setting_env_overrides(config_file):
         (b'schema_version = 1\n[display.fields]\nPROJECT = "branch"', "nonempty array"),
         (b"schema_version = 1\n[display.fields]\nPROJECT = []", "nonempty array"),
         (b"schema_version = 1\n[display.fields]\nPROJECT = [true]", "unknown field ID"),
-        (b'schema_version = 1\n[display.fields]\nPROJECT = ["private_value"]', "unknown field ID"),
-        (b'schema_version = 1\n[display.fields]\nPROJECT = ["hooks"]', "unknown field ID"),
+        (
+            b'schema_version = 1\n[display.fields]\nPROJECT = ["private_value"]',
+            "unknown field ID",
+        ),
+        (
+            b'schema_version = 1\n[display.fields]\nPROJECT = ["hooks"]',
+            "unknown field ID",
+        ),
         (
             b'schema_version = 1\n[display.fields]\nPROJECT = ["branch", "branch"]',
             "duplicate field ID",
         ),
         (b'schema_version = 1\n[display.rows]\nprivate_value = "show"', "display.rows"),
         (b"schema_version = 1\n[display.rows]\nCOST = false", "display.rows.COST"),
-        (b"schema_version = 1\n[context_guard]\nwarn_pct = nan", "context_guard.warn_pct"),
-        (b"schema_version = 1\n[context_guard]\nwarn_event = []", "context_guard.warn_event"),
+        (
+            b"schema_version = 1\n[context_guard]\nwarn_pct = nan",
+            "context_guard.warn_pct",
+        ),
+        (
+            b"schema_version = 1\n[context_guard]\nwarn_event = []",
+            "context_guard.warn_event",
+        ),
         (
             b'schema_version = 1\n[context_guard]\nwarn_message = "private_value"',
             "context_guard.warn_message",
         ),
-        (b'schema_version = 1\n[session_metrics]\nenabled = "false"', "session_metrics.enabled"),
+        (
+            b'schema_version = 1\n[session_metrics]\nenabled = "false"',
+            "session_metrics.enabled",
+        ),
         (b'schema_version = 1\n[display]\ncolor = "private_value"', "display.color"),
         (b"private_value =", "TOML syntax"),
         (b"\xff", "UTF-8"),
@@ -165,3 +190,61 @@ def test_config_fields_limits_output_to_one_row(capsys):
 def test_config_fields_rejects_unknown_row_and_extra_arguments(capsys, args):
     assert main(["config", "fields", *args]) == 2
     assert not capsys.readouterr().out
+
+
+def test_config_show_resolves_settings_and_sources(config_file, tmp_path, monkeypatch, capsys):
+    config_file.write_text(
+        "schema_version = 1\n[context_guard]\nwarn_pct = 80\n"
+        'warn_message = "do not print this {pct}"\n'
+        '[session_metrics]\nenabled = false\n[display]\ncolor = "plain"\n'
+        '[display.rows]\nCACHE = "show"\n'
+        '[display.fields]\nPROJECT = ["session_name", "branch"]\n'
+    )
+    state = tmp_path / "state"
+    claude = tmp_path / "claude"
+    monkeypatch.setenv("AGENT_STATUSLINE_STATE", str(state))
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(claude))
+    monkeypatch.delenv(context_guard.THRESHOLD_ENV, raising=False)
+    monkeypatch.delenv(context_guard.MESSAGE_ENV, raising=False)
+    monkeypatch.setenv(context_guard.EVENT_ENV, " BOTH ")
+    monkeypatch.setenv(session_metrics.OPT_OUT_ENV, "yes")
+    assert main(["config", "show"]) == 0
+    output = capsys.readouterr()
+    assert "configuration: TOML loaded" in output.out
+    assert "context_guard.warn_pct = 80.0 [TOML]" in output.out
+    assert f"context_guard.warn_event = both [{context_guard.EVENT_ENV}]" in output.out
+    assert "context_guard.warn_message = custom (redacted) [TOML]" in output.out
+    assert "do not print this" not in output.out
+    assert f"session_metrics.enabled = true [{session_metrics.OPT_OUT_ENV}]" in output.out
+    assert "display.color = plain [TOML]" in output.out
+    assert "display.rows.CACHE = show [TOML]" in output.out
+    assert "display.fields.PROJECT = branch, session_name [TOML]" in output.out
+    assert "display.fields.COST = all [default]" in output.out
+    assert not output.err
+    assert not state.exists() and not claude.exists()
+
+
+def test_config_show_reports_invalid_file_and_invalid_environment(config_file, monkeypatch, capsys):
+    config_file.write_text('schema_version = 1\n[display]\ncolor = "private_value"\n')
+    monkeypatch.setenv(context_guard.EVENT_ENV, "private_value")
+    assert main(["config", "show"]) == 0
+    output = capsys.readouterr().out
+    assert "Using defaults and environment" in output
+    assert f"context_guard: disabled ({context_guard.EVENT_ENV}" in output
+    assert "display.color = default [default]" in output
+    assert "private_value" not in output
+
+
+def test_config_show_reports_no_file_and_redacts_environment_message(
+    config_file, monkeypatch, capsys
+):
+    assert not config_file.exists()
+    monkeypatch.delenv(context_guard.THRESHOLD_ENV, raising=False)
+    monkeypatch.delenv(context_guard.EVENT_ENV, raising=False)
+    monkeypatch.setenv(context_guard.MESSAGE_ENV, "secret {pct}")
+    assert main(["config", "show"]) == 0
+    output = capsys.readouterr().out
+    assert "configuration: no file" in output
+    assert "context_guard.warn_pct = 80.0 [default]" in output
+    assert f"context_guard.warn_message = custom (redacted) [{context_guard.MESSAGE_ENV}]" in output
+    assert "secret" not in output

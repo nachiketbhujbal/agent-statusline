@@ -6,9 +6,9 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.5.3, read-only field discovery.
-- Preceding release: v0.5.2, malformed-input fallback width.
-- Branch owner: Codex, on `codex/feat/v0.5.3-field-discovery`.
+- Current release target: 0.5.4, effective configuration inspection.
+- Preceding release: v0.5.3, read-only field discovery.
+- Branch owner: Codex, on `codex/feat/v0.5.4-effective-config`.
 - Reviewer role: exact implementation candidate review pending.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
@@ -76,6 +76,12 @@ The complete sequence and exclusions are authoritative in
 a whole or import a later slice into the current release.
 
 ## Resume point
+
+v0.5.3 is tagged on verified merge `ffa3ab90c96545155f0394c67c0f30623462211f`.
+PR #46, main CI run 42305845641 and GitHub Release run 42306041819 passed.
+The exact published artifacts and isolated Python 3.11 install were verified.
+The [TestPyPI promotion](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42306218265)
+is pending.
 
 v0.5.2 is tagged on verified merge `87986702fd299e517c9eeb35a85178d55e021122`.
 PR #45, main CI run 42304934591 and GitHub Release run 42305097692 passed.
