@@ -59,6 +59,7 @@ old one rather than rewriting why the earlier choice was made.
 | [0051](0051-keep-context-fallback-and-compactions-session-scoped.md) | Keep context fallback and compactions session scoped |
 | [0052](0052-add-opt-in-toml-configuration-at-v0-5.md) | Add opt-in TOML configuration at v0.5 |
 | [0053](0053-select-existing-display-field-groups.md) | Select existing display field groups |
+| [0054](0054-list-supported-display-field-ids.md) | List supported display field IDs |
 
 ## Reading order
 

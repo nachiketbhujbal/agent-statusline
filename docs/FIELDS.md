@@ -60,6 +60,8 @@ that are presented together and only appears when its normal data is available.
 
 Omit a row's list to show all its groups as usual. Use `[display.rows]` to
 hide a whole row. Empty lists, duplicate IDs, and unknown IDs are invalid.
+Run `agent-statusline config fields` for the complete catalog, or
+`agent-statusline config fields PROJECT` to see one row.
 
 ---
 

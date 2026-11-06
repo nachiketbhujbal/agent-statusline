@@ -117,7 +117,7 @@ def test_selecting_fields_preserves_priority_and_accounting(payload, monkeypatch
 
 @pytest.mark.parametrize("columns", [1, 28, 240])
 def test_all_field_ids_preserve_styled_output(payload, monkeypatch, capsys, tmp_path, columns):
-    from agent_statusline.config import FIELD_IDS
+    from agent_statusline.config import FIELD_CATALOG
 
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
     monkeypatch.setattr(statusline.time, "time", lambda: 1_800_000_000)
@@ -126,7 +126,7 @@ def test_all_field_ids_preserve_styled_output(payload, monkeypatch, capsys, tmp_
     default = draw(payload, monkeypatch, capsys, cols=columns)
     path.write_text(
         "schema_version = 1\n[display.fields]\n"
-        + "".join(f"{row} = {json.dumps(ids)}\n" for row, ids in FIELD_IDS.items())
+        + "".join(f"{row} = {json.dumps(list(ids))}\n" for row, ids in FIELD_CATALOG.items())
     )
     assert draw(payload, monkeypatch, capsys, cols=columns) == default
 

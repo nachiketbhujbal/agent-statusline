@@ -18,6 +18,7 @@ USAGE = """agent-statusline -- a dense, width-aware status line for coding agent
   agent-statusline ledger [...]        inspect or close cost-ledger rows
   agent-statusline metrics <session>   print one documented local session snapshot
   agent-statusline config check        validate the optional TOML configuration
+  agent-statusline config fields [ROW] list field IDs and descriptions
   agent-statusline selftest            verify rendering using isolated synthetic state
   agent-statusline version             print the version
 """
