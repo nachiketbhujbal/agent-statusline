@@ -23,10 +23,11 @@ MESSAGE_ENV = "AGENT_STATUSLINE_CONTEXT_WARN_MESSAGE"
 EVENT_ENV = "AGENT_STATUSLINE_CONTEXT_WARN_EVENT"
 
 
-def configuration(environ=None):
+def configuration(environ=None, *, file_config=None):
     """Return validated context-guard settings and an optional error."""
     source = os.environ if environ is None else environ
-    file_config = load_config(source)
+    if file_config is None:
+        file_config = load_config(source)
     raw_threshold = source.get(THRESHOLD_ENV, str(file_config.warn_pct))
     try:
         threshold = float(raw_threshold)

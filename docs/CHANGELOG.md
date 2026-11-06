@@ -4,10 +4,20 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.5.3
+## Unreleased — 0.5.4
+
+- Add read-only `agent-statusline config show` to inspect resolved settings
+  and their sources. It reports invalid-file fallback and redacts warning text.
+
+## 0.5.3
 
 - Add read-only `agent-statusline config fields [ROW]` to list supported
   field IDs and their meanings for all rows or one row.
+
+[PR #46](https://github.com/nachiketbhujbal/agent-statusline/pull/46) and exact
+merged main passed the required Linux/macOS checks. The
+[GitHub Release](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.3)
+artifacts and isolated Python 3.11 installation were verified.
 
 ## 0.5.2
 

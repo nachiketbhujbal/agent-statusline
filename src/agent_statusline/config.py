@@ -121,13 +121,19 @@ def _table(value, name, keys):
 
 
 def _validate(doc) -> Config:
-    _table(doc, "configuration", {"schema_version", "context_guard", "session_metrics", "display"})
+    _table(
+        doc,
+        "configuration",
+        {"schema_version", "context_guard", "session_metrics", "display"},
+    )
     version = doc.get("schema_version")
     if type(version) is not int or version != 1:
         raise InvalidConfig("schema_version: expected integer 1")
 
     guard = _table(
-        doc.get("context_guard", {}), "context_guard", {"warn_pct", "warn_event", "warn_message"}
+        doc.get("context_guard", {}),
+        "context_guard",
+        {"warn_pct", "warn_event", "warn_message"},
     )
     pct = guard.get("warn_pct", DEFAULTS.warn_pct)
     if type(pct) not in (int, float) or not 1 <= pct <= 100:
@@ -176,8 +182,8 @@ def _validate(doc) -> Config:
     )
 
 
-def read_config(path: Path) -> Config | None:
-    """Return validated settings, or None when the file is absent."""
+def _read_document(path: Path) -> dict | None:
+    """Read a bounded, regular TOML file, or return None when absent."""
     try:
         # Refuse non-regular files without waiting on a FIFO.
         fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
@@ -199,10 +205,15 @@ def read_config(path: Path) -> Config | None:
     import tomllib
 
     try:
-        doc = tomllib.loads(data.decode("utf-8"))
+        return tomllib.loads(data.decode("utf-8"))
     except (ValueError, RecursionError):
         raise InvalidConfig("invalid UTF-8 or TOML syntax") from None
-    return _validate(doc)
+
+
+def read_config(path: Path) -> Config | None:
+    """Return validated settings, or None when the file is absent."""
+    doc = _read_document(path)
+    return None if doc is None else _validate(doc)
 
 
 def load_config(environ=None) -> Config:
@@ -227,14 +238,89 @@ def _list_fields(row_ids):
     return 0
 
 
+def _show_config():
+    from agent_statusline import session_metrics
+    from agent_statusline.hooks import context_guard
+
+    try:
+        doc = _read_document(config_path())
+        settings = DEFAULTS if doc is None else _validate(doc)
+    except (InvalidConfig, RuntimeError):
+        print("configuration: invalid or unreadable file. Using defaults and environment")
+        doc = None
+        settings = DEFAULTS
+    else:
+        print("configuration: no file" if doc is None else "configuration: TOML loaded")
+    doc = doc or {}
+
+    def show(section, key, value, table, env=None):
+        if env is not None and env in os.environ:
+            source = env
+        else:
+            source = "TOML" if key in table else "default"
+        print(f"{section}.{key} = {value} [{source}]")
+
+    guard, error = context_guard.configuration(os.environ, file_config=settings)
+    if error:
+        print(f"context_guard: disabled ({error})")
+    else:
+        guard_table = doc.get("context_guard", {})
+        show(
+            "context_guard",
+            "warn_pct",
+            guard["threshold"],
+            guard_table,
+            context_guard.THRESHOLD_ENV,
+        )
+        show(
+            "context_guard",
+            "warn_event",
+            guard["event"],
+            guard_table,
+            context_guard.EVENT_ENV,
+        )
+        message = "custom (redacted)" if guard["message"] is not None else "built-in"
+        show(
+            "context_guard",
+            "warn_message",
+            message,
+            guard_table,
+            context_guard.MESSAGE_ENV,
+        )
+
+    enabled = session_metrics.enabled(os.environ, file_default=settings.metrics_enabled)
+    show(
+        "session_metrics",
+        "enabled",
+        str(enabled).lower(),
+        doc.get("session_metrics", {}),
+        session_metrics.OPT_OUT_ENV,
+    )
+    display = doc.get("display", {})
+    show("display", "color", settings.color, display)
+    rows = display.get("rows", {})
+    fields = display.get("fields", {})
+    selections = dict(settings.fields)
+    for row in ROW_IDS:
+        visibility = "hide" if row in settings.hidden_rows else "show"
+        show("display.rows", row, visibility, rows)
+        selected = selections.get(row)
+        groups = (
+            "all"
+            if selected is None
+            else ", ".join(field for field in FIELD_CATALOG[row] if field in selected)
+        )
+        show("display.fields", row, groups, fields)
+    return 0
+
+
 def cli(argv):
+    if argv == ["show"]:
+        return _show_config()
     if argv[:1] == ["fields"]:
         return _list_fields(argv[1:])
     if argv != ["check"]:
-        print(
-            "usage: agent-statusline config check | agent-statusline config fields [ROW]",
-            file=sys.stderr,
-        )
+        print("usage: agent-statusline config {check,fields [ROW],show}", file=sys.stderr)
         return 2
     try:
         config = read_config(config_path())

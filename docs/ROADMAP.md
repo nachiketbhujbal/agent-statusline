@@ -43,8 +43,8 @@ installed-artifact evidence.
 | 0.5.0 | Package-owned TOML configuration and Python 3.11 minimum | **Released** |
 | 0.5.1 | Select existing field groups within each row | **Released** |
 | 0.5.2 | Fit the malformed-input fallback to narrow terminals | **Released** |
-| 0.5.3 | Discover valid field IDs with `config fields [ROW]` | **Current** |
-| 0.5.4 | Inspect effective settings and their sources with `config show` | Planned |
+| 0.5.3 | Discover valid field IDs with `config fields [ROW]` | **Released** |
+| 0.5.4 | Inspect effective settings and their sources with `config show` | **Current** |
 | 0.5.5 | Print starter TOML with `config example` | Planned |
 | 0.5.6 | Preview a synthetic session with `config preview --width 80` | Planned |
 
@@ -590,19 +590,20 @@ production PyPI verification passed.
 
 ## 0.5.x — display customization
 
-- **Field visibility:** Choose existing field groups without changing row
+- **Field visibility.** Choose existing field groups without changing row
   switches, field priority, collection, or accounting. See
   [ADR 0053](adrs/0053-select-existing-display-field-groups.md).
-- **Fallback width:** Fit the existing malformed-input stub to the terminal
-  in both styled and plain modes. This verified defect takes the next slot.
-- **Field discovery:** List all supported field IDs or the IDs for one row,
+- **Fallback width.** Fit the existing malformed-input stub to the terminal
+  in both styled and plain modes.
+- **Field discovery.** List all supported field IDs or the IDs for one row,
   with descriptions from the same catalog the validator uses. See
   [ADR 0054](adrs/0054-list-supported-display-field-ids.md).
-- **Effective configuration:** Show resolved settings and their sources.
-  Report invalid-file fallback and omit free-text values.
-- **Starter TOML:** Print a commented example that validates as printed
+- **Effective configuration.** Show resolved settings and their sources.
+  Report invalid-file fallback and omit free-text values. See
+  [ADR 0055](adrs/0055-show-effective-configuration.md).
+- **Starter TOML.** Print a commented example that validates as printed
   and preserves defaults when saved.
-- **Synthetic preview:** Render sample session data at the requested width
+- **Synthetic preview.** Render sample session data at the requested width
   using effective display settings and the regular renderer.
 
 Each patch has one purpose. A verified defect can take the next available

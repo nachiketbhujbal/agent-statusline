@@ -95,6 +95,7 @@ the status-line state directory.
 | `agent-statusline metrics <session-id>` | Print the documented local snapshot for one session |
 | `agent-statusline config check` | Validate the optional TOML file without rendering or changing state |
 | `agent-statusline config fields [ROW]` | List field IDs and descriptions for all rows or one row |
+| `agent-statusline config show` | Show effective settings and the source of each value |
 | `agent-statusline ledger show` | Inspect the local cost ledger |
 | `agent-statusline uninstall` | Remove only configuration owned by this installation |
 | `agent-statusline --version` | Print the installed version |
@@ -141,7 +142,9 @@ Field lists require v0.5.1 or later. The file also accepts `[context_guard]` wit
 and `warn_message`, and `[session_metrics]` with `enabled = false` to stop new
 snapshots. Existing environment overrides take precedence over file values.
 Run `agent-statusline config check` to validate the file. An invalid file is
-ignored as a whole during normal operation. See the
+ignored as a whole during normal operation. Run `agent-statusline config show`
+to see the effective settings, environment overrides, and whether fallback
+occurred. Custom warning text is redacted. See the
 [configuration contract](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/adrs/0052-add-opt-in-toml-configuration-at-v0-5.md).
 
 If the status line does not appear, run `agent-statusline selftest` first, then

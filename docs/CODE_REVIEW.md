@@ -5,10 +5,15 @@ once the regression that demonstrates it exists in this repository.
 
 | Release | Candidate scope | Evidence boundary |
 | --- | --- | --- |
-| 0.5.3 | Read-only field discovery using the validation catalog | Exact candidate review pending |
+| 0.5.4 | Effective configuration and source reporting | Exact candidate review pending |
+| 0.5.3 | Read-only field discovery using the validation catalog | Exact candidate `826342c058cb916ddbf6da6b088b79b8287356f9` passed independent review with no blockers |
 | 0.5.2 | Malformed-input fallback width in styled and plain output | Exact candidate `7cc277a7f07d909b8df3c9ba041a629f1e421c4c` passed independent review with no blockers |
 | 0.5.1 | Display-only selection of existing field groups | Exact candidate `24ed27673cffea09c77a9503991b0b193c023304` passed independent review with no blockers |
 | 0.5.0 | Optional TOML, display-only visibility, plain output and a Python 3.11 minimum | Exact candidate `0ceafa28683ebd2109c647952d4c47f926502284` passed independent review with no blockers |
+
+The v0.5.3 owner gate passed 785 tests with 90.74% coverage. Independent
+review passed 284 focused tests, verified that all 41 field IDs were unchanged,
+and confirmed that discovery does not read the configuration file.
 
 The v0.5.2 owner gate passed 780 tests with 90.69% coverage. Independent
 review passed 121 renderer tests and 60 baseline/candidate comparisons
