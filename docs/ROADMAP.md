@@ -41,11 +41,12 @@ installed-artifact evidence.
 | 0.4.4 | Native Linux and WSL memory pressure | **Released** |
 | 0.4.5 | Session-safe context fallback and compaction counting | **Released** |
 | 0.5.0 | Package-owned TOML configuration and Python 3.11 minimum | **Released** |
-| 0.5.1 | Select existing field groups within each row | **Current** |
-| 0.5.2 | Discover valid field IDs with `config fields [ROW]` | Planned |
-| 0.5.3 | Inspect effective settings and their sources with `config show` | Planned |
-| 0.5.4 | Print starter TOML with `config example` | Planned |
-| 0.5.5 | Preview a synthetic session with `config preview --width 80` | Planned |
+| 0.5.1 | Select existing field groups within each row | **Released** |
+| 0.5.2 | Fit the malformed-input fallback to narrow terminals | **Current** |
+| 0.5.3 | Discover valid field IDs with `config fields [ROW]` | Planned |
+| 0.5.4 | Inspect effective settings and their sources with `config show` | Planned |
+| 0.5.5 | Print starter TOML with `config example` | Planned |
+| 0.5.6 | Preview a synthetic session with `config preview --width 80` | Planned |
 
 0.2.1 through 0.2.14 and v0.3.0 through v0.5.0 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
@@ -592,6 +593,8 @@ production PyPI verification passed.
 - **Field visibility:** Choose existing field groups without changing row
   switches, field priority, collection, or accounting. See
   [ADR 0053](adrs/0053-select-existing-display-field-groups.md).
+- **Fallback width:** Fit the existing malformed-input stub to the terminal
+  in both styled and plain modes. This verified defect takes the next slot.
 - **Field discovery:** List all supported field IDs or the IDs for one row,
   with descriptions from the same catalog the validator uses.
 - **Effective configuration:** Show resolved settings and their sources.

@@ -379,6 +379,32 @@ class TestRobustness:
         statusline.main()
         assert "claude" in ANSI.sub("", capsys.readouterr().out)
 
+    @pytest.mark.parametrize(
+        "raw, color, columns, expected",
+        [
+            ("{", "default", 1, "…"),
+            ("[]", "default", 4, "cla…"),
+            ("{", "plain", 4, "cla…"),
+            ("[]", "plain", 6, "claude"),
+        ],
+    )
+    def test_fallback_fits_terminal(
+        self, monkeypatch, capsys, tmp_path, raw, color, columns, expected
+    ):
+        monkeypatch.setenv("COLUMNS", str(columns))
+        monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+        config = tmp_path / "agent-statusline/config.toml"
+        config.parent.mkdir()
+        config.write_text(f'schema_version = 1\n[display]\ncolor = "{color}"\n')
+        monkeypatch.setattr("sys.stdin", io.StringIO(raw))
+
+        statusline.main()
+
+        output = capsys.readouterr().out.rstrip("\n")
+        assert ANSI.sub("", output) == expected
+        assert render.vis(output) <= columns
+        assert ("\033" in output) == (color == "default")
+
     def test_malformed_input_does_not_create_a_failure_breadcrumb(self, monkeypatch, capsys):
         from agent_statusline import diagnostics
 

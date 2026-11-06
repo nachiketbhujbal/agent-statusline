@@ -4,11 +4,21 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.5.1
+## Unreleased — 0.5.2
+
+- Fit the malformed-input fallback to the terminal width in both styled and
+  plain modes.
+
+## 0.5.1
 
 - Add `[display.fields]` allowlists for the existing field groups in each row.
   Field selection keeps the existing render order and affects display only.
   A hidden row stays hidden, and omitted rows keep all their existing fields.
+
+[PR #44](https://github.com/nachiketbhujbal/agent-statusline/pull/44) and exact
+merged main passed the required Linux/macOS checks. The
+[GitHub Release](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.1)
+artifacts and isolated Python 3.11 installation were verified.
 
 ## 0.5.0
 

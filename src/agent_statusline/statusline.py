@@ -38,12 +38,14 @@ from agent_statusline.render import (
     D,
     R,
     bar,
+    clip,
     dur,
     gb,
     grade,
     plain,
     row,
     tok,
+    width,
 )
 from agent_statusline.storage import append_json_if_changed, write_text
 from agent_statusline.transcript import (
@@ -263,7 +265,6 @@ def limit_seg(label, node, window_h):
 def _render():
     config = load_config()
     all_hidden = len(config.hidden_rows) == len(ORDER)
-    fallback = "claude" if config.color == "plain" else f"{D}claude{R}"
     raw = sys.stdin.read()
     try:
         write_text(PAYLOAD, raw)
@@ -272,12 +273,11 @@ def _render():
     try:
         d = json.loads(raw)
     except Exception:
-        if not all_hidden:
-            print(fallback)
-        return
+        d = None
     if not isinstance(d, Mapping):
         if not all_hidden:
-            print(fallback)
+            fallback = clip(f"{D}claude{R}", width())
+            print(ANSI.sub("", fallback) if config.color == "plain" else fallback)
         return
     facts = claude_facts(d, transcript_totals, os.getcwd())
     identity = facts["identity"]
