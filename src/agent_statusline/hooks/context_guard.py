@@ -12,22 +12,22 @@ if __package__ in (None, ""):  # running as a plain script
     )
 
 from agent_statusline.coerce import finite_integer
+from agent_statusline.config import VALID_EVENTS, load_config
 from agent_statusline.paths import state
 from agent_statusline.session_metrics import read_snapshot
 from agent_statusline.storage import read_json, write_text
 
-DEFAULT_WARN = 80.0
 CRIT = 90.0
 THRESHOLD_ENV = "AGENT_STATUSLINE_CONTEXT_WARN_PCT"
 MESSAGE_ENV = "AGENT_STATUSLINE_CONTEXT_WARN_MESSAGE"
 EVENT_ENV = "AGENT_STATUSLINE_CONTEXT_WARN_EVENT"
-VALID_EVENTS = {"stop", "submit", "both"}
 
 
 def configuration(environ=None):
     """Return validated context-guard settings and an optional error."""
     source = os.environ if environ is None else environ
-    raw_threshold = source.get(THRESHOLD_ENV, str(DEFAULT_WARN))
+    file_config = load_config(source)
+    raw_threshold = source.get(THRESHOLD_ENV, str(file_config.warn_pct))
     try:
         threshold = float(raw_threshold)
     except (TypeError, ValueError):
@@ -35,11 +35,11 @@ def configuration(environ=None):
     if not math.isfinite(threshold) or not 1 <= threshold <= 100:
         return None, f"{THRESHOLD_ENV} must be a number from 1 through 100"
 
-    event = str(source.get(EVENT_ENV, "stop")).strip().lower()
+    event = str(source.get(EVENT_ENV, file_config.warn_event)).strip().lower()
     if event not in VALID_EVENTS:
         return None, f"{EVENT_ENV} must be stop, submit, or both"
 
-    message = source.get(MESSAGE_ENV)
+    message = source.get(MESSAGE_ENV, file_config.warn_message)
     if message is not None:
         message = str(message)
         if not message.strip() or "{pct}" not in message:

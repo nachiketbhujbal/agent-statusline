@@ -7,13 +7,13 @@ retaining the distinction between fractional measurements and counts.
 """
 
 import math
-from typing import Any, Union
+from typing import Any
 
 # Values beyond this boundary cannot produce useful status-line output.  It is
 # comfortably above realistic token/byte/count values while bounding formatting
 # work and avoiding a lossy conversion of arbitrary-size integers to float.
 MAX_DISPLAY_VALUE = 10**15
-Number = Union[int, float]
+Number = int | float
 
 
 def _valid_default(default: Number) -> Number:

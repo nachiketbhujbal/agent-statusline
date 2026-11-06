@@ -8,7 +8,6 @@ import subprocess
 import sys
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Optional
 
 REQUIRED_PRIVATE_IGNORES = ("/.claude/", "/.pvt/", "/.worktrees/")
 ACTION_RE = re.compile(r"^\s*-\s+uses:\s+([^#\s]+)(?:\s+#\s*(.+?))?\s*$", re.MULTILINE)
@@ -74,7 +73,7 @@ def check_workflows(root: Path) -> list[str]:
     return errors
 
 
-def _yaml_block(text: str, header: str, indent: int) -> Optional[str]:
+def _yaml_block(text: str, header: str, indent: int) -> str | None:
     """Return one exact indentation-delimited YAML block without parsing YAML."""
     lines = text.splitlines()
     wanted = " " * indent + header
@@ -91,7 +90,7 @@ def _yaml_block(text: str, header: str, indent: int) -> Optional[str]:
     return "\n".join(lines[start:end])
 
 
-def _yaml_step_with_id(text: str, step_id: str) -> Optional[str]:
+def _yaml_step_with_id(text: str, step_id: str) -> str | None:
     lines = text.splitlines()
     starts = [index for index, line in enumerate(lines) if line.startswith("      - ")]
     matches = []
@@ -108,7 +107,7 @@ def _yaml_step_with_id(text: str, step_id: str) -> Optional[str]:
     return matches[0] if len(matches) == 1 else None
 
 
-def _yaml_step_with_action(text: str, action: str) -> Optional[str]:
+def _yaml_step_with_action(text: str, action: str) -> str | None:
     """Return the unique workflow step invoking one exact action."""
     lines = text.splitlines()
     starts = [index for index, line in enumerate(lines) if line.startswith("      - ")]
@@ -130,7 +129,7 @@ def _yaml_step_with_action(text: str, action: str) -> Optional[str]:
     return matches[0] if len(matches) == 1 else None
 
 
-def _canonical_yaml_direct_entries(text: str, indent: int) -> Optional[list[tuple[str, str]]]:
+def _canonical_yaml_direct_entries(text: str, indent: int) -> list[tuple[str, str]] | None:
     """Return canonical direct mapping entries, or None for ambiguous syntax."""
     padding = " " * indent
     entries = []
@@ -342,7 +341,7 @@ def check_package_publish_pipeline(workflow: str, *, index: str) -> list[str]:
                 "repository-url": "https://test.pypi.org/legacy/",
             },
             "prepare_sha256": "370b854a656c05caccb8f0938a16d206f2d87a08851fe37b804f3322d3b224c8",
-            "verify_sha256": "441f514e889f635572002eab0a8d0dc64b2ed1c086f34d5beda9fc332cb04d96",
+            "verify_sha256": "6765d9c9ca9232a1adf7ec111e1ad3c2618d99e8a88f67dca7a04c07ebe7b163",
         },
         "pypi": {
             "name": "Publish to PyPI",
@@ -354,7 +353,7 @@ def check_package_publish_pipeline(workflow: str, *, index: str) -> list[str]:
             "state": "agent-statusline-pypi-state",
             "publish_inputs": {"packages-dir": "release-dist/"},
             "prepare_sha256": "e130d9658be8ec7269327f2afe75dd698691f0fe45a9396075bc82844ef005bb",
-            "verify_sha256": "caf6f9cf713d6911955b4b0df450759e95acfd3e12c448c9c9b3a1a592323e7f",
+            "verify_sha256": "7be8c02dce8b08c147eb38a8bdc0ca62fe93901c01131e2963c1b8376637b56f",
         },
     }
     if index not in settings:
@@ -610,7 +609,7 @@ def check_package_publish_pipeline(workflow: str, *, index: str) -> list[str]:
     required_verify = (
         "actions/checkout@",
         "actions/setup-python@",
-        'python-version: "3.9"',
+        'python-version: "3.11"',
         "persist-credentials: false",
         "VERSION: ${{ needs.prepare.outputs.version }}",
         "WHEEL_NAME: ${{ needs.prepare.outputs.wheel_name }}",

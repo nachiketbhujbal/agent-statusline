@@ -3,6 +3,10 @@
 Findings proven on the release branch that fixes them. A row is recorded only
 once the regression that demonstrates it exists in this repository.
 
+| Release | Candidate scope | Evidence boundary |
+| --- | --- | --- |
+| 0.5.0 | Optional TOML, display-only visibility, plain output and a Python 3.11 minimum | Synthetic config validation, compatibility and isolated renderer/installer checks; exact-SHA review recorded separately |
+
 v0.4.4 exact candidate `79335ec1360808ff69b6c1292b52a3cae659a6ad`
 received an independent no-findings review against v0.4.3 after the complete
 local gate. PR #37 and merged-main CI passed before annotated tag v0.4.4;

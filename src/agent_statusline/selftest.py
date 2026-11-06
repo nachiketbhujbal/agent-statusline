@@ -34,7 +34,7 @@ def _write_transcript(path, workspace, now):
         },
         {
             "type": "assistant",
-            "timestamp": datetime.datetime.fromtimestamp(now, datetime.timezone.utc).isoformat(),
+            "timestamp": datetime.datetime.fromtimestamp(now, datetime.UTC).isoformat(),
             "message": {
                 "model": "claude-opus-synthetic",
                 "content": [
@@ -216,8 +216,10 @@ def run():
             if not key.startswith("COV_CORE_") and key != "COVERAGE_PROCESS_START"
         }
         env["HOME"] = home_dir
+        env["XDG_CONFIG_HOME"] = os.path.join(home_dir, ".config")
         env["CLAUDE_CONFIG_DIR"] = os.path.join(home_dir, ".claude")
         env["AGENT_STATUSLINE_STATE"] = state_dir
+        env["AGENT_STATUSLINE_SESSION_METRICS"] = "1"
         env["COLUMNS"] = "240"
         env["PYTHONPATH"] = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
         try:

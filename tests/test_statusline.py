@@ -34,6 +34,60 @@ def labels(lines):
     ]
 
 
+@pytest.mark.parametrize("columns", [28, 240])
+def test_plain_output_keeps_order_and_fits_width(payload, monkeypatch, capsys, tmp_path, columns):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    path = tmp_path / "agent-statusline/config.toml"
+    path.parent.mkdir()
+    styled = draw(payload, monkeypatch, capsys, cols=columns)
+    path.write_text(
+        'schema_version = 1\n[display]\ncolor = "plain"\n[display.rows]\nCOST = "hide"\n'
+    )
+    plain = draw(payload, monkeypatch, capsys, cols=columns)
+    assert labels(plain) == [label for label in labels(styled) if label != "COST"]
+    assert all("\033" not in line and render.vis(line) <= columns for line in plain)
+
+
+def test_all_hidden_still_records_cost_and_snapshot(payload, monkeypatch, capsys, tmp_path):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    monkeypatch.delenv(statusline.session_metrics.OPT_OUT_ENV, raising=False)
+    monkeypatch.setattr(statusline.ledger, "LEDGER", tmp_path / "isolated-ledger.json")
+    monkeypatch.setattr(statusline.session_metrics, "state", lambda name: tmp_path / name)
+    path = tmp_path / "agent-statusline/config.toml"
+    path.parent.mkdir()
+    path.write_text(
+        "schema_version = 1\n[display.rows]\n"
+        + "".join(f'{label} = "hide"\n' for label in statusline.ORDER)
+    )
+    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(payload)))
+    statusline.main()
+    assert capsys.readouterr().out == ""
+    sid = payload["session_id"]
+    assert statusline.ledger.load()["sessions"][sid]["cost"] == 1.25
+    assert statusline.session_metrics.read_snapshot(sid)["cost_usd"] == 1.25
+
+
+def test_render_metrics_config_opt_out_retains_existing_snapshot(
+    payload, monkeypatch, capsys, tmp_path
+):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    monkeypatch.delenv(statusline.session_metrics.OPT_OUT_ENV, raising=False)
+    monkeypatch.setattr(statusline.session_metrics, "state", lambda name: tmp_path / name)
+    sid = payload["session_id"]
+    draw(payload, monkeypatch, capsys)
+    before = statusline.session_metrics.read_snapshot(sid)
+    assert before is not None
+    path = tmp_path / "agent-statusline/config.toml"
+    path.parent.mkdir()
+    path.write_text("schema_version = 1\n[session_metrics]\nenabled = false\n")
+    payload["session_name"] = "next"
+    draw(payload, monkeypatch, capsys)
+    assert statusline.session_metrics.read_snapshot(sid) == before
+    monkeypatch.setenv(statusline.session_metrics.OPT_OUT_ENV, "1")
+    draw(payload, monkeypatch, capsys)
+    assert statusline.session_metrics.read_snapshot(sid)["session_title"] == "next"
+
+
 class TestRowOrder:
     def test_committed_fixture_exercises_exact_transcript_backed_contract(
         self, payload, monkeypatch, capsys

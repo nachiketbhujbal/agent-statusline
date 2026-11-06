@@ -7,7 +7,6 @@ import re
 import time
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Optional
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 PAYLOAD_TEMPLATE = FIXTURE_DIR / "statusline-payload.json"
@@ -22,7 +21,7 @@ TRANSCRIPT_EVIDENCE = {
 
 
 def _timestamp(now: float) -> str:
-    return datetime.datetime.fromtimestamp(now, datetime.timezone.utc).isoformat()
+    return datetime.datetime.fromtimestamp(now, datetime.UTC).isoformat()
 
 
 def _workspace_path(value: object, workspace: Path) -> Path:
@@ -35,7 +34,7 @@ def _workspace_path(value: object, workspace: Path) -> Path:
     return workspace / relative
 
 
-def materialize_payload(workspace: Path, now: Optional[float] = None) -> dict:
+def materialize_payload(workspace: Path, now: float | None = None) -> dict:
     """Resolve host-dependent template paths and clocks into ``workspace``."""
     current = time.time() if now is None else now
     workspace = workspace.resolve()

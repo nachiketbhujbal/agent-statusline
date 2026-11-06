@@ -17,6 +17,7 @@ USAGE = """agent-statusline -- a dense, width-aware status line for coding agent
                                        timestamp-user, timestamp-stop)
   agent-statusline ledger [...]        inspect or close cost-ledger rows
   agent-statusline metrics <session>   print one documented local session snapshot
+  agent-statusline config check        validate the optional TOML configuration
   agent-statusline selftest            verify rendering using isolated synthetic state
   agent-statusline version             print the version
 """
@@ -83,6 +84,11 @@ def main(argv=None):
         from agent_statusline import session_metrics
 
         return session_metrics.cli(rest)
+
+    if cmd == "config":
+        from agent_statusline import config
+
+        return config.cli(rest)
 
     if cmd == "selftest":
         if rest:

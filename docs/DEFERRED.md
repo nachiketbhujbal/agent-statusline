@@ -35,9 +35,11 @@ visible, and must never be presented as a credit balance.
   `Edit`, `Write`, `NotebookEdit` and `Read` register, so a session that changed
   plenty can read `0 files edited`.
 
-## Package-owned configuration and display customization
+## Further display customization
 
-A versioned configuration file, its location, override precedence, validation,
-and any display profiles need a separate design and release slice. The v0.4.5
-session-isolation patch retains the existing environment settings and approved
-ten-row display. No configuration-file format or path is committed yet.
+Field visibility is a possible follow-up to the
+[planned 0.5.0 configuration slice](ROADMAP.md#050--package-owned-toml-configuration).
+[ADR 0052](adrs/0052-add-opt-in-toml-configuration-at-v0-5.md) sketches a
+separate field allowlist that preserves row switches. A stable field inventory
+and explicit approval are still needed. Profiles, themes and layout
+reordering have no committed release.

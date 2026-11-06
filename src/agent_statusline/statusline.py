@@ -23,8 +23,10 @@ from agent_statusline import ledger, session_metrics
 from agent_statusline import probes as pr
 from agent_statusline.acquisition import claude_facts
 from agent_statusline.coerce import finite_integer, finite_number
+from agent_statusline.config import ROW_IDS, load_config
 from agent_statusline.paths import state
 from agent_statusline.render import (
+    ANSI,
     BLU,
     CYN,
     GRN,
@@ -79,18 +81,7 @@ MODES = {
 # Top-to-bottom row order. Rows are built into a dict keyed by these names and
 # emitted in this sequence, so reordering is a one-line change here rather than
 # a reshuffle of main(). Rows with nothing to say are simply absent.
-ORDER = [
-    "PROJECT",
-    "MODEL",
-    "CONTEXT",
-    "USAGE",
-    "COST",
-    "SYSTEM",
-    "TOOLS",
-    "CACHE",
-    "TOKENS",
-    "TIMING",
-]
+ORDER = list(ROW_IDS)
 
 
 def ledger_update(
@@ -270,6 +261,9 @@ def limit_seg(label, node, window_h):
 
 
 def _render():
+    config = load_config()
+    all_hidden = len(config.hidden_rows) == len(ORDER)
+    fallback = "claude" if config.color == "plain" else f"{D}claude{R}"
     raw = sys.stdin.read()
     try:
         write_text(PAYLOAD, raw)
@@ -278,10 +272,12 @@ def _render():
     try:
         d = json.loads(raw)
     except Exception:
-        print(f"{D}claude{R}")
+        if not all_hidden:
+            print(fallback)
         return
     if not isinstance(d, Mapping):
-        print(f"{D}claude{R}")
+        if not all_hidden:
+            print(fallback)
         return
     facts = claude_facts(d, transcript_totals, os.getcwd())
     identity = facts["identity"]
@@ -600,7 +596,8 @@ def _render():
         duration=wall if 0 < wall <= time.time() else None,
     )
     try:
-        session_metrics.write_snapshot(facts, agg)
+        if session_metrics.enabled(file_default=config.metrics_enabled):
+            session_metrics.write_snapshot(facts, agg)
     except Exception:
         pass
     p8 = []
@@ -654,7 +651,10 @@ def _render():
             p8.append(f"{D}credits on{R}")
     rows["COST"] = row("COST", p8)
 
-    print("\n".join(rows[k] for k in ORDER if rows.get(k)))
+    if all_hidden:
+        return
+    output = "\n".join(rows[k] for k in ORDER if k not in config.hidden_rows and rows.get(k))
+    print(ANSI.sub("", output) if config.color == "plain" else output)
 
 
 def main():

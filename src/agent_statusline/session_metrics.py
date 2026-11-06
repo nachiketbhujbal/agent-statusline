@@ -21,10 +21,10 @@ FILE_SUFFIX = ".json"
 OPT_OUT_ENV = "AGENT_STATUSLINE_SESSION_METRICS"
 
 
-def enabled(environ=None):
+def enabled(environ=None, *, file_default=True):
     """Return whether render-time snapshot publication is enabled."""
     source = os.environ if environ is None else environ
-    return str(source.get(OPT_OUT_ENV, "1")).strip().lower() not in {
+    return str(source.get(OPT_OUT_ENV, "1" if file_default else "0")).strip().lower() not in {
         "0",
         "false",
         "no",

@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/nachiketbhujbal/agent-statusline/actions/workflows/ci.yml/badge.svg)](https://github.com/nachiketbhujbal/agent-statusline/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/agent-statusline.svg)](https://pypi.org/project/agent-statusline/)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/nachiketbhujbal/agent-statusline/blob/main/LICENSE)
 [![No dependencies](https://img.shields.io/badge/dependencies-none-brightgreen.svg)](https://github.com/nachiketbhujbal/agent-statusline/blob/main/pyproject.toml)
 
@@ -51,7 +51,7 @@ python -m pip install agent-statusline
 `pipx` isolates the command like `uv tool`; `pip` installs it into the active
 Python environment.
 
-Requirements: Python 3.9 or newer, Claude Code, and macOS or Linux. Git is
+Requirements: Python 3.11 or newer, Claude Code, and macOS or Linux. Git is
 optional and enriches the `PROJECT` row. The `SYSTEM` row reads native memory
 pressure from macOS or Linux; under WSL it reports the memory available to the
 Linux environment rather than the Windows host's full physical capacity.
@@ -93,6 +93,7 @@ the status-line state directory.
 | `agent-statusline install --dry-run` | Preview installation without writing anything |
 | `agent-statusline selftest` | Render all ten rows from isolated synthetic data |
 | `agent-statusline metrics <session-id>` | Print the documented local snapshot for one session |
+| `agent-statusline config check` | Validate the optional TOML file without rendering or changing state |
 | `agent-statusline ledger show` | Inspect the local cost ledger |
 | `agent-statusline uninstall` | Remove only configuration owned by this installation |
 | `agent-statusline --version` | Print the installed version |
@@ -110,6 +111,31 @@ Run `agent-statusline selftest` after changing these values. Stop warnings are
 user-visible only; `submit` and `both` allow the configured advice to enter the
 next model turn.
 
+## Configure the view
+
+Create `~/.config/agent-statusline/config.toml` (or use the same relative path
+under an absolute `XDG_CONFIG_HOME`). The file is optional. For example:
+
+```toml
+schema_version = 1
+
+[display]
+color = "plain"
+
+[display.rows]
+CACHE = "hide"
+```
+
+Rows accept `"show"` or `"hide"`. Omitted rows keep their default visibility
+and visible rows keep their original order. Hiding a row does not stop data
+collection or cost accounting. Omit `color` or use `"default"` for styled
+output. The file also accepts `[context_guard]` with `warn_pct`, `warn_event`,
+and `warn_message`, and `[session_metrics]` with `enabled = false` to stop new
+snapshots. Existing environment overrides take precedence over file values.
+Run `agent-statusline config check` to validate the file. An invalid file is
+ignored as a whole during normal operation. See the
+[configuration contract](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/adrs/0052-add-opt-in-toml-configuration-at-v0-5.md).
+
 If the status line does not appear, run `agent-statusline selftest` first, then
 restart Claude Code. Unexpected renderer failures leave only their time and
 exception type in `~/.claude/statusline-last-error.json`.
@@ -123,6 +149,11 @@ agent-statusline install
 
 Re-running `install` refreshes the managed Claude Code wiring while preserving
 unrelated configuration.
+
+If your 0.4.x tool uses Python 3.9 or 3.10, install 0.5.0 using Python 3.11
+or later (for example, `uv tool install --python 3.11 --force agent-statusline`)
+before refreshing the managed hooks. Stay on 0.4.x if you need the older
+Python versions.
 
 ```bash
 agent-statusline uninstall

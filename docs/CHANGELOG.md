@@ -4,6 +4,16 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
+## Unreleased — 0.5.0
+
+- Add an optional schema-versioned TOML file for context warnings, session
+  metrics, plain output and display-only row visibility. Existing defaults
+  and environment overrides are preserved. Field controls remain deferred.
+- Add read-only `agent-statusline config check`. Normal rendering and hooks
+  ignore an invalid file and keep existing environment behavior.
+- Require Python 3.11+ for the standard-library TOML reader. Runtime
+  dependencies remain empty. The 0.4.x line retains Python 3.9 support.
+
 ## 0.4.5
 
 Context warnings no longer borrow another session's context-window size when

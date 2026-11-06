@@ -15,6 +15,8 @@ import tempfile
 _HOME = tempfile.mkdtemp(prefix="agent-statusline-home-")
 _STATE = tempfile.mkdtemp(prefix="agent-statusline-tests-")
 os.environ["HOME"] = _HOME
+os.environ["XDG_CONFIG_HOME"] = os.path.join(_HOME, ".config")
+os.environ["CLAUDE_CONFIG_DIR"] = os.path.join(_HOME, ".claude")
 os.environ["AGENT_STATUSLINE_STATE"] = _STATE
 
 import pytest  # noqa: E402
