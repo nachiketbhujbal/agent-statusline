@@ -6,10 +6,10 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.5.0, package-owned TOML configuration.
-- Preceding release: v0.4.5, session-safe context fallback and compaction counting.
-- Branch owner: none; v0.5.0 release ownership is complete.
-- Reviewer role: none active; implementation review is complete.
+- Current release target: 0.5.1, display-only field visibility.
+- Preceding release: v0.5.0, package-owned TOML configuration.
+- Branch owner: Codex, on `codex/feat/v0.5.1-field-visibility`.
+- Reviewer role: exact implementation candidate review pending.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
   complete-ancestry audit. Documentation-only refs skip both hosted test lanes;
@@ -81,8 +81,9 @@ v0.5.0 implements optional TOML, plain output, display-only
 row switches and read-only configuration validation, with a Python 3.11
 minimum and no runtime dependencies. See [ADR 0052](docs/adrs/0052-add-opt-in-toml-configuration-at-v0-5.md)
 and the [roadmap](docs/ROADMAP.md#050--package-owned-toml-configuration).
-The 0.4.x line retains Python 3.9 support. No successor release is selected;
-field controls remain deferred. The iMac still runs v0.4.5.
+The 0.4.x line retains Python 3.9 support. v0.5.1 adds selection of existing
+field groups. See [ADR 0053](docs/adrs/0053-select-existing-display-field-groups.md)
+and the [remaining slices](docs/ROADMAP.md#05x--display-customization).
 
 Exact candidate `0ceafa28683ebd2109c647952d4c47f926502284` passed
 independent review with no blockers against the v0.4.5 main closeout

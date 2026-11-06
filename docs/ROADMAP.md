@@ -41,6 +41,11 @@ installed-artifact evidence.
 | 0.4.4 | Native Linux and WSL memory pressure | **Released** |
 | 0.4.5 | Session-safe context fallback and compaction counting | **Released** |
 | 0.5.0 | Package-owned TOML configuration and Python 3.11 minimum | **Released** |
+| 0.5.1 | Select existing field groups within each row | **Current** |
+| 0.5.2 | Discover valid field IDs with `config fields [ROW]` | Planned |
+| 0.5.3 | Inspect effective settings and their sources with `config show` | Planned |
+| 0.5.4 | Print starter TOML with `config example` | Planned |
+| 0.5.5 | Preview a synthetic session with `config preview --width 80` | Planned |
 
 0.2.1 through 0.2.14 and v0.3.0 through v0.5.0 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
@@ -580,4 +585,27 @@ defines the contract and acceptance evidence.
   Leave field selection for a later additive slice with no version assigned.
 
 PR #42, exact merged-main CI, annotated tag, GitHub Release, TestPyPI and
-production PyPI verification passed. No successor release is selected.
+production PyPI verification passed.
+
+## 0.5.x — display customization
+
+- **Field visibility:** Choose existing field groups without changing row
+  switches, field priority, collection, or accounting. See
+  [ADR 0053](adrs/0053-select-existing-display-field-groups.md).
+- **Field discovery:** List all supported field IDs or the IDs for one row,
+  with descriptions from the same catalog the validator uses.
+- **Effective configuration:** Show resolved settings and their sources.
+  Report invalid-file fallback and omit free-text values.
+- **Starter TOML:** Print a commented example that validates as printed
+  and preserves defaults when saved.
+- **Synthetic preview:** Render sample session data at the requested width
+  using effective display settings and the regular renderer.
+
+Each patch has one purpose. A verified defect can take the next available
+patch number at any point in the series. Shift the remaining planned features
+forward in order and retain the already released versions.
+
+Use the verified GitHub Release on `main` as the baseline for the next
+patch. Record TestPyPI and PyPI promotion separately until each is verified.
+The two maintainer approvals and the requirement to verify TestPyPI before
+production still apply. See [ADR 0045](adrs/0045-promote-github-releases-through-separate-package-index-workflows.md).
