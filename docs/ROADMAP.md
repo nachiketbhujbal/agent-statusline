@@ -44,8 +44,8 @@ installed-artifact evidence.
 | 0.5.1 | Select existing field groups within each row | **Released** |
 | 0.5.2 | Fit the malformed-input fallback to narrow terminals | **Released** |
 | 0.5.3 | Discover valid field IDs with `config fields [ROW]` | **Released** |
-| 0.5.4 | Inspect effective settings and their sources with `config show` | **Current** |
-| 0.5.5 | Print starter TOML with `config example` | Planned |
+| 0.5.4 | Inspect effective settings and their sources with `config show` | **Released** |
+| 0.5.5 | Print starter TOML with `config example` | **Current** |
 | 0.5.6 | Preview a synthetic session with `config preview --width 80` | Planned |
 
 0.2.1 through 0.2.14 and v0.3.0 through v0.5.0 are tagged and released. The
@@ -602,7 +602,8 @@ production PyPI verification passed.
   Report invalid-file fallback and omit free-text values. See
   [ADR 0055](adrs/0055-show-effective-configuration.md).
 - **Starter TOML.** Print a commented example that validates as printed
-  and preserves defaults when saved.
+  and preserves defaults when saved. See
+  [ADR 0056](adrs/0056-print-starter-toml.md).
 - **Synthetic preview.** Render sample session data at the requested width
   using effective display settings and the regular renderer.
 

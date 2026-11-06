@@ -248,3 +248,23 @@ def test_config_show_reports_no_file_and_redacts_environment_message(
     assert "context_guard.warn_pct = 80.0 [default]" in output
     assert f"context_guard.warn_message = custom (redacted) [{context_guard.MESSAGE_ENV}]" in output
     assert "secret" not in output
+
+
+def test_config_example_is_read_only_and_validates_with_defaults(
+    config_file, tmp_path, monkeypatch, capsys
+):
+    state = tmp_path / "state"
+    claude = tmp_path / "claude"
+    monkeypatch.setenv("AGENT_STATUSLINE_STATE", str(state))
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(claude))
+    config_file.write_bytes(b"malformed TOML")
+    assert main(["config", "example"]) == 0
+    output = capsys.readouterr()
+    assert not output.err
+    assert "schema_version = 1" in output.out
+    assert '# CACHE = "hide"' in output.out
+    assert config_file.read_bytes() == b"malformed TOML"
+    assert not state.exists() and not claude.exists()
+    config_file.write_text(output.out)
+    assert main(["config", "check"]) == 0
+    assert config.read_config(config_file) == config.DEFAULTS
