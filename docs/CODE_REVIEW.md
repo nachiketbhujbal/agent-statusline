@@ -5,8 +5,17 @@ once the regression that demonstrates it exists in this repository.
 
 | Release | Candidate scope | Evidence boundary |
 | --- | --- | --- |
-| 0.5.1 | Display-only selection of existing field groups | Exact candidate review pending |
+| 0.5.2 | Malformed-input fallback width in styled and plain output | Exact candidate review pending |
+| 0.5.1 | Display-only selection of existing field groups | Exact candidate `24ed27673cffea09c77a9503991b0b193c023304` passed independent review with no blockers |
 | 0.5.0 | Optional TOML, display-only visibility, plain output and a Python 3.11 minimum | Exact candidate `0ceafa28683ebd2109c647952d4c47f926502284` passed independent review with no blockers |
+
+The v0.5.1 owner and reviewer passed 776 tests with 90.42% and 90.39%
+coverage. Independent tests selected each of the 41 groups and matched
+v0.5.0 defaults byte-for-byte at 1, 28 and 240 columns. The owner verified
+that the disposable v0.5.0 upgrade preserved ledger and settings bytes.
+PR #44, merged-main CI and the GitHub Release passed. Review also reproduced
+the existing malformed-input fallback overflow, addressed separately in
+v0.5.2.
 
 The v0.5.0 owner and reviewer passed 763 tests with 90.33% and 90.29%
 subprocess-aware coverage respectively, locked checks, artifact builds,

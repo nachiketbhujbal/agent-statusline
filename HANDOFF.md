@@ -6,9 +6,9 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.5.1, display-only field visibility.
-- Preceding release: v0.5.0, package-owned TOML configuration.
-- Branch owner: Codex, on `codex/feat/v0.5.1-field-visibility`.
+- Current release target: 0.5.2, malformed-input fallback width.
+- Preceding release: v0.5.1, display-only field visibility.
+- Branch owner: Codex, on `codex/fix/v0.5.2-fallback-width`.
 - Reviewer role: exact implementation candidate review pending.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
@@ -76,6 +76,17 @@ The complete sequence and exclusions are authoritative in
 a whole or import a later slice into the current release.
 
 ## Resume point
+
+v0.5.1 is tagged on verified merge `1bf785270cfc4cb419c8e781fc37e7851ef62ec0`.
+PR #44, main CI run 42304002628 and GitHub Release run 42304141003 passed.
+The exact artifacts matched the GitHub digests and the Python 3.11 install,
+self-test and configuration check passed. The
+[TestPyPI promotion](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42304308635)
+is pending. Production promotion follows its verification. The iMac
+installation and live state were outside the release tests.
+
+v0.5.2 handles a reproduced width violation in the malformed-input fallback.
+The remaining feature slots moved forward by one.
 
 v0.5.0 implements optional TOML, plain output, display-only
 row switches and read-only configuration validation, with a Python 3.11
