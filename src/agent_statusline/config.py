@@ -337,6 +337,10 @@ schema_version = 1
 
 
 def cli(argv):
+    if argv[:1] == ["preview"]:
+        from agent_statusline import preview
+
+        return preview.cli(argv[1:])
     if argv == ["example"]:
         print(EXAMPLE, end="")
         return 0
@@ -345,7 +349,10 @@ def cli(argv):
     if argv[:1] == ["fields"]:
         return _list_fields(argv[1:])
     if argv != ["check"]:
-        print("usage: agent-statusline config {check,fields [ROW],show,example}", file=sys.stderr)
+        print(
+            "usage: agent-statusline config {check,fields [ROW],show,example,preview}",
+            file=sys.stderr,
+        )
         return 2
     try:
         config = read_config(config_path())

@@ -45,8 +45,8 @@ installed-artifact evidence.
 | 0.5.2 | Fit the malformed-input fallback to narrow terminals | **Released** |
 | 0.5.3 | Discover valid field IDs with `config fields [ROW]` | **Released** |
 | 0.5.4 | Inspect effective settings and their sources with `config show` | **Released** |
-| 0.5.5 | Print starter TOML with `config example` | **Current** |
-| 0.5.6 | Preview a synthetic session with `config preview --width 80` | Planned |
+| 0.5.5 | Print starter TOML with `config example` | **Released** |
+| 0.5.6 | Preview a synthetic session with `config preview --width 80` | **Current** |
 
 0.2.1 through 0.2.14 and v0.3.0 through v0.5.0 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
@@ -605,7 +605,8 @@ production PyPI verification passed.
   and preserves defaults when saved. See
   [ADR 0056](adrs/0056-print-starter-toml.md).
 - **Synthetic preview.** Render sample session data at the requested width
-  using effective display settings and the regular renderer.
+  using effective display settings and the regular renderer. See
+  [ADR 0057](adrs/0057-preview-synthetic-status-line.md).
 
 Each patch has one purpose. A verified defect can take the next available
 patch number at any point in the series. Shift the remaining planned features

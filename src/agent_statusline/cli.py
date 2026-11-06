@@ -21,6 +21,7 @@ USAGE = """agent-statusline -- a dense, width-aware status line for coding agent
   agent-statusline config fields [ROW] list field IDs and descriptions
   agent-statusline config show         show effective settings and their sources
   agent-statusline config example      print commented starter TOML
+  agent-statusline config preview      preview a synthetic session [--width CELLS]
   agent-statusline selftest            verify rendering using isolated synthetic state
   agent-statusline version             print the version
 """

@@ -175,14 +175,14 @@ def pack(segs, sep, budget, maxlines=MAXLINES):
     return lines, False
 
 
-def row(label, segs, sep=None, maxlines=MAXLINES):
+def row(label, segs, sep=None, maxlines=MAXLINES, *, columns=None):
     """Render one labelled row, wrapping to `maxlines` before truncating.
 
     A row that fits on one line stays on one line -- wrapping only happens when
     the content genuinely does not fit the current terminal. Continuation lines
     are indented under the label so the row still reads as one block.
     """
-    total_width = max(0, width())
+    total_width = max(0, width() if columns is None else columns)
     if total_width == 0:
         return ""
     sep = sanitize(f" {D}│{R} ") if sep is None else plain(sep)
