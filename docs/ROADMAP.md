@@ -40,9 +40,9 @@ installed-artifact evidence.
 | 0.4.3 | Configurable context guard and Stop timing | **Released** |
 | 0.4.4 | Native Linux and WSL memory pressure | **Released** |
 | 0.4.5 | Session-safe context fallback and compaction counting | **Released** |
-| 0.5.0 | Package-owned TOML configuration and Python 3.11 minimum | **Current** |
+| 0.5.0 | Package-owned TOML configuration and Python 3.11 minimum | **Released** |
 
-0.2.1 through 0.2.14 and v0.3.0 through v0.4.5 are tagged and released. The
+0.2.1 through 0.2.14 and v0.3.0 through v0.5.0 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
 production-ready supported public baseline. Each boundary retains its exact
 review and artifact evidence; GitHub Release objects begin at v0.2.4. The
@@ -566,7 +566,7 @@ and review/privacy checks remain enforced; no successor release is invented.
 
 ## 0.5.0 — package-owned TOML configuration
 
-Implemented in the candidate branch; not released. [ADR 0052](adrs/0052-add-opt-in-toml-configuration-at-v0-5.md)
+Released. [ADR 0052](adrs/0052-add-opt-in-toml-configuration-at-v0-5.md)
 defines the contract and acceptance evidence.
 
 - Raise the minimum to Python 3.11 and use its TOML reader with no runtime
@@ -578,3 +578,6 @@ defines the contract and acceptance evidence.
   `config check`. Preserve default output, data collection and accounting.
 - Verify installation and behavior using disposable state and Claude settings.
   Leave field selection for a later additive slice with no version assigned.
+
+PR #42, exact merged-main CI, annotated tag, GitHub Release, TestPyPI and
+production PyPI verification passed. No successor release is selected.

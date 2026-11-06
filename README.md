@@ -155,6 +155,11 @@ or later (for example, `uv tool install --python 3.11 --force agent-statusline`)
 before refreshing the managed hooks. Stay on 0.4.x if you need the older
 Python versions.
 
+For a checkout-managed install, uninstall with the original checkout and
+Python executable before switching interpreters. Then reinstall from the
+updated checkout with Python 3.11+. This keeps the installer able to identify
+the settings it owns.
+
 ```bash
 agent-statusline uninstall
 uv tool uninstall agent-statusline

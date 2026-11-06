@@ -8,8 +8,8 @@ the roadmap, or accepted ADRs.
 
 - Current release target: 0.5.0, package-owned TOML configuration.
 - Preceding release: v0.4.5, session-safe context fallback and compaction counting.
-- Branch owner: codex, `codex/feat/v0.5.0-toml-config`.
-- Reviewer role: independent exact-SHA review of the implementation candidate.
+- Branch owner: none; v0.5.0 release ownership is complete.
+- Reviewer role: none active; implementation review is complete.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
   complete-ancestry audit. Documentation-only refs skip both hosted test lanes;
@@ -77,13 +77,35 @@ a whole or import a later slice into the current release.
 
 ## Resume point
 
-The 0.5.0 candidate implements optional TOML, plain output, display-only
+v0.5.0 implements optional TOML, plain output, display-only
 row switches and read-only configuration validation, with a Python 3.11
 minimum and no runtime dependencies. See [ADR 0052](docs/adrs/0052-add-opt-in-toml-configuration-at-v0-5.md)
 and the [roadmap](docs/ROADMAP.md#050--package-owned-toml-configuration).
-No tag or publication has been created. The 0.4.x line retains Python 3.9
-support; no configuration patch is planned on that line. The iMac stays on
-v0.4.5 while candidate checks run against disposable state and settings.
+The 0.4.x line retains Python 3.9 support. No successor release is selected;
+field controls remain deferred. The iMac still runs v0.4.5.
+
+Exact candidate `0ceafa28683ebd2109c647952d4c47f926502284` passed
+independent review with no blockers against the v0.4.5 main closeout
+`ef7a8975df2ff53ac0ba054fe4467d5770279d81`. Both local runs passed 763
+tests, locked checks, build and artifact verification. The exact candidate
+wheel passed a disposable upgrade from v0.4.5; synthetic ledger and Claude
+settings bytes were unchanged. The reviewer confirmed default output parity
+and plain output at 1, 28 and 240 columns. Checkout users switching interpreters
+must uninstall using the old checkout and interpreter first.
+
+PR #42 run 42295563193 and automatic main run 42295824665 passed Python
+3.11–3.13, macOS and the required aggregate. Annotated tag object
+`f5365c92e772163a46fed59ea0cb13c21dbecd6c` peels to
+`7b9597f3b20d86c4a9e504e0b9db1335ecbd04ed`, the verified release merge.
+GitHub Release run 42296084386 published the exact pair:
+
+- Wheel SHA-256: `ea86d6fa73c2bb461f60e8a02f84a0f19437c979dd62ed8a81b8583dd8b61cd1`
+- Source SHA-256: `add9085874b7b497f4e0878b5ba5daa1c13b67f84fcb86d58e7944508afc2343`
+
+TestPyPI run 42296245579 and production PyPI run 42296697147 passed after
+separate maintainer approvals, with exact public hashes and clean Python 3.11
+installs and self-tests. Direct production-index verification matched both
+hashes. No live ledger, Claude settings or installed tool was changed.
 
 v0.4.5 is tagged at merge `735ed343c1b4a965d7ef7d3d94f3ab56d5a9da28`.
 Exact implementation candidate `1f8605f400f0855423a5b8245d41ab65308917b2`

@@ -1,6 +1,6 @@
 # ADR 0052: Add opt-in TOML configuration at v0.5
 
-- Status: Accepted design; not implemented
+- Status: Accepted; implemented in v0.5.0
 
 ## Release boundary
 
