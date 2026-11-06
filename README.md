@@ -97,6 +97,7 @@ the status-line state directory.
 | `agent-statusline config fields [ROW]` | List field IDs and descriptions for all rows or one row |
 | `agent-statusline config show` | Show effective settings and the source of each value |
 | `agent-statusline config example` | Print a commented starter config that preserves defaults as written |
+| `agent-statusline config preview [--width CELLS]` | Preview a synthetic session with effective display settings |
 | `agent-statusline ledger show` | Inspect the local cost ledger |
 | `agent-statusline uninstall` | Remove only configuration owned by this installation |
 | `agent-statusline --version` | Print the installed version |
@@ -149,6 +150,11 @@ ignored as a whole during normal operation. Run `agent-statusline config show`
 to see the effective settings, environment overrides, and whether fallback
 occurred. Custom warning text is redacted. See the
 [configuration contract](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/adrs/0052-add-opt-in-toml-configuration-at-v0-5.md).
+
+Run `agent-statusline config preview --width 80` to try the configured view
+at 80 columns. Omit `--width` to use the detected terminal width. The sample
+includes every selectable field group and uses synthetic figures and session
+details throughout.
 
 If the status line does not appear, run `agent-statusline selftest` first, then
 restart Claude Code. Unexpected renderer failures leave only their time and

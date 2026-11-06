@@ -280,6 +280,67 @@ def _render():
             print(ANSI.sub("", fallback) if config.color == "plain" else fallback)
         return
     facts = claude_facts(d, transcript_totals, os.getcwd())
+    output = render_facts(
+        facts,
+        config,
+        find_git=_find_git,
+        probe=pr.probe,
+        record_limits=rl_log,
+        summarize_cost=_summarize_cost,
+    )
+    if output:
+        print(output)
+
+
+def _find_git(cwd):
+    # One cached probe covers branch, dirtiness, ahead/behind, worktree and stash.
+    gs = pr.probe(f"git:{cwd}", 3, lambda c=cwd: pr.git_state(c))
+    nested = False
+    git_cwd = cwd
+    if not gs:
+        # cwd is not a repo: if exactly one child directory is one, show its branch
+        # marked with an arrow so it cannot be mistaken for the current directory's.
+        try:
+            cands = [
+                e.path
+                for e in os.scandir(cwd)
+                if e.is_dir() and os.path.isdir(os.path.join(e.path, ".git"))
+            ]
+        except Exception:
+            cands = []
+        if len(cands) == 1:
+            gs = pr.probe(f"git:{cands[0]}", 3, lambda c=cands[0]: pr.git_state(c))
+            if gs:
+                git_cwd = cands[0]
+                nested = True
+    return gs, git_cwd, nested
+
+
+def _summarize_cost(facts, config, proj, procs, wall):
+    identity = facts["identity"]
+    usd = facts["money"].get("run_cost_usd")
+    t = facts["activity"]
+    session_id = identity.get("session_id", "?")
+    agg = ledger_update(
+        session_id,
+        usd,
+        proj,
+        identity.get("session_title"),
+        conversation_root(facts["transcript_path"]),
+        pid=procs.get("mine_pid"),
+        accrued_at=t.get("last_ts"),
+        duration=wall if 0 < wall <= time.time() else None,
+    )
+    try:
+        if session_metrics.enabled(file_default=config.metrics_enabled):
+            session_metrics.write_snapshot(facts, agg)
+    except Exception:
+        pass
+    return agg
+
+
+def render_facts(facts, config, *, find_git, probe, record_limits, summarize_cost, columns=None):
+    """Format one set of facts using live or synthetic evidence providers."""
     identity = facts["identity"]
     workspace = facts["workspace"]
     model_facts = facts["model"]
@@ -294,10 +355,11 @@ def _render():
             return ""
         selected = field_selections.get(label)
         return row(
-            label, [value for field, value in segments if selected is None or field in selected]
+            label,
+            [value for field, value in segments if selected is None or field in selected],
+            columns=columns,
         )
 
-    transcript_path = facts["transcript_path"]
     t = facts["activity"]
 
     # ---------- rows 1-2: project/git, then model + mode flags ----------
@@ -349,26 +411,7 @@ def _render():
     if extra:
         pj.append(("added_dirs", f"{D}+{len(extra)} dir{'s' if len(extra)!=1 else ''}{R}"))
 
-    # One cached probe covers branch, dirtiness, ahead/behind, worktree and stash.
-    gs = pr.probe(f"git:{cwd}", 3, lambda c=cwd: pr.git_state(c))
-    nested = False
-    git_cwd = cwd
-    if not gs:
-        # cwd is not a repo: if exactly one child directory is one, show its branch
-        # marked with an arrow so it cannot be mistaken for the current directory's.
-        try:
-            cands = [
-                e.path
-                for e in os.scandir(cwd)
-                if e.is_dir() and os.path.isdir(os.path.join(e.path, ".git"))
-            ]
-        except Exception:
-            cands = []
-        if len(cands) == 1:
-            gs = pr.probe(f"git:{cands[0]}", 3, lambda c=cands[0]: pr.git_state(c))
-            if gs:
-                git_cwd = cands[0]
-                nested = True
+    gs, git_cwd, nested = find_git(cwd)
     if gs:
         br = gs["branch"]
         g = (
@@ -447,7 +490,7 @@ def _render():
         lim.append(("seven_day", limit_seg("7d", limits["seven_day"], 168)))
     if lim:
         rows["USAGE"] = display_row("USAGE", lim)
-    rl_log(fh_, limits.get("seven_day"))
+    record_limits(fh_, limits.get("seven_day"))
 
     # ---------- row 3: cache economics ----------
     if served:
@@ -592,9 +635,9 @@ def _render():
         if isinstance(process_session, str)
         else f"parent:{os.getppid()}"
     )
-    procs = pr.probe(f"procs:{process_scope}", 8, pr.processes) or {}
-    mem = pr.probe("mem", 8, pr.memory) or {}
-    dsk = pr.probe(f"disk:{cwd}", 30, lambda c=cwd: pr.disk(c)) or {}
+    procs = probe(f"procs:{process_scope}", 8, pr.processes) or {}
+    mem = probe("mem", 8, pr.memory) or {}
+    dsk = probe(f"disk:{cwd}", 30, lambda c=cwd: pr.disk(c)) or {}
     # Ordered so the two figures people compare -- this session's footprint and
     # every claude process -- sit side by side, with machine-wide pressure after
     # them and disk last, since disk is the first thing worth losing when narrow.
@@ -636,22 +679,7 @@ def _render():
 
     # ---------- row 8: money ----------
     usd = money.get("run_cost_usd")
-    session_id = identity.get("session_id", "?")
-    agg = ledger_update(
-        session_id,
-        usd,
-        proj,
-        identity.get("session_title"),
-        conversation_root(transcript_path),
-        pid=procs.get("mine_pid"),
-        accrued_at=t.get("last_ts"),
-        duration=wall if 0 < wall <= time.time() else None,
-    )
-    try:
-        if session_metrics.enabled(file_default=config.metrics_enabled):
-            session_metrics.write_snapshot(facts, agg)
-    except Exception:
-        pass
+    agg = summarize_cost(facts, config, proj, procs, wall)
     p8 = []
     if usd is not None:
         life = agg["session"]
@@ -697,7 +725,7 @@ def _render():
     # accounted exactly -- it began counting when the status line first noticed, not
     # when overage actually started -- and this line does not invent dollar figures.
     # Only exact facts remain: whether credits are on, and whether this model draws.
-    acct = pr.probe("account", 30, pr.account) or {}
+    acct = probe("account", 30, pr.account) or {}
     if acct:
         inc = [str(x).lower() for x in (acct.get("included_models") or [])]
         if acct.get("disabled_reason"):
@@ -715,8 +743,7 @@ def _render():
     rows["COST"] = display_row("COST", p8)
 
     output = "\n".join(rows[k] for k in ORDER if rows.get(k))
-    if output:
-        print(ANSI.sub("", output) if config.color == "plain" else output)
+    return ANSI.sub("", output) if config.color == "plain" else output
 
 
 def main():

@@ -6,9 +6,9 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.5.5, starter TOML on stdout.
-- Preceding release: v0.5.4, effective configuration inspection.
-- Branch owner: Codex, on `codex/feat/v0.5.5-starter-toml`.
+- Current release target: 0.5.6, synthetic display preview.
+- Preceding release: v0.5.5, starter TOML on stdout.
+- Branch owner: Codex, on `codex/feat/v0.5.6-synthetic-preview`.
 - Reviewer role: exact implementation candidate review pending.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
@@ -76,6 +76,12 @@ The complete sequence and exclusions are authoritative in
 a whole or import a later slice into the current release.
 
 ## Resume point
+
+v0.5.5 is tagged on verified merge `983f30c1b543f1020654944c5f0fb4d685184f1c`.
+PR #48, main CI run 42307385464 and GitHub Release run 42307518017 passed.
+The exact published artifacts and isolated Python 3.11 install were verified.
+The [TestPyPI promotion](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42307651660)
+is pending.
 
 v0.5.4 is tagged on verified merge `1046e9b0d77b0d94c99d914a560bb43ac3ed6b6b`.
 PR #47, main CI run 42306688027 and GitHub Release run 42306827849 passed.

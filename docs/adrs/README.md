@@ -62,6 +62,7 @@ old one rather than rewriting why the earlier choice was made.
 | [0054](0054-list-supported-display-field-ids.md) | List supported display field IDs |
 | [0055](0055-show-effective-configuration.md) | Show effective configuration |
 | [0056](0056-print-starter-toml.md) | Print starter TOML |
+| [0057](0057-preview-synthetic-status-line.md) | Preview a synthetic status line |
 
 ## Reading order
 
