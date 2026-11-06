@@ -18,34 +18,68 @@ ROW_IDS = (
     "TOKENS",
     "TIMING",
 )
-FIELD_IDS = {
-    "PROJECT": ("directory", "added_dirs", "branch", "session_name"),
-    "MODEL": (
-        "model",
-        "thinking",
-        "fast_mode",
-        "permission_mode",
-        "output_style",
-        "service_tier",
-        "version",
-    ),
-    "CONTEXT": ("window", "session_throughput"),
-    "USAGE": ("five_hour", "seven_day"),
-    "COST": ("session", "rolling", "history", "lines", "credits"),
-    "SYSTEM": ("session_processes", "all_claude", "memory", "disk"),
-    "TOOLS": (
-        "calls",
-        "top_tools",
-        "tool_errors",
-        "api_errors",
-        "files",
-        "subagents",
-        "compactions",
-        "commands",
-    ),
-    "CACHE": ("hit_rate", "ttl", "relative_cost", "writes"),
-    "TOKENS": ("total", "turn"),
-    "TIMING": ("turn_duration", "wall_api", "hooks"),
+FIELD_CATALOG = {
+    "PROJECT": {
+        "directory": "Project directory and current subdirectory",
+        "added_dirs": "Additional workspace directories",
+        "branch": "Git branch and working tree status",
+        "session_name": "Session title",
+    },
+    "MODEL": {
+        "model": "Model name and reasoning effort",
+        "thinking": "Extended thinking status",
+        "fast_mode": "Fast mode status",
+        "permission_mode": "Claude Code permission mode",
+        "output_style": "Custom output style",
+        "service_tier": "Nonstandard service tier",
+        "version": "Claude Code version",
+    },
+    "CONTEXT": {
+        "window": "Context use, token count and visual warning",
+        "session_throughput": "Session tokens and turn statistics",
+    },
+    "USAGE": {
+        "five_hour": "Five-hour rate-limit window",
+        "seven_day": "Seven-day rate-limit window",
+    },
+    "COST": {
+        "session": "Lifetime session cost and resume details",
+        "rolling": "Cost over 24 hours, 7 days and 30 days",
+        "history": "Recent and all-time cost with session counts",
+        "lines": "Lines added and removed",
+        "credits": "Usage credit status",
+    },
+    "SYSTEM": {
+        "session_processes": "Current session process memory and count",
+        "all_claude": "Machine-wide Claude process memory and count",
+        "memory": "System memory pressure",
+        "disk": "Workspace filesystem usage and free space",
+    },
+    "TOOLS": {
+        "calls": "Total tool calls",
+        "top_tools": "Most-used tools",
+        "tool_errors": "Tool error count",
+        "api_errors": "API error count",
+        "files": "Distinct files edited and read",
+        "subagents": "Subagent messages",
+        "compactions": "Context compaction count",
+        "commands": "Most-used slash commands",
+    },
+    "CACHE": {
+        "hit_rate": "Cache read share of served input tokens",
+        "ttl": "Cache lifetime and expiry",
+        "relative_cost": "Relative cost compared with uncached input",
+        "writes": "Cache writes by lifetime bucket",
+    },
+    "TOKENS": {
+        "total": "Cumulative reused, written and uncached tokens",
+        "turn": "Most recent turn's reused, written and uncached tokens",
+    },
+    "TIMING": {
+        "turn_duration": "Turn duration statistics",
+        "wall_api": "Wall time and API time",
+        "hooks": "Hook timing and errors",
+    },
 }
 MAX_BYTES = 64 * 1024
 DEFAULT_WARN = 80.0
@@ -119,13 +153,13 @@ def _validate(doc) -> Config:
         if visibility not in ("show", "hide"):
             raise InvalidConfig(f"display.rows.{row_id}: expected show or hide")
 
-    fields = _table(display.get("fields", {}), "display.fields", set(FIELD_IDS))
+    fields = _table(display.get("fields", {}), "display.fields", set(FIELD_CATALOG))
     selections = []
     for row_id, ids in fields.items():
         key = f"display.fields.{row_id}"
         if not isinstance(ids, list) or not ids:
             raise InvalidConfig(f"{key}: expected a nonempty array of field IDs")
-        if any(not isinstance(field, str) or field not in FIELD_IDS[row_id] for field in ids):
+        if any(not isinstance(field, str) or field not in FIELD_CATALOG[row_id] for field in ids):
             raise InvalidConfig(f"{key}: unknown field ID")
         if len(set(ids)) != len(ids):
             raise InvalidConfig(f"{key}: duplicate field ID")
@@ -179,9 +213,28 @@ def load_config(environ=None) -> Config:
         return DEFAULTS
 
 
+def _list_fields(row_ids):
+    if len(row_ids) > 1:
+        print("usage: agent-statusline config fields [ROW]", file=sys.stderr)
+        return 2
+    if row_ids and row_ids[0] not in FIELD_CATALOG:
+        print("config fields: unknown row ID", file=sys.stderr)
+        return 2
+    for row in row_ids or ROW_IDS:
+        print(row)
+        for field, description in FIELD_CATALOG[row].items():
+            print(f"  {field}  {description}")
+    return 0
+
+
 def cli(argv):
+    if argv[:1] == ["fields"]:
+        return _list_fields(argv[1:])
     if argv != ["check"]:
-        print("usage: agent-statusline config check", file=sys.stderr)
+        print(
+            "usage: agent-statusline config check | agent-statusline config fields [ROW]",
+            file=sys.stderr,
+        )
         return 2
     try:
         config = read_config(config_path())

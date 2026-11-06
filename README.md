@@ -94,6 +94,7 @@ the status-line state directory.
 | `agent-statusline selftest` | Render all ten rows from isolated synthetic data |
 | `agent-statusline metrics <session-id>` | Print the documented local snapshot for one session |
 | `agent-statusline config check` | Validate the optional TOML file without rendering or changing state |
+| `agent-statusline config fields [ROW]` | List field IDs and descriptions for all rows or one row |
 | `agent-statusline ledger show` | Inspect the local cost ledger |
 | `agent-statusline uninstall` | Remove only configuration owned by this installation |
 | `agent-statusline --version` | Print the installed version |
@@ -133,7 +134,8 @@ Rows accept `"show"` or `"hide"`. Omitted rows keep their default visibility
 and visible rows keep their original order. Hiding a row does not stop data
 collection or cost accounting. Omit `color` or use `"default"` for styled
 output. Field lists select existing groups within a visible row. Omitted lists
-keep all fields, and a list never changes their priority. See the
+keep all fields, and a list never changes their priority. Run
+`agent-statusline config fields PROJECT` to list IDs for one row, or see the
 [field IDs](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/FIELDS.md#configurable-field-groups).
 Field lists require v0.5.1 or later. The file also accepts `[context_guard]` with `warn_pct`, `warn_event`,
 and `warn_message`, and `[session_metrics]` with `enabled = false` to stop new

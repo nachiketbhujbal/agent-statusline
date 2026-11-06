@@ -129,3 +129,39 @@ def test_config_path_must_be_a_regular_file(config_file, capsys):
     assert config.load_config() == config.DEFAULTS
     assert main(["config", "check"]) == 1
     assert "regular configuration file" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("raw", [None, b"malformed TOML"])
+def test_config_fields_lists_catalog_without_reading_config(
+    config_file, tmp_path, monkeypatch, capsys, raw
+):
+    if raw is not None:
+        config_file.write_bytes(raw)
+    state = tmp_path / "state"
+    claude = tmp_path / "claude"
+    monkeypatch.setenv("AGENT_STATUSLINE_STATE", str(state))
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(claude))
+    assert main(["config", "fields"]) == 0
+    output = capsys.readouterr()
+    headers = [line for line in output.out.splitlines() if not line.startswith(" ")]
+    assert headers == list(config.ROW_IDS)
+    assert "  compactions  Context compaction count" in output.out
+    assert not output.err
+    assert not state.exists() and not claude.exists()
+
+
+def test_config_fields_limits_output_to_one_row(capsys):
+    assert main(["config", "fields", "PROJECT"]) == 0
+    assert capsys.readouterr().out.splitlines() == [
+        "PROJECT",
+        "  directory  Project directory and current subdirectory",
+        "  added_dirs  Additional workspace directories",
+        "  branch  Git branch and working tree status",
+        "  session_name  Session title",
+    ]
+
+
+@pytest.mark.parametrize("args", [["project"], ["PROJECT", "MODEL"]])
+def test_config_fields_rejects_unknown_row_and_extra_arguments(capsys, args):
+    assert main(["config", "fields", *args]) == 2
+    assert not capsys.readouterr().out
