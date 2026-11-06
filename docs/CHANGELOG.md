@@ -4,10 +4,15 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.5.6
+## 0.5.6
 
 - Add read-only `agent-statusline config preview [--width CELLS]` to render
   a synthetic session with the effective row, field and color settings.
+
+[PR #49](https://github.com/nachiketbhujbal/agent-statusline/pull/49) and exact
+merged main passed the required Linux/macOS checks. The
+[GitHub Release](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.6)
+artifacts and isolated Python 3.11 installation were verified.
 
 ## 0.5.5
 
