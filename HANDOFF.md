@@ -8,7 +8,7 @@ the roadmap, or accepted ADRs.
 
 - Current release target: 0.5.7, configuration guide alignment.
 - Preceding release: v0.5.6, synthetic display preview.
-- Branch owner: none; v0.5.7 is released on GitHub.
+- Branch owner: none; v0.5.1 through v0.5.7 are fully published and verified.
 - Reviewer role: none active; exact candidate review is complete.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
@@ -77,57 +77,42 @@ a whole or import a later slice into the current release.
 
 ## Resume point
 
-v0.5.7 is tagged on verified merge `c88aed96889f3c557874d0ac8814eef08b8c39b6`.
-PR #51, main CI run 42319063882 and GitHub Release run 42319102964 passed.
-The exact published artifacts and isolated Python 3.11 install were verified.
-Wheel SHA-256 `06d794b32bed17fabf04af22165c52b717b26f9ae270df8d67017ced2ef5d2e4`.
-Source SHA-256 `0f131e006c794544e272a5214ebc0a9098fd1f12592806ef70a44361b93cbdad`.
-Package promotion follows v0.5.6 in the approval sequence.
+The planned configuration series and documentation patch are complete.
+Every release from v0.5.1 through v0.5.7 is available on GitHub, TestPyPI,
+and production PyPI. Separate maintainer approvals preceded each package
+publication. The same wheel and source hashes were verified across all
+three locations, followed by a clean Python 3.11 installation and isolated
+self-test from each package index.
 
-The planned 0.5.x customization work is complete on GitHub. Promote each
-verified artifact pair through TestPyPI and then PyPI. Both environments
-retain separate maintainer approvals. v0.5.7 documents the shipped commands and their availability.
+| Release and artifacts | TestPyPI | Production PyPI |
+| --- | --- | --- |
+| [v0.5.1](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.1) | [verified](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42304308635) | [verified](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42324969960) |
+| [v0.5.2](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.2) | [verified](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42305217679) | [verified](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42325409610) |
+| [v0.5.3](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.3) | [verified](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42306218265) | [verified](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42327557266) |
+| [v0.5.4](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.4) | [verified](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42306938542) | [verified](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42328724606) |
+| [v0.5.5](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.5) | [verified](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42307651660) | [verified](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42329755636) |
+| [v0.5.6](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.6) | [verified](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42308556413) | [verified](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42330263250) |
+| [v0.5.7](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.7) | [verified](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42330932831) | [verified](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42331071908) |
 
-v0.5.6 is tagged on verified merge `49683fadce56849c50d1f64d3a1fbe2931fcfa5e`.
-PR #49, main CI run 42308292382 and GitHub Release run 42308425622 passed.
-The exact published artifacts and isolated Python 3.11 install were verified.
-The [TestPyPI promotion](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42308556413)
-is pending. The v0.5.6 wheel SHA-256 is
-`99359df3ed04828f0f346d43543d18e8134141bf5dd24aae28ba18b58cc83a02`.
-The source SHA-256 is
-`ea4d385832115754d3ea3976ef6dda7718cf3bb53b7fc9c66495e320228c24f5`.
+v0.5.7 is tagged on reviewed merge `c88aed96889f3c557874d0ac8814eef08b8c39b6`.
+PR #51 used the documentation-only CI lane, with exact main run 42319063882.
+GitHub Release run 42319102964 published the verified pair.
 
-v0.5.5 is tagged on verified merge `983f30c1b543f1020654944c5f0fb4d685184f1c`.
-PR #48, main CI run 42307385464 and GitHub Release run 42307518017 passed.
-The exact published artifacts and isolated Python 3.11 install were verified.
-The [TestPyPI promotion](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42307651660)
-is pending.
+- Wheel SHA-256 `06d794b32bed17fabf04af22165c52b717b26f9ae270df8d67017ced2ef5d2e4`.
+- Source SHA-256 `0f131e006c794544e272a5214ebc0a9098fd1f12592806ef70a44361b93cbdad`.
 
-v0.5.4 is tagged on verified merge `1046e9b0d77b0d94c99d914a560bb43ac3ed6b6b`.
-PR #47, main CI run 42306688027 and GitHub Release run 42306827849 passed.
-The exact published artifacts and isolated Python 3.11 install were verified.
-The [TestPyPI promotion](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42306938542)
-is pending.
+v0.5.6 release merge `49683fadce56849c50d1f64d3a1fbe2931fcfa5e` passed
+independent exact review, 798 owner tests, Linux/macOS CI, and GitHub Release
+run 42308425622. A disposable upgrade from v0.4.5 preserved complete settings
+and ledger bytes and modes.
 
-v0.5.3 is tagged on verified merge `ffa3ab90c96545155f0394c67c0f30623462211f`.
-PR #46, main CI run 42305845641 and GitHub Release run 42306041819 passed.
-The exact published artifacts and isolated Python 3.11 install were verified.
-The [TestPyPI promotion](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42306218265)
-is pending.
+Several first install checks reached the package index before its installer
+listing contained the new version. The failed verification jobs passed
+after propagation. Published artifacts were retained and upload jobs were
+not repeated.
 
-v0.5.2 is tagged on verified merge `87986702fd299e517c9eeb35a85178d55e021122`.
-PR #45, main CI run 42304934591 and GitHub Release run 42305097692 passed.
-Exact artifact digests and isolated Python 3.11 install were verified. The
-[TestPyPI promotion](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42305217679)
-is pending.
-
-v0.5.1 is tagged on verified merge `1bf785270cfc4cb419c8e781fc37e7851ef62ec0`.
-PR #44, main CI run 42304002628 and GitHub Release run 42304141003 passed.
-The exact artifacts matched the GitHub digests and the Python 3.11 install,
-self-test and configuration check passed. The
-[TestPyPI promotion](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42304308635)
-is pending. Production promotion follows its verification. The iMac
-installation and live state were outside the release tests.
+The live iMac installation remains outside the release work. No live ledger
+or Claude settings were used by the tests or installation checks.
 
 v0.5.2 corrected a reproduced width violation in the malformed-input fallback.
 It took the next patch slot, shifting the remaining features forward by one.

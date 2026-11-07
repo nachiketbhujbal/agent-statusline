@@ -14,6 +14,11 @@ once the regression that demonstrates it exists in this repository.
 | 0.5.1 | Display-only selection of existing field groups | Exact candidate `24ed27673cffea09c77a9503991b0b193c023304` passed independent review with no blockers |
 | 0.5.0 | Optional TOML, display-only visibility, plain output and a Python 3.11 minimum | Exact candidate `0ceafa28683ebd2109c647952d4c47f926502284` passed independent review with no blockers |
 
+The v0.5.1 through v0.5.7 artifact pairs were separately approved and
+verified on both package indexes. Each exact wheel passed clean installation
+and the isolated self-test. The
+[handoff](../HANDOFF.md#resume-point) records the completed workflow runs.
+
 The v0.5.7 owner gate passed 798 tests with 91.37% coverage. Independent
 review checked the README against the shipped tags and verified the TOML and
 environment contracts. The patch changes only documentation.

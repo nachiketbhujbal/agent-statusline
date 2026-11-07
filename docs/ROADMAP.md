@@ -618,12 +618,13 @@ patch. Record TestPyPI and PyPI promotion separately until each is verified.
 The two maintainer approvals and the requirement to verify TestPyPI before
 production still apply. See [ADR 0045](adrs/0045-promote-github-releases-through-separate-package-index-workflows.md).
 
-The planned customization work is complete on GitHub. The
-[handoff](../HANDOFF.md#resume-point) tracks package-index promotions.
+The planned customization work and documentation patch are published and
+verified on GitHub, TestPyPI, and production PyPI. The
+[handoff](../HANDOFF.md#resume-point) links the per-version publication evidence.
 
 ## 0.5.7 — configuration guide alignment
 
-Released on GitHub.
+Released and verified on GitHub, TestPyPI, and production PyPI.
 
 Document which installed versions support each configuration feature.
 Align the upgrade instructions and the context warning and metrics guides

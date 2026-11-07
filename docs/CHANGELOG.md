@@ -15,6 +15,11 @@ merged main passed the required documentation-only checks. The
 [GitHub Release](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.7)
 artifacts and isolated Python 3.11 installation were verified.
 
+[TestPyPI](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42330932831) and
+[production PyPI](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42331071908) verified the
+same artifact pair, clean installation, and isolated self-test.
+
+
 ## 0.5.6
 
 - Add read-only `agent-statusline config preview [--width CELLS]` to render
@@ -24,6 +29,11 @@ artifacts and isolated Python 3.11 installation were verified.
 merged main passed the required Linux/macOS checks. The
 [GitHub Release](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.6)
 artifacts and isolated Python 3.11 installation were verified.
+
+[TestPyPI](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42308556413) and
+[production PyPI](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42330263250) verified the
+same artifact pair, clean installation, and isolated self-test.
+
 
 ## 0.5.5
 
@@ -35,6 +45,11 @@ merged main passed the required Linux/macOS checks. The
 [GitHub Release](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.5)
 artifacts and isolated Python 3.11 installation were verified.
 
+[TestPyPI](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42307651660) and
+[production PyPI](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42329755636) verified the
+same artifact pair, clean installation, and isolated self-test.
+
+
 ## 0.5.4
 
 - Add read-only `agent-statusline config show` to inspect resolved settings
@@ -44,6 +59,11 @@ artifacts and isolated Python 3.11 installation were verified.
 merged main passed the required Linux/macOS checks. The
 [GitHub Release](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.4)
 artifacts and isolated Python 3.11 installation were verified.
+
+[TestPyPI](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42306938542) and
+[production PyPI](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42328724606) verified the
+same artifact pair, clean installation, and isolated self-test.
+
 
 ## 0.5.3
 
@@ -55,6 +75,11 @@ merged main passed the required Linux/macOS checks. The
 [GitHub Release](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.3)
 artifacts and isolated Python 3.11 installation were verified.
 
+[TestPyPI](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42306218265) and
+[production PyPI](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42327557266) verified the
+same artifact pair, clean installation, and isolated self-test.
+
+
 ## 0.5.2
 
 - Fit the malformed-input fallback to the terminal width in both styled and
@@ -64,6 +89,11 @@ artifacts and isolated Python 3.11 installation were verified.
 merged main passed the required Linux/macOS checks. The
 [GitHub Release](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.2)
 artifacts and isolated Python 3.11 installation were verified.
+
+[TestPyPI](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42305217679) and
+[production PyPI](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42325409610) verified the
+same artifact pair, clean installation, and isolated self-test.
+
 
 ## 0.5.1
 
@@ -75,6 +105,11 @@ artifacts and isolated Python 3.11 installation were verified.
 merged main passed the required Linux/macOS checks. The
 [GitHub Release](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.1)
 artifacts and isolated Python 3.11 installation were verified.
+
+[TestPyPI](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42304308635) and
+[production PyPI](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42324969960) verified the
+same artifact pair, clean installation, and isolated self-test.
+
 
 ## 0.5.0
 
