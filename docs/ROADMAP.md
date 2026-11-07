@@ -51,7 +51,8 @@ installed-artifact evidence.
 | 0.5.8 | Prefer native prompt-cache state and qualify legacy estimates | **Released** |
 | 0.5.9 | Installer-listing readiness and the next customization milestones | **Released** |
 | 0.5.10 | Host cost estimate provenance | **Released** |
-| 0.5.11 | Model and TTL aware cache ratio | **Current** |
+| 0.5.11 | Model and TTL aware cache ratio | **Released** |
+| 0.5.12 | Opt-in Claude Code timed refresh | **Current** |
 
 0.2.1 through 0.2.14 and v0.3.0 through v0.5.9 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
@@ -671,8 +672,8 @@ while retaining one opinionated configuration location. See
 Collection and calculation always precede display choices: hiding a cost period
 must never stop its accounting. No profiles or alternate config-path switches.
 
-**0.5.9** is verified on GitHub and TestPyPI; production approval/publication
-remains pending. Subsequent numbers are ordered
+**0.5.9** is verified on GitHub, TestPyPI and production PyPI.
+Subsequent numbers are ordered
 planning slots, not release dates or shipped features. A concrete fix can take
 **any** next patch number and shift all following planned patches. Reassess
 milestone boundaries as evidence develops; do not manufacture releases to fill
@@ -683,7 +684,7 @@ a version range or bundle independent features to meet these labels.
 Released and verified on GitHub after the complete gate, independent exact-SHA
 review and Linux/macOS CI. The exact wheel passed clean installation and an
 isolated self-test. See the [handoff](../HANDOFF.md#resume-point) for hashes and
-the verified TestPyPI promotion and pending production approval.
+the verified TestPyPI and production promotions.
 
 - Require exact non-yanked wheel/source hashes in the installer's Simple JSON
   listing as well as release JSON before clean index installation. Poll both

@@ -4,7 +4,7 @@ This is the approved direction, recorded with v0.5.9; it is **not the installed
 configuration reference**. The [README](../README.md#configure-the-view) and
 [field catalog](FIELDS.md#configurable-field-groups) describe shipped schema 1.
 The [roadmap](ROADMAP.md#next-release-and-milestones) assigns focused slices.
-v0.5.9 is verified on GitHub and TestPyPI; production is pending. Later numbers are planning
+v0.5.9 is verified on GitHub, TestPyPI and production PyPI. Later numbers are planning
 slots; fixes can take any next patch and shift the remaining work.
 
 ## Product contract
@@ -150,14 +150,13 @@ debounces events and cancels an in-flight renderer when another update arrives;
 this is not a promise of per-token streaming or an exact refresh deadline.
 See the dated [research](RESEARCH.md#customization-and-refresh-comparison).
 
-The planned 0.5.x refresh slice adds explicit installer controls for setting or
-removing that owned status-line interval, with dry-run output and supported-host
-detection. Omission preserves an existing interval; fresh installs retain today's
-event-driven default. Recommend 10 seconds as an initial opt-in, not a forced
-setting. Check the installed host's support before introducing the key. Do not
-modify unrelated settings, hooks or idle-compaction policy. TOML editing must
-not secretly write Claude settings; the editor may later explain or launch the
-same explicit installation action with its own preview.
+v0.5.12 adds explicit installer controls. Use `install --refresh-interval 10`
+to opt in and `install --event-only` to remove the interval. Use `--dry-run`
+to preview either choice. Ordinary reinstall retains an existing interval.
+New installations use the host's event-driven default. The installer requires
+Claude Code 2.1.97 or newer on `PATH` before setting an interval. The package
+TOML remains independent of the Claude Code setting.
+
 
 Timed redraws use normal acquisition and collection, cached probes and incremental
 transcript parsing. Repeated payloads must not accrue duplicate cost or compaction

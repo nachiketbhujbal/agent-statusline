@@ -68,6 +68,7 @@ old one rather than rewriting why the earlier choice was made.
 | [0060](0060-evolve-one-config-with-collection-independent-views.md) | Evolve one config with collection-independent views and an early editor |
 | [0061](0061-label-host-cost-estimates.md) | Label host cost estimates |
 | [0062](0062-qualify-cache-list-price-ratio.md) | Qualify the cache list-price ratio |
+| [0063](0063-use-claude-code-timed-refresh.md) | Use Claude Code timed refresh |
 
 ## Configuration
 

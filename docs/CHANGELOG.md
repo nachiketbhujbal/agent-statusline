@@ -4,12 +4,25 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.5.11
+## Unreleased — 0.5.12
+
+- Opt in to Claude Code timed redraws with `install --refresh-interval SECONDS`
+  or restore event-only redraws with `install --event-only`.
+- Preserve an existing interval during ordinary reinstall. Check Claude Code
+  support before setting an interval and preview either change with `--dry-run`.
+
+## 0.5.11
 
 - Calculate the relative cache input ratio using separate five-minute and
   one-hour writes and the supported transcript model's list-price read rate.
 - Omit the ratio when model identity or the per-request write split is
   incomplete. Retain the hit rate and other cache fields.
+
+[PR #60](https://github.com/nachiketbhujbal/agent-statusline/pull/60) passed independent review, the local gate, and
+Linux/macOS CI. The [GitHub Release](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.11)
+artifact pair and clean installed wheel passed verification.
+[TestPyPI promotion](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42389477232)
+tracks its separate maintainer approval and verification.
 
 ## 0.5.10
 
@@ -20,8 +33,9 @@ string in the source.
 [PR #59](https://github.com/nachiketbhujbal/agent-statusline/pull/59) passed independent review, the local gate, and
 Linux/macOS CI. The [GitHub Release](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.10)
 artifact pair and clean installed wheel passed verification.
-[TestPyPI promotion](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42388413515)
-tracks its separate maintainer approval and verification.
+[TestPyPI run 42388413515](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42388413515) verified the exact pair
+and clean installation after approval. [Production run 42388958597](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42388958597)
+passed preparation and awaits maintainer approval.
 
 ## 0.5.9
 
@@ -42,7 +56,8 @@ pair and clean installed wheel/self-test were verified.
 [TestPyPI](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42338823484)
 verified the exact pair, installer listing and clean installation on attempt one.
 [Production](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42339018724)
-preparation passed and awaits its separate maintainer approval.
+passed after separate approval. It verified both hashes and the installer
+listing and ran the clean installation and self-test on attempt one.
 
 ## 0.5.8
 

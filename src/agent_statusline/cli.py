@@ -12,6 +12,7 @@ USAGE = """agent-statusline -- a dense, width-aware status line for coding agent
 
   agent-statusline                     render a status line from a payload on stdin
   agent-statusline install [--dry-run] wire it into Claude Code's settings.json
+    [--refresh-interval SECONDS | --event-only]
   agent-statusline uninstall           remove the settings entries and symlink
   agent-statusline hook <name>         run a hook (session-end, context-guard,
                                        timestamp-user, timestamp-stop)
@@ -65,11 +66,7 @@ def main(argv=None):
     if cmd in ("install", "uninstall"):
         from agent_statusline import installer
 
-        unknown = [a for a in rest if a != "--dry-run"]
-        if unknown:
-            print(f"unknown option: {unknown[0]}", file=sys.stderr)
-            return 2
-        return installer.run(dry_run="--dry-run" in rest, uninstall=cmd == "uninstall")
+        return installer.cli(rest, uninstall=cmd == "uninstall")
 
     if cmd == "hook":
         if not rest or rest[0] not in HOOKS:

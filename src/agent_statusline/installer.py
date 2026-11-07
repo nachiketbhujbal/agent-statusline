@@ -24,6 +24,7 @@ the ownership claim.
 """
 import json
 import os
+import re
 import shlex
 import shutil
 import stat
@@ -766,7 +767,7 @@ def link_checkout(link, dry, guard=None, cdir_fd=None):
     say(f"symlink:  {link} -> {PKG}")
 
 
-def write_settings(cdir, dry, remove=False, cfg=None, cdir_fd=None):
+def write_settings(cdir, dry, remove=False, cfg=None, cdir_fd=None, *, refresh_interval=None):
     path = os.path.join(cdir, "settings.json")
     if cfg is None:
         # Confinement is decided before anything is read, not only before
@@ -796,7 +797,21 @@ def write_settings(cdir, dry, remove=False, cfg=None, cdir_fd=None):
         say(f"settings: {status_msg}; {removed} managed hook(s) removed")
     else:
         status_cmd, hook_cmd, _ = commands(cdir)
-        cfg["statusLine"] = {"type": "command", "command": status_cmd, "padding": 0}
+        previous = cfg.get("statusLine") or {}
+        status = {"type": "command", "command": status_cmd, "padding": 0}
+        if (
+            refresh_interval is None
+            and isinstance(previous, dict)
+            and "refreshInterval" in previous
+        ):
+            status["refreshInterval"] = previous["refreshInterval"]
+            say("refresh:  existing interval retained")
+        elif refresh_interval:
+            status["refreshInterval"] = refresh_interval
+            say(f"refresh:  every {refresh_interval} second(s), plus host events")
+        elif refresh_interval == 0:
+            say("refresh:  host events only")
+        cfg["statusLine"] = status
         wanted = list(HOOKS)
         if native_timestamps():
             say("hooks:    native timestamps live; stopgap hooks not installed")
@@ -864,7 +879,61 @@ def _report_rollback_failure(guard, link):
     )
 
 
-def run(dry_run=False, uninstall=False):
+MIN_REFRESH_VERSION = (2, 1, 97)
+# Keep milliseconds within the host timer's signed 32-bit range.
+MAX_REFRESH_SECONDS = 2_147_483
+
+
+def _check_refresh_support():
+    try:
+        version = subprocess.run(
+            ["claude", "--version"], capture_output=True, text=True, check=True, timeout=3
+        ).stdout
+        match = re.fullmatch(
+            r"\s*([0-9]{1,6})\.([0-9]{1,6})\.([0-9]{1,6})(?: \(Claude Code\))?\s*",
+            version,
+        )
+    except (OSError, UnicodeError, subprocess.SubprocessError):
+        match = None
+    if match is None or tuple(map(int, match.groups())) < MIN_REFRESH_VERSION:
+        die("timed refresh requires Claude Code 2.1.97 or newer on PATH")
+
+
+def cli(args, *, uninstall=False):
+    dry_run = False
+    interval = None
+    options = iter(args)
+    for option in options:
+        if option == "--dry-run":
+            dry_run = True
+        elif not uninstall and option in ("--event-only", "--refresh-interval"):
+            if interval is not None:
+                print("choose one refresh option", file=sys.stderr)
+                return 2
+            if option == "--event-only":
+                interval = 0
+                continue
+            value = next(options, "")
+            if (
+                not value.isascii()
+                or not value.isdecimal()
+                or len(value) > len(str(MAX_REFRESH_SECONDS))
+                or not 1 <= int(value) <= MAX_REFRESH_SECONDS
+            ):
+                print(
+                    f"refresh interval must be 1 to {MAX_REFRESH_SECONDS} seconds", file=sys.stderr
+                )
+                return 2
+            interval = int(value)
+        else:
+            print(f"unknown option: {option}", file=sys.stderr)
+            return 2
+    return run(dry_run=dry_run, uninstall=uninstall, refresh_interval=interval)
+
+
+def run(dry_run=False, uninstall=False, *, refresh_interval=None):
+    if not uninstall and refresh_interval:
+        _check_refresh_support()
     cdir = claude_dir()
     root = checkout_root()
     path = os.path.join(cdir, "settings.json")
@@ -954,7 +1023,7 @@ def run(dry_run=False, uninstall=False):
             link_checkout(link, dry_run)
         else:
             say(f"command:  {console_script()}")
-        write_settings(cdir, dry_run, cfg=cfg)
+        write_settings(cdir, dry_run, cfg=cfg, refresh_interval=refresh_interval)
         verify(cdir)
         print("\nDone. Restart Claude Code to pick it up.")
         return 0
@@ -985,7 +1054,9 @@ def run(dry_run=False, uninstall=False):
                 link_checkout(link, dry_run, install_guard, cdir_fd)
             else:
                 say(f"command:  {console_script()}")
-            write_settings(cdir, dry_run, cfg=cfg, cdir_fd=cdir_fd)
+            write_settings(
+                cdir, dry_run, cfg=cfg, cdir_fd=cdir_fd, refresh_interval=refresh_interval
+            )
         except SystemExit:
             if install_guard and not install_guard.rollback():
                 _report_rollback_failure(install_guard, link)

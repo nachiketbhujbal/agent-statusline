@@ -198,6 +198,67 @@ class TestDispatch:
         assert run(["install", "--wat"], monkeypatch) == 2
 
 
+def test_install_refresh_opts_in_preserves_and_removes_interval(tmp_path, monkeypatch, capsys):
+    cdir = tmp_path / "claude-config"
+    cdir.mkdir()
+    config = cdir / "settings.json"
+    config.write_text(json.dumps({"idleCompaction": False, "theme": "dark"}))
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+    monkeypatch.setattr(installer, "verify", lambda _cdir: None)
+    fake_claude = tmp_path / "claude"
+    fake_claude.write_text("#!/bin/sh\nprintf '2.1.97 (Claude Code)\\n'\n")
+    fake_claude.chmod(0o700)
+    monkeypatch.setenv("PATH", f"{tmp_path}{os.pathsep}{os.environ['PATH']}")
+
+    before = config.read_bytes()
+    assert run(["install", "--refresh-interval", "10", "--dry-run"], monkeypatch) == 0
+    assert config.read_bytes() == before
+    assert "refresh:  every 10 second(s)" in capsys.readouterr().out
+
+    assert run(["install", "--refresh-interval", "10"], monkeypatch) == 0
+    configured = json.loads(config.read_text())
+    assert configured["statusLine"]["refreshInterval"] == 10
+    assert configured["idleCompaction"] is False and configured["theme"] == "dark"
+    fake_claude.unlink()
+
+    assert run(["install"], monkeypatch) == 0
+    assert json.loads(config.read_text()) == configured
+    assert run(["install", "--event-only"], monkeypatch) == 0
+    del configured["statusLine"]["refreshInterval"]
+    assert json.loads(config.read_text()) == configured
+
+
+def test_install_refresh_unsupported_host_creates_nothing(tmp_path, monkeypatch, capsys):
+    cdir = tmp_path / "claude-config"
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+    fake_claude = tmp_path / "claude"
+    fake_claude.write_text("#!/bin/sh\nprintf '2.1.96 (Claude Code)\\n'\n")
+    fake_claude.chmod(0o700)
+    monkeypatch.setenv("PATH", f"{tmp_path}{os.pathsep}{os.environ['PATH']}")
+
+    with pytest.raises(SystemExit):
+        run(["install", "--refresh-interval", "10"], monkeypatch)
+    assert "Claude Code 2.1.97" in capsys.readouterr().err
+    assert not cdir.exists()
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["install", "--refresh-interval", "0"],
+        ["install", "--refresh-interval", "2147484"],
+        ["install", "--refresh-interval"],
+        ["install", "--event-only", "--refresh-interval", "10"],
+        ["uninstall", "--event-only"],
+    ],
+)
+def test_install_refresh_rejects_invalid_options(args, tmp_path, monkeypatch):
+    cdir = tmp_path / "claude-config"
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cdir))
+    assert run(args, monkeypatch) == 2
+    assert not cdir.exists()
+
+
 class TestHooks:
     @pytest.mark.parametrize("name", sorted(cli.HOOKS))
     def test_every_hook_is_reachable_and_exits_clean(self, name, monkeypatch, capsys):

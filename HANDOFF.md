@@ -6,10 +6,10 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.5.11, model and ttl aware cache ratio.
-- Preceding release: v0.5.10, verified GitHub release.
-- Branch owner: Codex owns the v0.5.11 implementation and current promotions.
-- Reviewer role: independent review required for the v0.5.11 candidate.
+- Current release target: 0.5.12, opt-in claude code timed refresh.
+- Preceding release: v0.5.11, verified GitHub release.
+- Branch owner: Codex owns the v0.5.12 implementation and current promotions.
+- Reviewer role: independent review required for the v0.5.12 candidate.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
   complete-ancestry audit. Documentation-only refs skip both hosted test lanes;
@@ -77,6 +77,19 @@ a whole or import a later slice into the current release.
 
 ## Resume point
 
+v0.5.11 is verified on GitHub. [PR #60](https://github.com/nachiketbhujbal/agent-statusline/pull/60)
+merged reviewed candidate `312ca4e7170823a026dc40c2762827bd4498442c` as `78da91bf4b4fc4bd2558242727b85e2da0de25ce`. The exact
+main CI run 42389302556 passed before annotated tag object
+`a3c2e82c04072b81d9d8ffd35564390cec483a2d`. GitHub Release run 42389400758
+published the verified artifact pair:
+
+- Wheel SHA-256 `369336074c0f125ac293fddc5b2353f28b00e31a008ffb486d8bc5548c9ad154`.
+- Source SHA-256 `7ebe893f0f845d0987a51109a6b020f920d3d5453c419bc11ea6e1fd1625addf`.
+
+The exact wheel clean-installed and passed version, isolated self-test and
+config checks. [TestPyPI run 42389477232](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42389477232)
+tracks the separate approval and verification for this release.
+
 v0.5.10 is verified on GitHub. [PR #59](https://github.com/nachiketbhujbal/agent-statusline/pull/59)
 merged reviewed candidate `1646b25bf500dcf37724fbb54f0dcd54a952d4d5` as `46d08da4f6ef0f467d834ddaf83173d26d2112e3`. The exact
 main CI run 42388232317 passed before annotated tag object
@@ -87,8 +100,9 @@ published the verified artifact pair:
 - Source SHA-256 `2da392af1da3eccac4793f2b07b864d5b84adf05f07055e566907584b0fc7229`.
 
 The exact wheel clean-installed and passed version, isolated self-test and
-config checks. [TestPyPI run 42388413515](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42388413515)
-tracks the separate approval and verification for this release.
+config checks. [TestPyPI run 42388413515](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42388413515) verified the exact pair
+and clean installation after approval. [Production run 42388958597](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42388958597)
+passed preparation and awaits maintainer approval.
 
 v0.5.9 is verified on GitHub. Exact candidate
 `f1b23ce99d69d103d34cf24277e63f443c8b611a`, based on
@@ -117,10 +131,9 @@ passed preparation, publication and verification on attempt one after maintainer
 approval. It verified the exact pair, installer listing, clean Python 3.11 index
 installation, exact version and isolated self-test.
 [Production run 42339018724](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42339018724)
-passed preparation and awaits its separate maintainer approval. Verify its
-publication/listing/install after approval, then close the publication records.
-Do not dispatch duplicate promotions or replace artifacts. Runtime source,
-the installed iMac command, live settings and ledger remain outside this work.
+passed preparation, publication and verification on attempt one after
+separate approval. Direct production verification matched both hashes and the
+installer listing. The clean Python 3.11 installation and self-test passed.
 
 The maintainer approved a broader plan without forcing a version ceiling:
 remaining 0.5.x correctness/refresh/measured performance, schema-2 element controls
