@@ -6,10 +6,11 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.5.13, reduce redraw overhead.
-- Preceding release: v0.5.12, verified GitHub release.
-- Branch owner: Codex owns the v0.5.13 implementation and current promotions.
-- Reviewer role: independent review required for the v0.5.13 candidate.
+- Current release target: 0.5.13, the completed release recorded at this boundary.
+- Preceding release: v0.5.12, the baseline for the final 0.5.x patch.
+- Active release target: none.
+- Branch owner: none. All 0.5.x package promotions are verified.
+- Reviewer role: implementation reviews complete. Release records receive independent review.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
   complete-ancestry audit. Documentation-only refs skip both hosted test lanes;
@@ -77,6 +78,22 @@ a whole or import a later slice into the current release.
 
 ## Resume point
 
+v0.5.13 is verified on GitHub. [PR #62](https://github.com/nachiketbhujbal/agent-statusline/pull/62)
+merged reviewed candidate `f78d69c2155a5b96e13c50d23ad6c2a5bd9d39f1` as `2308173be6a50f176852f94e9ce4c2a355811064`. The exact
+main CI run 42390986006 passed before annotated tag object
+`0e719f8ebe8445b57c9d751ca932de9dc76bd812`. GitHub Release run 42391079192
+published the verified artifact pair:
+
+- Wheel SHA-256 `934310cc29d5a7711b773e06dc3dbe73a9400c4ae4d4549ab1fb83d8955b638b`.
+- Source SHA-256 `de0a1457b9c4d907b48bddb2a00f11f6d9810897ecd123d4d9f140a9643fc9d6`.
+
+The exact wheel clean-installed and passed version, isolated self-test and
+config checks. [TestPyPI run 42391169563](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42391169563)
+verified the artifact pair and clean installation after approval.
+[Production run 42391457249](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42391457249)
+passed after approval and verified the identical artifact hashes, installer
+listing, clean installation and isolated self-test.
+
 v0.5.12 is verified on GitHub. [PR #61](https://github.com/nachiketbhujbal/agent-statusline/pull/61)
 merged reviewed candidate `42645b189f01fcd0e3686e6fbfcdbced744ff7cc` as `cd9476ed3088ca2e362816e0d7ec91a73427fcf4`. The exact
 main CI run 42390015848 passed before annotated tag object
@@ -88,7 +105,10 @@ published the verified artifact pair:
 
 The exact wheel clean-installed and passed version, isolated self-test and
 config checks. [TestPyPI run 42390195049](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42390195049)
-tracks the separate approval and verification for this release.
+verified the artifact pair and clean installation after approval.
+[Production run 42391433494](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42391433494)
+passed after approval and verified the identical artifact hashes, installer
+listing, clean installation and isolated self-test.
 
 v0.5.11 is verified on GitHub. [PR #60](https://github.com/nachiketbhujbal/agent-statusline/pull/60)
 merged reviewed candidate `312ca4e7170823a026dc40c2762827bd4498442c` as `78da91bf4b4fc4bd2558242727b85e2da0de25ce`. The exact
@@ -101,7 +121,10 @@ published the verified artifact pair:
 
 The exact wheel clean-installed and passed version, isolated self-test and
 config checks. [TestPyPI run 42389477232](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42389477232)
-tracks the separate approval and verification for this release.
+verified the artifact pair and clean installation after approval.
+[Production run 42391426138](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42391426138)
+passed after approval and verified the identical artifact hashes, installer
+listing, clean installation and isolated self-test.
 
 v0.5.10 is verified on GitHub. [PR #59](https://github.com/nachiketbhujbal/agent-statusline/pull/59)
 merged reviewed candidate `1646b25bf500dcf37724fbb54f0dcd54a952d4d5` as `46d08da4f6ef0f467d834ddaf83173d26d2112e3`. The exact
@@ -115,7 +138,8 @@ published the verified artifact pair:
 The exact wheel clean-installed and passed version, isolated self-test and
 config checks. [TestPyPI run 42388413515](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42388413515) verified the exact pair
 and clean installation after approval. [Production run 42388958597](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42388958597)
-passed preparation and awaits maintainer approval.
+passed after approval and verified the identical artifact hashes, installer
+listing, clean installation and isolated self-test.
 
 v0.5.9 is verified on GitHub. Exact candidate
 `f1b23ce99d69d103d34cf24277e63f443c8b611a`, based on

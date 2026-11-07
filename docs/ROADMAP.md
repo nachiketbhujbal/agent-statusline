@@ -53,9 +53,9 @@ installed-artifact evidence.
 | 0.5.10 | Host cost estimate provenance | **Released** |
 | 0.5.11 | Model and TTL aware cache ratio | **Released** |
 | 0.5.12 | Opt-in Claude Code timed refresh | **Released** |
-| 0.5.13 | Reduce redraw overhead | **Current** |
+| 0.5.13 | Reduce redraw overhead | **Released** |
 
-0.2.1 through 0.2.14 and v0.3.0 through v0.5.9 are tagged and released. The
+0.2.1 through 0.2.14 and v0.3.0 through v0.5.13 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
 production-ready supported public baseline. Each boundary retains its exact
 review and artifact evidence; GitHub Release objects begin at v0.2.4. The
@@ -699,14 +699,19 @@ the verified TestPyPI and production promotions.
 
 See [ADR 0059](adrs/0059-verify-installer-listing-before-index-install.md).
 
-### Remaining 0.5.x — correctness, refresh and measured speed
+### Final 0.5.x patches — correctness, refresh and measured speed
 
-| Planning slot | One primary change | Evidence required before release |
+v0.5.10 through v0.5.13 are verified on GitHub, TestPyPI and production PyPI. The
+[handoff](../HANDOFF.md#resume-point) links the exact package promotions.
+The [installed benchmark results](RESEARCH.md#v0513-redraw-measurements)
+record the measured redraw improvements.
+
+| Release | Change | Verified evidence |
 | --- | --- | --- |
-| 0.5.10 | Clarify host-reported cost versus invoice/billing truth | Source qualifiers in display/docs; retained totals, `≥`, resume and rolling-window parity; no ledger rewrite |
-| 0.5.11 | Correct relative cache-cost multipliers for supported TTL/model facts | Explicit inputs and assumptions; mixed-TTL fixtures; unknown pricing omits ratio instead of inventing it; no derived dollars |
-| 0.5.12 | Opt-in host-supported timed refresh | Explicit installer set/remove with dry-run; preserve omitted interval and unrelated settings; repeated-payload idempotence and idle cross-session rolling totals |
-| 0.5.13 | Optimize demonstrated render overhead under frequent redraws | Paired installed cold/warm/import and six-session measurements; retain probes, accounting and isolation; record no-change result if no justified optimization exists |
+| 0.5.10 | Label host-reported cost estimates | Resumed sessions and rolling windows retain their totals and lower-bound markers |
+| 0.5.11 | Calculate cache ratios from supported model IDs and write TTLs | Mixed-TTL fixtures verify model-specific rates and omission when evidence is incomplete |
+| 0.5.12 | Add opt-in Claude Code timed refresh | Installed controls set, preserve and remove the interval. Repeated redraws show updated local totals without duplicate accounting |
+| 0.5.13 | Reduce redraw overhead | Paired installed wheels show lower warm and six-session median latency. Formatter comparisons are byte-identical |
 
 No schema-2 work is hidden in a 0.5.x patch. Existing schema-1 files, group IDs,
 default view and environment overrides remain compatible. Refresh uses Claude's

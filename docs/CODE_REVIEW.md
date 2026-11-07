@@ -5,7 +5,7 @@ once the regression that demonstrates it exists in this repository.
 
 | Release | Candidate scope | Evidence boundary |
 | --- | --- | --- |
-| 0.5.13 | Reduce redraw overhead | Candidate review pending |
+| 0.5.13 | Reduce redraw overhead | Exact candidate `f78d69c2155a5b96e13c50d23ad6c2a5bd9d39f1` passed independent review and the full gate |
 | 0.5.12 | Opt-in Claude Code timed refresh | Exact candidate `42645b189f01fcd0e3686e6fbfcdbced744ff7cc` passed independent review and the full gate |
 | 0.5.11 | Model and TTL aware cache ratio | Exact candidate `312ca4e7170823a026dc40c2762827bd4498442c` passed independent review and the full gate |
 | 0.5.10 | Host cost estimate provenance | Exact candidate `1646b25bf500dcf37724fbb54f0dcd54a952d4d5` passed independent review and the full gate |
@@ -19,6 +19,19 @@ once the regression that demonstrates it exists in this repository.
 | 0.5.2 | Malformed-input fallback width in styled and plain output | Exact candidate `7cc277a7f07d909b8df3c9ba041a629f1e421c4c` passed independent review with no blockers |
 | 0.5.1 | Display-only selection of existing field groups | Exact candidate `24ed27673cffea09c77a9503991b0b193c023304` passed independent review with no blockers |
 | 0.5.0 | Optional TOML, display-only visibility, plain output and a Python 3.11 minimum | Exact candidate `0ceafa28683ebd2109c647952d4c47f926502284` passed independent review with no blockers |
+
+The v0.5.13 local gate passed 854 tests with 91.42% subprocess-aware coverage,
+locked checks, build, artifact privacy and Twine. Installed previews matched
+v0.5.12 across 14 plain and styled cases. The independent review passed
+266 focused tests and matched 6,500 generated rows and nine configuration
+cases against the preceding release. Its paired installed wheel benchmark
+reproduced lower warm and six-session median latency. Both runs observed
+higher cold p95. See the [benchmark record](RESEARCH.md#v0513-redraw-measurements).
+
+TestPyPI verified v0.5.10 through v0.5.13 after separate approvals.
+Production verified the same artifact hashes, installer listings and isolated
+installations for all four patches after separate approvals.
+The [handoff](../HANDOFF.md#resume-point) records each run and its exact artifacts.
 
 The v0.5.9 owner gate passed 838 tests with 91.30% subprocess-aware coverage,
 locked documentation/all-files/static checks, build, artifact privacy/metadata
