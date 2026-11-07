@@ -115,6 +115,10 @@ def test_file_values_and_per_setting_env_overrides(config_file):
             b'schema_version = 1\n[session_metrics]\nenabled = "false"',
             "session_metrics.enabled",
         ),
+        (
+            b'schema_version = 1\n[display]\nshow_cost_estimate_marker = "private_value"',
+            "display.show_cost_estimate_marker",
+        ),
         (b'schema_version = 1\n[display]\ncolor = "private_value"', "display.color"),
         (b"private_value =", "TOML syntax"),
         (b"\xff", "UTF-8"),
@@ -232,6 +236,7 @@ def test_config_show_reports_invalid_file_and_invalid_environment(config_file, m
     assert "Using defaults and environment" in output
     assert f"context_guard: disabled ({context_guard.EVENT_ENV}" in output
     assert "display.color = default [default]" in output
+    assert "display.show_cost_estimate_marker = false [default]" in output
     assert "private_value" not in output
 
 

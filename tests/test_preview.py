@@ -84,3 +84,15 @@ def test_preview_has_sample_evidence_for_optional_fields(isolated_preview, capsy
     assert "MODEL   review" in output
     assert "TOOLS   cmds /compact1" in output
     assert "CACHE   0.06x vs all-uncached (list)" in output
+
+
+def test_preview_applies_cost_marker_to_selected_rolling_fields(isolated_preview, capsys):
+    isolated_preview.parent.mkdir()
+    isolated_preview.write_text(
+        'schema_version = 1\n[display]\ncolor = "plain"\n'
+        'show_cost_estimate_marker = true\n[display.fields]\nCOST = ["rolling"]\n'
+    )
+    assert main(["config", "preview", "--width", "120"]) == 0
+    output = capsys.readouterr().out
+    assert "COST    24h ~$1.25" in output
+    assert " session" not in output.split("COST    ", 1)[1].split("\n", 1)[0]

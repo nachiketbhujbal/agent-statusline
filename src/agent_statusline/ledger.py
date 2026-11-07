@@ -412,13 +412,17 @@ def _main():
         print(f"{a.session_id}  closed={row['closed']}  reason={row['reason']}")
         return 0
 
+    from agent_statusline.config import load_config
+
+    currency = "~$" if load_config().show_cost_estimate_marker else "$"
     rows = load()["sessions"]
     w = max((len(k) for k in rows), default=10)
     for sid, r in sorted(rows.items(), key=lambda kv: epoch(kv[1].get("started"))):
         runs = r.get("runs", "-")
         print(
-            f"{sid:<{w}}  {str(r.get('state','-')):<6}  ~${r.get('cost',0):>9.4f}"
-            f"  (base ~${r.get('cost_base',0):>8.4f} + run ~${r.get('cost_run',0):>8.4f})"
+            f"{sid:<{w}}  {str(r.get('state','-')):<6}  {currency}{r.get('cost',0):>9.4f}"
+            f"  (base {currency}{r.get('cost_base',0):>8.4f}"
+            f" + run {currency}{r.get('cost_run',0):>8.4f})"
             f"  runs={runs}  started={r.get('started','-')}"
             f"  updated={r.get('updated','-')}  closed={r.get('closed','-')}"
             f"  reason={r.get('reason','-')}"

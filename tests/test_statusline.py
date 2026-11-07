@@ -105,7 +105,7 @@ def test_timed_redraw_keeps_local_totals_fresh_without_recounting(
     def redraw(current):
         return ANSI.sub("", "\n".join(draw(current, monkeypatch, capsys)))
 
-    assert "24h ~$1.25" in redraw(payload)
+    assert "24h $1.25" in redraw(payload)
     other = {
         **payload,
         "session_id": "other-timer-session",
@@ -118,7 +118,7 @@ def test_timed_redraw_keeps_local_totals_fresh_without_recounting(
     rate_before = rate_history.read_bytes()
     now += 10
     output = redraw(payload)
-    assert "~$1.25 session" in output and "24h ~$3.75" in output
+    assert "$1.25 session" in output and "24h $3.75" in output
     assert "1 compaction" in output
     assert ledger_file.read_bytes() == before
     assert rate_history.read_bytes() == rate_before
@@ -318,11 +318,20 @@ class TestContent:
 
     def test_cost_comes_straight_from_the_payload(self, payload, monkeypatch, capsys):
         out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
-        assert "~$1.25 session" in out, "cost must be passed through, never recomputed"
-        assert "last5 ~$1.25" in out
-        assert "all ~$1.25" in out
+        assert "$1.25 session" in out, "cost must be passed through, never recomputed"
+        assert "last5 $1.25" in out
+        assert "all $1.25" in out
 
-    def test_spanning_legacy_cost_renders_as_a_lower_bound(self, payload, monkeypatch, capsys):
+    @pytest.mark.parametrize("show_marker", [False, True])
+    def test_spanning_legacy_cost_renders_as_a_lower_bound(
+        self, payload, monkeypatch, capsys, tmp_path, show_marker
+    ):
+        config = tmp_path / "agent-statusline" / "config.toml"
+        config.parent.mkdir()
+        monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+        if show_marker:
+            config.write_text("schema_version = 1\n[display]\nshow_cost_estimate_marker = true\n")
+        sign = "~$" if show_marker else "$"
         now = 1_800_000_000
         monkeypatch.setattr(statusline.time, "time", lambda: now)
         statusline.ledger.save(
@@ -339,9 +348,12 @@ class TestContent:
 
         out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
 
-        assert "24h ≥~$1.25" in out
-        assert "7d ~$11.25" in out
-        assert "30d ~$11.25" in out
+        assert f"COST    {sign}1.25 session" in out
+        assert f"24h ≥{sign}1.25" in out
+        assert f"7d {sign}11.25" in out
+        assert f"30d {sign}11.25" in out
+        assert f"last5 {sign}11.25" in out
+        assert ("~$" in out) is show_marker
 
     def test_cost_attribution_receives_assistant_time_and_wall_duration(
         self, payload, monkeypatch, capsys

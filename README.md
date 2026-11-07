@@ -16,7 +16,7 @@ PROJECT acme-web/services │ feature/ingest* ↑2 stash1 │ "Rewrite the impor
 MODEL   Opus 5:high │ think │ fast off │ auto │ v2.1.246
 CONTEXT ctx[██░░░░░░░░]  19% 189k/1M │ session 25.7M in · 311k out · 107k thinking · 189 api turns · avg 136k/1.65k per turn
 USAGE   5h [███░░░░░░░] 26% @19.7%/h ▸ 98% (reset Wed 19:30 | 3h40m) │ 7d [█████░░░░░] 50% @0.3%/h ▸ 50% (reset Wed 17:00 | 1h10m)
-COST    ~$2.10 session │ 24h ~$9.40 · 7d ~$31.20 · 30d ~$88.60 │ last5 ~$27.50 · all ~$142.30 (5 convos · 6 sess · 1 fork) │ +174/-12 lines │ credits on
+COST    $2.10 session │ 24h $9.40 · 7d $31.20 · 30d $88.60 │ last5 $27.50 · all $142.30 (5 convos · 6 sess · 1 fork) │ +174/-12 lines │ credits on
 SYSTEM  this session 540M · 5 proc · pid 4821 │ all claude 512M · 1 proc · 1.6% of ram │ ram[█████░░░] 62% of 32.0G · 4.2G compressed │ disk[████░░░░] 48% · 210G free
 TOOLS   101 calls │ Bash81 Edit12 Read8 │ 2 tool errors │ 6 files edited · 14 read │ 0 subagents │ 0 compactions
 CACHE   97.9% hit │ 1h ttl ▸ expires 16:49 │ 0.12x vs all-uncached (list) │ writes 504k 1h · 0 5m
@@ -80,9 +80,8 @@ documents every value and its source.
 - Runtime state stays under `~/.claude/`, outside the repository. Package-owned
   state is privately permissioned and locked, using atomic replacement or
   durable append as appropriate.
-- Cost amounts prefixed with `~$` come from Claude Code’s cost estimates. A
-  rolling amount prefixed with `≥~$` includes only the estimates attributable
-  to that window.
+- Cost amounts come from Claude Code’s estimates. The `≥` marker identifies
+  a rolling lower bound on the estimates attributable to that window.
 - Installation backs up `settings.json`, preserves unrelated settings and hooks,
   and refuses to replace configuration it cannot prove it owns.
 - `agent-statusline selftest` uses isolated synthetic state and never touches the
@@ -153,6 +152,7 @@ versions published on that index.
 | 0.5.4 | `config show` |
 | 0.5.5 | `config example` |
 | 0.5.6 | `config preview [--width CELLS]` |
+| 0.5.14 | Optional `display.show_cost_estimate_marker` |
 
 Create `~/.config/agent-statusline/config.toml` (or use the same relative path
 under an absolute `XDG_CONFIG_HOME`). The file is optional. Use
@@ -179,6 +179,10 @@ output. Field lists select existing groups within a visible row. Omitted lists
 keep all fields, and a list never changes their priority. Run
 `agent-statusline config fields PROJECT` to list IDs for one row, or see the
 [field IDs](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/FIELDS.md#configurable-field-groups).
+In v0.5.14 and later, set `show_cost_estimate_marker = true` under `[display]`
+to prefix each cost amount with `~` in the status line and `ledger show`.
+Omit the setting or use `false` for plain dollar amounts. Claude Code
+supplies the estimates in both modes.
 The file also accepts `[context_guard]` with `warn_pct`, `warn_event`, and
 `warn_message`, and `[session_metrics]` with `enabled = false` to stop new
 snapshots. Existing environment overrides take precedence over file values.
