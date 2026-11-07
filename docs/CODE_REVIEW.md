@@ -5,7 +5,7 @@ once the regression that demonstrates it exists in this repository.
 
 | Release | Candidate scope | Evidence boundary |
 | --- | --- | --- |
-| 0.5.14 | Optional cost estimate marker | Candidate review pending |
+| 0.5.14 | Optional cost estimate marker | Exact candidate `a15445b74c7e32a48026af73047b6ea92ef5d937` passed independent review and the full gate |
 | 0.5.13 | Reduce redraw overhead | Exact candidate `f78d69c2155a5b96e13c50d23ad6c2a5bd9d39f1` passed independent review and the full gate |
 | 0.5.12 | Opt-in Claude Code timed refresh | Exact candidate `42645b189f01fcd0e3686e6fbfcdbced744ff7cc` passed independent review and the full gate |
 | 0.5.11 | Model and TTL aware cache ratio | Exact candidate `312ca4e7170823a026dc40c2762827bd4498442c` passed independent review and the full gate |
@@ -20,6 +20,16 @@ once the regression that demonstrates it exists in this repository.
 | 0.5.2 | Malformed-input fallback width in styled and plain output | Exact candidate `7cc277a7f07d909b8df3c9ba041a629f1e421c4c` passed independent review with no blockers |
 | 0.5.1 | Display-only selection of existing field groups | Exact candidate `24ed27673cffea09c77a9503991b0b193c023304` passed independent review with no blockers |
 | 0.5.0 | Optional TOML, display-only visibility, plain output and a Python 3.11 minimum | Exact candidate `0ceafa28683ebd2109c647952d4c47f926502284` passed independent review with no blockers |
+
+The v0.5.14 local gate passed 859 tests with 92.05% subprocess-aware coverage,
+locked checks, build, artifact privacy and Twine. The installed default preview
+differs from v0.5.13 only by removing the cost tildes. Enabling the TOML option
+restores byte-identical preview output. Renderer and ledger tests cover both
+styles, and rolling lower bounds retain the `≥` marker. A paired installed
+check measured warm medians of 54.42 ms for v0.5.13 and 54.70 ms for the
+v0.5.14 candidate, with 40 samples per wheel. TestPyPI run 42393479848 and
+production run 42393883813 verified the exact artifacts and isolated installations
+after their separate approvals.
 
 The v0.5.13 local gate passed 854 tests with 91.42% subprocess-aware coverage,
 locked checks, build, artifact privacy and Twine. Installed previews matched

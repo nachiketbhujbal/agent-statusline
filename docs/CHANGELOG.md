@@ -4,11 +4,20 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.5.14
+## 0.5.14
 
 - Show plain dollar amounts by default and document that they are estimates.
   Set `display.show_cost_estimate_marker = true` for per-amount tildes.
 - Preserve the rolling lower-bound marker in both display modes.
+
+[PR #64](https://github.com/nachiketbhujbal/agent-statusline/pull/64) passed independent review, the local gate, and
+Linux/macOS CI. The [GitHub Release](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.14)
+artifact pair and clean installed wheel passed verification.
+[TestPyPI run 42393479848](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42393479848)
+verified the exact pair and isolated installation after approval.
+[Production run 42393883813](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42393883813)
+passed after separate approval. Direct index verification matched both
+hashes and the installer listing. The clean installation and self-test passed.
 
 ## 0.5.13
 
