@@ -8,8 +8,8 @@ the roadmap, or accepted ADRs.
 
 - Current release target: 0.5.8, native prompt-cache reporting.
 - Preceding release: v0.5.7, configuration guide alignment.
-- Branch owner: codex on `codex/fix/v0.5.8-native-cache`.
-- Reviewer role: independent exact-candidate review pending.
+- Branch owner: codex; GitHub release verified, package promotion in progress.
+- Reviewer role: implementation exact review complete; publication records review follows.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
   complete-ancestry audit. Documentation-only refs skip both hosted test lanes;
@@ -84,8 +84,30 @@ behavior, ledger and installer contracts. New cache statistics and other host
 fields follow as separate opt-in slices after the capability inventory.
 See [ADR 0058](docs/adrs/0058-prefer-native-prompt-cache-state.md) and the
 [research inventory](docs/RESEARCH.md#claude-code-status-line-capability-audit).
-Run the full locked gate, installed-wheel verification, exact independent review
-and hosted checks before merging or releasing this candidate.
+Exact final candidate `0b76de6e810b7ad3280e6e3f39b311973618633b` passed
+renewed independent review after correcting its packaged README link.
+The owner gate passed 827 tests with 91.53% subprocess-aware coverage,
+locked documentation/all-files/static checks, build and artifact checks.
+The reviewer proved the native precedence regression fails v0.5.7 and passes
+the candidate. An isolated v0.5.7 wheel upgrade retained complete synthetic
+settings and ledger bytes and modes; the installed self-test passed.
+
+[PR #54](https://github.com/nachiketbhujbal/agent-statusline/pull/54) merged as
+`e92100d114304fcbd5e7597ced7ff833548f2164`. Exact PR run 42333105488 and main
+run 42333217426 passed Linux Python 3.11–3.13, macOS and the aggregate.
+Annotated tag object `5f338a0526b42be5860db9dd95d0a4b4dd4bf26f` peels to that merge.
+[GitHub Release run 42333313478](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42333313478)
+published the verified pair, which passed a clean Python 3.11 install,
+exact version check, isolated self-test, artifact privacy/metadata and Twine.
+
+- Wheel SHA-256 `371a75f9a75aca5e34c811d0eae1d5b4af23c1e9928d393b97acb14a8929dbec`.
+- Source SHA-256 `e72a9638bca7f3fdac26064543d7aefe63653f19d48d79b1518085e77633a628`.
+
+[TestPyPI run 42333384663](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42333384663)
+prepared that pair and reached the required maintainer gate. Use the run's
+current status to resume: verify TestPyPI before dispatching the separate
+production promotion, obtain production approval, verify the same hashes and
+clean installation, then close publication ownership. Do not duplicate uploads.
 Tests must use disposable state; live settings and ledger are not fixtures.
 
 The separately requested terminal Claude Code update completed from 2.1.270 to

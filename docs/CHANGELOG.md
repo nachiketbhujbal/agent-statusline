@@ -4,13 +4,19 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.5.8
+## 0.5.8
 
 - Prefer Claude Code's native prompt-cache TTL, warmth and expiry over
   transcript inference; support native state even without a transcript.
 - Label older-client cache expiry as estimated, treat five-minute TTL as a
   normal supported setting, and remove the categorical full-resend warning.
 - Preserve existing cache field IDs, row order, configuration and accounting.
+
+[PR #54](https://github.com/nachiketbhujbal/agent-statusline/pull/54) and exact
+merged main passed Linux Python 3.11–3.13, macOS and the required result.
+The [GitHub Release](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.8)
+pair and isolated installed wheel were verified. The
+[handoff](../HANDOFF.md#resume-point) tracks package-index promotion separately.
 
 ## 0.5.7
 
