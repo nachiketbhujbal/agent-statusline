@@ -193,8 +193,8 @@ at 80 columns. Omit `--width` to use the detected terminal width. The sample
 includes every selectable field group and uses synthetic figures and session
 details throughout.
 
-Finer per-value controls, an interactive editor, optional layouts and managed
-timed refresh are planned; they are not commands or settings in this release.
+The plan includes finer per-value controls, an interactive editor and optional
+layouts.
 The [roadmap](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/ROADMAP.md#next-release-and-milestones)
 and [design](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/CUSTOMIZATION_DESIGN.md)
 keep one config location and collection independent of visibility. Current
