@@ -21,8 +21,12 @@ precedence regression fails the previous release, and verified the corrected
 absolute README link in exact wheel metadata. An isolated installed upgrade
 from v0.5.7 preserved complete synthetic settings and ledger bytes and modes.
 Exact PR/main Linux/macOS CI and GitHub artifact verification passed.
+TestPyPI run 42333384663 and production run 42334219594 verified the exact
+GitHub pair, clean Python 3.11 index installations and isolated self-tests.
+Production retried only verification after installer-listing propagation;
+its successful upload was retained.
 
-The v0.5.1 through v0.5.7 artifact pairs were separately approved and
+The v0.5.1 through v0.5.8 artifact pairs were separately approved and
 verified on both package indexes. Each exact wheel passed clean installation
 and the isolated self-test. The
 [handoff](../HANDOFF.md#resume-point) records the completed workflow runs.

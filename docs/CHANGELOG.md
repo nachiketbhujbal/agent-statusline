@@ -15,8 +15,12 @@ string in the source.
 [PR #54](https://github.com/nachiketbhujbal/agent-statusline/pull/54) and exact
 merged main passed Linux Python 3.11–3.13, macOS and the required result.
 The [GitHub Release](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.8)
-pair and isolated installed wheel were verified. The
-[handoff](../HANDOFF.md#resume-point) tracks package-index promotion separately.
+pair and isolated installed wheel were verified.
+[TestPyPI](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42333384663)
+and [production PyPI](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42334219594)
+verified the identical pair and clean index installation/self-test after
+separate maintainer approvals. Production's verification-only retry passed
+after installer-listing propagation; the upload was not repeated.
 
 ## 0.5.7
 
