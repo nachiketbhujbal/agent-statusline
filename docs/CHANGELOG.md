@@ -4,11 +4,24 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.5.10
+## Unreleased — 0.5.11
+
+- Calculate the relative cache input ratio using separate five-minute and
+  one-hour writes and the supported transcript model's list-price read rate.
+- Omit the ratio when model identity or the per-request write split is
+  incomplete. Retain the hit rate and other cache fields.
+
+## 0.5.10
 
 - Mark session, run, rolling and historical host cost estimates with `~$`.
   The `≥~$` prefix identifies a rolling lower bound on recorded estimates.
 - Apply the same estimate notation to the human-readable ledger listing.
+
+[PR #59](https://github.com/nachiketbhujbal/agent-statusline/pull/59) passed independent review, the local gate, and
+Linux/macOS CI. The [GitHub Release](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.10)
+artifact pair and clean installed wheel passed verification.
+[TestPyPI promotion](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42388413515)
+tracks its separate maintainer approval and verification.
 
 ## 0.5.9
 

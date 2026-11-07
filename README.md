@@ -19,7 +19,7 @@ USAGE   5h [███░░░░░░░] 26% @19.7%/h ▸ 98% (reset Wed 19:3
 COST    ~$2.10 session │ 24h ~$9.40 · 7d ~$31.20 · 30d ~$88.60 │ last5 ~$27.50 · all ~$142.30 (5 convos · 6 sess · 1 fork) │ +174/-12 lines │ credits on
 SYSTEM  this session 540M · 5 proc · pid 4821 │ all claude 512M · 1 proc · 1.6% of ram │ ram[█████░░░] 62% of 32.0G · 4.2G compressed │ disk[████░░░░] 48% · 210G free
 TOOLS   101 calls │ Bash81 Edit12 Read8 │ 2 tool errors │ 6 files edited · 14 read │ 0 subagents │ 0 compactions
-CACHE   97.9% hit │ 1h ttl ▸ expires 16:49 │ 0.12x vs all-uncached │ writes 504k 1h · 0 5m
+CACHE   97.9% hit │ 1h ttl ▸ expires 16:49 │ 0.12x vs all-uncached (list) │ writes 504k 1h · 0 5m
 TOKENS  total 23.8M reused · 504k written · 366 uncached │ turn 184k reused · 5.2k written · 2 uncached
 TIMING  turn 12m last · 4m median · 12m max (3 timed) │ wall 1h11m · api 19m (27% busy) │ hooks 3 runs · 133ms median · 0 errors
 ```

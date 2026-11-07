@@ -250,8 +250,15 @@ The observed marker relationship and its verification limits are recorded in
 | `possibly cold` | derived | the legacy estimated window elapsed; mixed prefixes and timing are not fully observable |
 | `cache not observed` | payload | the host has not observed cache tokens; caching may be off or unreported |
 | `warm` | payload | native state is warm but a usable expiry clock was not supplied |
-| `0.14x vs all-uncached` | derived | cost of served tokens relative to sending them all uncached (0.1x read, 1.25x write). Unit-free, **not dollars** |
+| `0.14x vs all-uncached (list)` | transcript | unit-free input ratio at published Claude API list prices for one supported model with known write TTL buckets |
 | `writes 313k 1h · 0 5m` | transcript | cumulative writes per TTL bucket; different TTLs may coexist |
+
+The ratio weights fresh input at 1×, five-minute writes at 1.25× and one-hour
+writes at 2×. The read weight comes from the recorded model ID. Mixed-model
+sessions and sessions with unsupported model IDs or incomplete write evidence
+keep the other cache fields. See [Anthropic pricing](https://platform.claude.com/docs/en/about-claude/pricing)
+and [ADR 0062](adrs/0062-qualify-cache-list-price-ratio.md).
+
 
 The native payload covers the main conversation and excludes subagents.
 Our transcript hit rate, write totals and relative multiplier retain their

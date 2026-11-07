@@ -67,6 +67,7 @@ old one rather than rewriting why the earlier choice was made.
 | [0059](0059-verify-installer-listing-before-index-install.md) | Verify exact installer listing before package-index installation |
 | [0060](0060-evolve-one-config-with-collection-independent-views.md) | Evolve one config with collection-independent views and an early editor |
 | [0061](0061-label-host-cost-estimates.md) | Label host cost estimates |
+| [0062](0062-qualify-cache-list-price-ratio.md) | Qualify the cache list-price ratio |
 
 ## Configuration
 
