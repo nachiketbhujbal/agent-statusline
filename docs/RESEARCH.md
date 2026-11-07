@@ -77,6 +77,11 @@ Repeat from the checkout with the two wheel environments:
 uv run --locked python scripts/benchmark_installed.py BASELINE_COMMAND CANDIDATE_COMMAND --timed
 ```
 
+A separate paired source-import run measured 27.46 ms median for a
+bare interpreter, 70.35 ms for the v0.5.9 renderer import, and
+55.58 ms for the v0.5.13 candidate import, with 40 samples per
+case. Each import measurement includes Python startup.
+
 The configuration import profile identified `dataclasses` and `pathlib`
 as avoidable startup work. A deterministic import check verifies their
 absence on the renderer path. A differential row check across 4,000

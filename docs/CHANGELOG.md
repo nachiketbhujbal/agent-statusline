@@ -4,13 +4,19 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.5.13
+## 0.5.13
 
 - Reduce redraw startup work by keeping heavyweight configuration imports off
   the renderer's path.
 - Reuse sanitized text when measuring, wrapping and truncating rows.
 - Add a paired installed benchmark for realistic synthetic sessions and
   concurrent event-driven or timed redraws.
+
+[PR #62](https://github.com/nachiketbhujbal/agent-statusline/pull/62) passed independent review, the local gate, and
+Linux/macOS CI. The [GitHub Release](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.13)
+artifact pair and clean installed wheel passed verification.
+[TestPyPI promotion](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42391169563)
+tracks its separate maintainer approval and verification.
 
 ## 0.5.12
 

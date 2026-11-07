@@ -53,9 +53,9 @@ installed-artifact evidence.
 | 0.5.10 | Host cost estimate provenance | **Released** |
 | 0.5.11 | Model and TTL aware cache ratio | **Released** |
 | 0.5.12 | Opt-in Claude Code timed refresh | **Released** |
-| 0.5.13 | Reduce redraw overhead | **Current** |
+| 0.5.13 | Reduce redraw overhead | **Released** |
 
-0.2.1 through 0.2.14 and v0.3.0 through v0.5.9 are tagged and released. The
+0.2.1 through 0.2.14 and v0.3.0 through v0.5.13 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
 production-ready supported public baseline. Each boundary retains its exact
 review and artifact evidence; GitHub Release objects begin at v0.2.4. The
@@ -699,7 +699,12 @@ the verified TestPyPI and production promotions.
 
 See [ADR 0059](adrs/0059-verify-installer-listing-before-index-install.md).
 
-### Remaining 0.5.x — correctness, refresh and measured speed
+### Final 0.5.x patches — correctness, refresh and measured speed
+
+v0.5.10 through v0.5.13 are verified GitHub releases. The
+[handoff](../HANDOFF.md#resume-point) links the exact package promotions.
+The [installed benchmark results](RESEARCH.md#v0513-redraw-measurements)
+record the measured redraw improvements.
 
 | Planning slot | One primary change | Evidence required before release |
 | --- | --- | --- |
