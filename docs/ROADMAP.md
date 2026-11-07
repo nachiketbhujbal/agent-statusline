@@ -48,9 +48,9 @@ installed-artifact evidence.
 | 0.5.5 | Print starter TOML with `config example` | **Released** |
 | 0.5.6 | Preview a synthetic session with `config preview --width 80` | **Released** |
 | 0.5.7 | Align the configuration guide with installed versions and setting precedence | **Released** |
-| 0.5.8 | Prefer native prompt-cache state and qualify legacy estimates | **Current** |
+| 0.5.8 | Prefer native prompt-cache state and qualify legacy estimates | **Released** |
 
-0.2.1 through 0.2.14 and v0.3.0 through v0.5.7 are tagged and released. The
+0.2.1 through 0.2.14 and v0.3.0 through v0.5.8 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
 production-ready supported public baseline. Each boundary retains its exact
 review and artifact evidence; GitHub Release objects begin at v0.2.4. The
@@ -633,6 +633,10 @@ with the shipped TOML and environment behavior.
 
 
 ## 0.5.8 — native prompt-cache reporting
+
+Released on GitHub after the full local gate, exact independent review,
+Linux/macOS CI and installed-artifact verification. Package-index milestones
+are separate; the [handoff](../HANDOFF.md#resume-point) links the promotion run.
 
 - Prefer validated `prompt_cache` TTL, warmth and expiry from Claude Code
   v2.1.251+; use only the current session payload, never shared last-payload state.

@@ -5,7 +5,7 @@ once the regression that demonstrates it exists in this repository.
 
 | Release | Candidate scope | Evidence boundary |
 | --- | --- | --- |
-| 0.5.8 | Native cache-state precedence and qualified older-client estimates | Native precedence, expiry, session separation and width regressions; exact review required |
+| 0.5.8 | Native cache-state precedence and qualified older-client estimates | Exact candidate `0b76de6e810b7ad3280e6e3f39b311973618633b` passed renewed independent review with no blockers |
 | 0.5.7 | Configuration guide, version availability, and precedence | Exact candidate `345950f813066d4dfcf666a15389a6f222f7b962` passed independent review with no blockers |
 | 0.5.6 | Synthetic preview through the regular formatter | Exact candidate `6b047130243775574db3a989c7169c2534ab00bb` passed independent review with no blockers |
 | 0.5.5 | Read-only, default-preserving starter TOML | Exact candidate `2948db6b0dabb897ded03aeb1c69a485c8dc09ed` passed independent review with no blockers |
@@ -14,6 +14,13 @@ once the regression that demonstrates it exists in this repository.
 | 0.5.2 | Malformed-input fallback width in styled and plain output | Exact candidate `7cc277a7f07d909b8df3c9ba041a629f1e421c4c` passed independent review with no blockers |
 | 0.5.1 | Display-only selection of existing field groups | Exact candidate `24ed27673cffea09c77a9503991b0b193c023304` passed independent review with no blockers |
 | 0.5.0 | Optional TOML, display-only visibility, plain output and a Python 3.11 minimum | Exact candidate `0ceafa28683ebd2109c647952d4c47f926502284` passed independent review with no blockers |
+
+The v0.5.8 owner gate passed 827 tests with 91.53% subprocess-aware coverage.
+Independent review passed 164 focused tests on Python 3.12, proved the native
+precedence regression fails the previous release, and verified the corrected
+absolute README link in exact wheel metadata. An isolated installed upgrade
+from v0.5.7 preserved complete synthetic settings and ledger bytes and modes.
+Exact PR/main Linux/macOS CI and GitHub artifact verification passed.
 
 The v0.5.1 through v0.5.7 artifact pairs were separately approved and
 verified on both package indexes. Each exact wheel passed clean installation
