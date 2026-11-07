@@ -8,8 +8,8 @@ the roadmap, or accepted ADRs.
 
 - Current release target: 0.5.8, native prompt-cache reporting.
 - Preceding release: v0.5.7, configuration guide alignment.
-- Branch owner: codex; GitHub release verified, package promotion in progress.
-- Reviewer role: implementation exact review complete; publication records review follows.
+- Branch owner: none; v0.5.8 is fully published and verified.
+- Reviewer role: none active at the completed release boundary; exact implementation review is complete.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
   complete-ancestry audit. Documentation-only refs skip both hosted test lanes;
@@ -104,10 +104,15 @@ exact version check, isolated self-test, artifact privacy/metadata and Twine.
 - Source SHA-256 `e72a9638bca7f3fdac26064543d7aefe63653f19d48d79b1518085e77633a628`.
 
 [TestPyPI run 42333384663](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42333384663)
-prepared that pair and reached the required maintainer gate. Use the run's
-current status to resume: verify TestPyPI before dispatching the separate
-production promotion, obtain production approval, verify the same hashes and
-clean installation, then close publication ownership. Do not duplicate uploads.
+and [production PyPI run 42334219594](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42334219594)
+passed after separate maintainer approvals. Both verified the same exact
+artifact pair, a clean Python 3.11 index installation, the exact version and
+isolated self-test. Independent direct index checks matched both hashes.
+TestPyPI passed on attempt one. Production's upload succeeded on attempt one;
+the first install verification reached its installer listing before v0.5.8
+appeared. After the listing exposed the exact wheel and hash, only failed
+verification was retried; attempt two passed. No upload or artifact was replaced.
+No deployment approval or publication step remains pending.
 Tests must use disposable state; live settings and ledger are not fixtures.
 
 The separately requested terminal Claude Code update completed from 2.1.270 to

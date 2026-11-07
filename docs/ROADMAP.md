@@ -634,9 +634,10 @@ with the shipped TOML and environment behavior.
 
 ## 0.5.8 — native prompt-cache reporting
 
-Released on GitHub after the full local gate, exact independent review,
-Linux/macOS CI and installed-artifact verification. Package-index milestones
-are separate; the [handoff](../HANDOFF.md#resume-point) links the promotion run.
+Released and verified on GitHub, TestPyPI and production PyPI after the full
+local gate, exact independent review, Linux/macOS CI and installed-artifact
+verification. The [handoff](../HANDOFF.md#resume-point) links both completed
+package promotions and their exact artifact hashes.
 
 - Prefer validated `prompt_cache` TTL, warmth and expiry from Claude Code
   v2.1.251+; use only the current session payload, never shared last-payload state.
@@ -656,15 +657,20 @@ existing defaults and detailed customization. The current
 [capability inventory](RESEARCH.md#claude-code-status-line-capability-audit)
 separates already supported fields from gaps. Next candidate slices, in order:
 
-1. Cost semantics: distinguish exact retention of host-reported totals from
+1. Package promotion verification: wait for the exact installer listing before
+   attempting the clean index install. v0.5.8 again reproduced the race after
+   successful publication and hash verification. Keep build-once artifacts,
+   separate approvals and verification-only retries; add focused synthetic
+   coverage when implementing this workflow correction.
+2. Cost semantics: distinguish exact retention of host-reported totals from
    invoice reconciliation, and audit relative multipliers across TTLs/models.
-2. Native cache performance: request/miss/rebuild counts and recache tokens.
-3. Native cache diagnostics: last miss and its reported likely causes.
-4. Agent and task identity for main conversations and subagent status lines.
-5. Native worktree identity and origin directory/branch.
-6. Pull-request link and review state.
-7. Editor mode and optional context detail.
-8. Gateway spend-limit percentage and period, where available. Host-estimated
+3. Native cache performance: request/miss/rebuild counts and recache tokens.
+4. Native cache diagnostics: last miss and its reported likely causes.
+5. Agent and task identity for main conversations and subagent status lines.
+6. Native worktree identity and origin directory/branch.
+7. Pull-request link and review state.
+8. Editor mode and optional context detail.
+9. Gateway spend-limit percentage and period, where available. Host-estimated
    dollars cannot enter exact accounting; any presentation requires a separate
    explicit design consistent with the money contract.
 
