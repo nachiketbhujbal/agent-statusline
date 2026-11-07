@@ -205,8 +205,9 @@ requires a new schema version and filename prefix. Snapshots and lock files are
 private (`0600`), use the shared locked storage service, and readers never see a
 partial JSON document. Retention matches the transcript cache: 35 days and at
 most 512 session files, checked at most hourly. Set
-`AGENT_STATUSLINE_SESSION_METRICS=0` (also accepts `false`, `no`, or `off`) to
-disable new snapshot writes.
+`[session_metrics]` with `enabled = false` in TOML to disable new snapshot
+writes. The `AGENT_STATUSLINE_SESSION_METRICS` environment override takes
+precedence and accepts `0`, `false`, `no`, or `off` to disable writes.
 
 These files can contain a session title, model, cost, and opaque identifier.
 They are a local integration contract, not publication-safe evidence.
@@ -229,18 +230,24 @@ The last-payload file remains shared diagnostic state, not a cross-session
 source of context evidence
 ([ADR 0051](adrs/0051-keep-context-fallback-and-compactions-session-scoped.md)).
 
-| environment variable | contract |
-| --- | --- |
-| `AGENT_STATUSLINE_CONTEXT_WARN_PCT` | finite number from `1` through `100`; default `80` |
-| `AGENT_STATUSLINE_CONTEXT_WARN_EVENT` | `stop` (default), `submit`, or `both` |
-| `AGENT_STATUSLINE_CONTEXT_WARN_MESSAGE` | non-empty custom message containing literal `{pct}` |
+Set these keys under `[context_guard]` in TOML. Each environment variable
+overrides the corresponding file value.
+
+| TOML key | Environment override | Contract |
+| --- | --- | --- |
+| `warn_pct` | `AGENT_STATUSLINE_CONTEXT_WARN_PCT` | finite number from `1` through `100`, default `80` |
+| `warn_event` | `AGENT_STATUSLINE_CONTEXT_WARN_EVENT` | `stop` (default), `submit`, or `both` |
+| `warn_message` | `AGENT_STATUSLINE_CONTEXT_WARN_MESSAGE` | non-empty custom message containing literal `{pct}` |
 
 Without a custom message, the established short warning and focused-compaction
 advice remain. On `submit`, the advice is also returned as
 `hookSpecificOutput.additionalContext`; on `Stop`, it is never model-directed.
-Invalid values produce a user-visible configuration message without blocking
-the hook, and `agent-statusline selftest` fails with the same concise reason.
-See [ADR 0049](adrs/0049-configure-context-warnings-at-stop-time.md).
+An invalid TOML file is ignored as a whole. Use `config check` for the file
+diagnostic and `config show` for the resulting settings. Invalid context
+guard environment overrides produce a user-visible configuration message
+without blocking the hook. `agent-statusline selftest` fails with the same
+concise reason. See [ADR 0049](adrs/0049-configure-context-warnings-at-stop-time.md)
+and [ADR 0052](adrs/0052-add-opt-in-toml-configuration-at-v0-5.md).
 
 `tests/conftest.py` redirects `AGENT_STATUSLINE_STATE` **before** any package import,
 because `paths.STATE_DIR` is resolved at import time. No test may touch the real

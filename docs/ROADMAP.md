@@ -47,6 +47,7 @@ installed-artifact evidence.
 | 0.5.4 | Inspect effective settings and their sources with `config show` | **Released** |
 | 0.5.5 | Print starter TOML with `config example` | **Released** |
 | 0.5.6 | Preview a synthetic session with `config preview --width 80` | **Released** |
+| 0.5.7 | Align the configuration guide with installed versions and setting precedence | **Current** |
 
 0.2.1 through 0.2.14 and v0.3.0 through v0.5.6 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
@@ -557,7 +558,7 @@ Released ([ADR 0051](adrs/0051-keep-context-fallback-and-compactions-session-sco
 - Preserve all ten rows, exact accounting, private locked storage, dependencies,
   installer behavior, and live user configuration.
 
-Package-owned configuration is planned separately for 0.5.0.
+Package-owned configuration shipped separately in v0.5.0.
 
 The implementation is independently reviewed and merged through PR #39. Exact
 PR and merged-main Linux/macOS CI passed, and annotated v0.4.5 and its GitHub
@@ -619,3 +620,9 @@ production still apply. See [ADR 0045](adrs/0045-promote-github-releases-through
 
 The planned customization work is complete on GitHub. The
 [handoff](../HANDOFF.md#resume-point) tracks package-index promotions.
+
+## 0.5.7 — configuration guide alignment
+
+Document which installed versions support each configuration feature.
+Align the upgrade instructions and the context warning and metrics guides
+with the shipped TOML and environment behavior.
