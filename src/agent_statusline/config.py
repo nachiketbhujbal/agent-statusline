@@ -93,6 +93,7 @@ class Config(NamedTuple):
     color: str = "default"
     hidden_rows: frozenset[str] = frozenset()
     fields: tuple[tuple[str, frozenset[str]], ...] = ()
+    show_cost_estimate_marker: bool = False
 
 
 DEFAULTS = Config()
@@ -157,10 +158,15 @@ def _validate(doc) -> Config:
     if not isinstance(enabled, bool):
         raise InvalidConfig("session_metrics.enabled: expected a boolean")
 
-    display = _table(doc.get("display", {}), "display", {"color", "rows", "fields"})
+    display = _table(
+        doc.get("display", {}), "display", {"color", "rows", "fields", "show_cost_estimate_marker"}
+    )
     color = display.get("color", DEFAULTS.color)
     if color not in ("default", "plain"):
         raise InvalidConfig("display.color: expected default or plain")
+    marker = display.get("show_cost_estimate_marker", DEFAULTS.show_cost_estimate_marker)
+    if not isinstance(marker, bool):
+        raise InvalidConfig("display.show_cost_estimate_marker: expected a boolean")
     rows = _table(display.get("rows", {}), "display.rows", set(ROW_IDS))
     for row_id, visibility in rows.items():
         if visibility not in ("show", "hide"):
@@ -186,6 +192,7 @@ def _validate(doc) -> Config:
         color,
         frozenset(key for key, visibility in rows.items() if visibility == "hide"),
         tuple(selections),
+        marker,
     )
 
 
@@ -305,6 +312,12 @@ def _show_config():
     )
     display = doc.get("display", {})
     show("display", "color", settings.color, display)
+    show(
+        "display",
+        "show_cost_estimate_marker",
+        str(settings.show_cost_estimate_marker).lower(),
+        display,
+    )
     rows = display.get("rows", {})
     fields = display.get("fields", {})
     selections = dict(settings.fields)
@@ -326,6 +339,7 @@ schema_version = 1
 
 [display]
 # color = "plain"
+# show_cost_estimate_marker = true
 
 [display.rows]
 # CACHE = "hide"

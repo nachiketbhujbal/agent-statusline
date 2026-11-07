@@ -150,10 +150,10 @@ that number, and it may be pinned rather than climbing. See
 
 | field | source | meaning |
 | --- | --- | --- |
-| `~$2.10 session` | ledger | **lifetime** cost of this session across every resume |
-| `(run ~$X · N runs)` | ledger | shown only after a resume: this run's own estimate, and the run count |
+| `$2.10 session` | ledger | **lifetime** cost of this session across every resume |
+| `(run $X · N runs)` | ledger | shown only after a resume: this run's own estimate, and the run count |
 | `24h / 7d / 30d` | ledger | recorded estimates across all sessions in those windows |
-| `≥~$` before a rolling amount | ledger | the attributable portion of recorded estimates for that horizon |
+| `≥$` before a rolling amount | ledger | the attributable portion of recorded estimates for that horizon |
 | `last5 · all` | ledger | the five most recently updated rows, and everything |
 | `(5 convos · 6 sess · 1 fork)` | ledger | conversations, real sessions, forks |
 | `+174/-0 lines` | payload | lines added/removed this session |
@@ -162,14 +162,17 @@ that number, and it may be pinned rather than climbing. See
 | `overage included for <model>` | probe | past the limit, but this model is exempt from drawing |
 | `credits OFF (reason)` | probe | credits unavailable — red |
 
-Every amount prefixed with `~$` uses the host's `total_cost_usd`, which Claude
+Each cost amount uses the host's `total_cost_usd`, which Claude
 Code calculates as an estimate. Claude Code uses list pricing or its configured
 model pricing. Session, run, recent and all-time amounts accumulate the host
 values. Rolling windows use timestamped positive lifetime deltas. When timing
-evidence is incomplete, `≥~$` gives a lower bound on the recorded estimates
+evidence is incomplete, `≥$` gives a lower bound on the recorded estimates
 attributable to that window. Billing is determined separately by the provider.
+Set `display.show_cost_estimate_marker = true` to display `~$` (or `≥~$`
+for an incomplete window) in the status line and `ledger show`. The default
+uses ordinary dollar amounts.
 See the [Claude Code status line reference](https://code.claude.com/docs/en/statusline#available-data),
-[ADR 0061](adrs/0061-label-host-cost-estimates.md) and
+[ADR 0065](adrs/0065-make-cost-estimate-marker-optional.md) and
 [ADR 0022](adrs/0022-account-rolling-costs-with-timestamped-deltas.md).
 
 ## SYSTEM

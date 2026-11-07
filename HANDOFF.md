@@ -6,10 +6,9 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.5.13, the completed release recorded at this boundary.
-- Preceding release: v0.5.12, the baseline for the final 0.5.x patch.
-- Active release target: none.
-- Branch owner: none. All 0.5.x package promotions are verified.
+- Current release target: 0.5.14, optional cost estimate marker.
+- Preceding release: v0.5.13, verified on GitHub, TestPyPI and PyPI.
+- Branch owner: Codex owns the v0.5.14 cost presentation patch.
 - Reviewer role: implementation reviews complete. Release records receive independent review.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one

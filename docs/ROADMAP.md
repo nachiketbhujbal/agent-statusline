@@ -54,6 +54,7 @@ installed-artifact evidence.
 | 0.5.11 | Model and TTL aware cache ratio | **Released** |
 | 0.5.12 | Opt-in Claude Code timed refresh | **Released** |
 | 0.5.13 | Reduce redraw overhead | **Released** |
+| 0.5.14 | Optional cost estimate marker | **Current** |
 
 0.2.1 through 0.2.14 and v0.3.0 through v0.5.13 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
@@ -699,7 +700,7 @@ the verified TestPyPI and production promotions.
 
 See [ADR 0059](adrs/0059-verify-installer-listing-before-index-install.md).
 
-### Final 0.5.x patches — correctness, refresh and measured speed
+### 0.5.x correctness, refresh and measured speed
 
 v0.5.10 through v0.5.13 are verified on GitHub, TestPyPI and production PyPI. The
 [handoff](../HANDOFF.md#resume-point) links the exact package promotions.

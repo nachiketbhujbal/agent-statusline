@@ -4,6 +4,12 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
+## Unreleased — 0.5.14
+
+- Show plain dollar amounts by default and document that they are estimates.
+  Set `display.show_cost_estimate_marker = true` for per-amount tildes.
+- Preserve the rolling lower-bound marker in both display modes.
+
 ## 0.5.13
 
 - Reduce redraw startup work by keeping heavyweight configuration imports off

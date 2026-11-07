@@ -18,6 +18,26 @@ def run(argv, monkeypatch, stdin="{}"):
     return cli.main(argv)
 
 
+@pytest.mark.parametrize("show_marker", [False, True])
+def test_ledger_show_cost_marker_follows_display_setting(
+    tmp_path, monkeypatch, capsys, show_marker
+):
+    from agent_statusline import ledger
+
+    monkeypatch.setattr(ledger, "LEDGER", tmp_path / "ledger.json")
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    monkeypatch.setattr("sys.argv", ["agent-statusline"])
+    ledger.save({"sessions": {"synthetic": {"cost": 1.25, "cost_run": 1.25}}})
+    if show_marker:
+        config = tmp_path / "agent-statusline" / "config.toml"
+        config.parent.mkdir()
+        config.write_text("schema_version = 1\n[display]\nshow_cost_estimate_marker = true\n")
+    assert run(["ledger", "show"], monkeypatch) == 0
+    output = capsys.readouterr().out
+    assert output.count("~$") == (3 if show_marker else 0)
+    assert "1.2500" in output
+
+
 class TestDispatch:
     def test_no_arguments_renders(self, monkeypatch, capsys):
         assert run([], monkeypatch) == 0
