@@ -175,6 +175,13 @@ at 80 columns. Omit `--width` to use the detected terminal width. The sample
 includes every selectable field group and uses synthetic figures and session
 details throughout.
 
+Finer per-value controls, an interactive editor, optional layouts and managed
+timed refresh are planned; they are not commands or settings in this release.
+The [roadmap](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/ROADMAP.md#next-release-and-milestones)
+and [design](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/CUSTOMIZATION_DESIGN.md)
+keep one config location and collection independent of visibility. Current
+group selection cannot individually hide `24h` within the `COST.rolling` group.
+
 If the status line does not appear, run `agent-statusline selftest` first, then
 restart Claude Code. Unexpected renderer failures leave only their time and
 exception type in `~/.claude/statusline-last-error.json`.

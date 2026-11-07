@@ -64,6 +64,8 @@ old one rather than rewriting why the earlier choice was made.
 | [0056](0056-print-starter-toml.md) | Print starter TOML |
 | [0057](0057-preview-synthetic-status-line.md) | Preview a synthetic status line |
 | [0058](0058-prefer-native-prompt-cache-state.md) | Prefer native prompt-cache lifetime state |
+| [0059](0059-verify-installer-listing-before-index-install.md) | Verify exact installer listing before package-index installation |
+| [0060](0060-evolve-one-config-with-collection-independent-views.md) | Evolve one config with collection-independent views and an early editor |
 
 ## Configuration
 
@@ -74,6 +76,8 @@ defines field selection. The command contracts cover
 [effective settings](0055-show-effective-configuration.md),
 [starter TOML](0056-print-starter-toml.md), and
 [synthetic preview](0057-preview-synthetic-status-line.md).
+[ADR 0060](0060-evolve-one-config-with-collection-independent-views.md) records
+the future schema/editor/layout direction without changing shipped schema 1.
 
 ## Reading order
 

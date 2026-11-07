@@ -37,6 +37,18 @@ visible, and must never be presented as a credit balance.
 
 ## Further display customization
 
-Profiles, themes, custom rows and layout reordering have no committed release.
-The [0.5.x roadmap](ROADMAP.md#05x--display-customization) tracks field visibility
-and the related configuration commands.
+Finer visibility, an early interactive editor, typed presentation, conditions
+and optional layouts now have ordered [roadmap slots](ROADMAP.md#next-release-and-milestones)
+and an approved [design](CUSTOMIZATION_DESIGN.md). They are planned, not shipped.
+
+Runtime profiles, alternate config-path switches and project config discovery
+are intentionally excluded: retain one opinionated location and one view.
+Arbitrary custom rows, executable templates, shell-command widgets, runtime
+plugins and a programmable formatting language remain outside the plan.
+
+## Beyond host-supported refresh
+
+Prefer Claude's native timer and measured cached probes. A persistent daemon,
+custom wakeup/IPC system, native helper or compiled rewrite needs a demonstrated
+bottleneck and a supported host integration before becoming a release target.
+Do not add runtime networking to refresh account-wide facts from other devices.

@@ -4,6 +4,20 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
+## Unreleased — 0.5.9
+
+- Wait for the exact non-yanked wheel and source hashes in the installer's
+  Simple Index listing as well as release JSON before index installation.
+  Keep bounded retries, exact artifacts and separate publication approvals.
+- Document focused customization, refresh, performance, layout and host milestones;
+  retain one config location, collect independently of visibility and place the
+  interactive editor immediately after the richer configuration model.
+- Runtime rendering, schema 1, the default view, ledger and Claude settings
+  are unchanged. Future schema-2 examples are explicitly design-only.
+
+Implementation and synthetic index tests are in progress; full local gate,
+independent exact-SHA review and hosted/artifact evidence remain pending.
+
 ## 0.5.8
 
 - Prefer Claude Code's native prompt-cache TTL, warmth and expiry over
