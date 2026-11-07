@@ -4,12 +4,26 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.5.12
+## Unreleased — 0.5.13
+
+- Reduce redraw startup work by keeping heavyweight configuration imports off
+  the renderer's path.
+- Reuse sanitized text when measuring, wrapping and truncating rows.
+- Add a paired installed benchmark for realistic synthetic sessions and
+  concurrent event-driven or timed redraws.
+
+## 0.5.12
 
 - Opt in to Claude Code timed redraws with `install --refresh-interval SECONDS`
   or restore event-only redraws with `install --event-only`.
 - Preserve an existing interval during ordinary reinstall. Check Claude Code
   support before setting an interval and preview either change with `--dry-run`.
+
+[PR #61](https://github.com/nachiketbhujbal/agent-statusline/pull/61) passed independent review, the local gate, and
+Linux/macOS CI. The [GitHub Release](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.12)
+artifact pair and clean installed wheel passed verification.
+[TestPyPI promotion](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42390195049)
+tracks its separate maintainer approval and verification.
 
 ## 0.5.11
 

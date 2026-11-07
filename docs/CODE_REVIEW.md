@@ -5,7 +5,8 @@ once the regression that demonstrates it exists in this repository.
 
 | Release | Candidate scope | Evidence boundary |
 | --- | --- | --- |
-| 0.5.12 | Opt-in Claude Code timed refresh | Candidate review pending |
+| 0.5.13 | Reduce redraw overhead | Candidate review pending |
+| 0.5.12 | Opt-in Claude Code timed refresh | Exact candidate `42645b189f01fcd0e3686e6fbfcdbced744ff7cc` passed independent review and the full gate |
 | 0.5.11 | Model and TTL aware cache ratio | Exact candidate `312ca4e7170823a026dc40c2762827bd4498442c` passed independent review and the full gate |
 | 0.5.10 | Host cost estimate provenance | Exact candidate `1646b25bf500dcf37724fbb54f0dcd54a952d4d5` passed independent review and the full gate |
 | 0.5.9 | Installer-listing readiness and documented customization milestones | Exact candidate `f1b23ce99d69d103d34cf24277e63f443c8b611a` passed independent review with no blockers |

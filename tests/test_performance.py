@@ -32,7 +32,8 @@ def test_renderer_import_excludes_cold_and_cli_modules(tmp_path):
 import sys
 sys.path.insert(0, {str(ROOT / "src")!r})
 import agent_statusline.statusline
-print(','.join(name for name in ('argparse', 'subprocess', 'shutil') if name in sys.modules))
+excluded = ('argparse', 'subprocess', 'shutil', 'dataclasses', 'pathlib')
+print(','.join(name for name in excluded if name in sys.modules))
 """
     completed = subprocess.run(
         [sys.executable, "-I", "-S", "-c", code],

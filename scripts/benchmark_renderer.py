@@ -66,6 +66,7 @@ def main(argv=None):
         env = dict(
             environment,
             HOME=home,
+            XDG_CONFIG_HOME=os.path.join(home, ".config"),
             CLAUDE_CONFIG_DIR=os.path.join(home, ".claude"),
             AGENT_STATUSLINE_STATE=os.path.join(root, "warm-state"),
             COLUMNS="180",

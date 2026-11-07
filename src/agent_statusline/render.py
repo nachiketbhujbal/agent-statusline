@@ -40,6 +40,8 @@ SAFE_SGR = frozenset((R, D, B, RED, GRN, YEL, BLU, MAG, CYN, GRY))
 def sanitize(s, preserve_sgr=True):
     """Remove terminal controls, optionally preserving package-owned SGR styles."""
     text = str(s)
+    if text.isprintable():
+        return text
     out = []
     index = 0
     while index < len(text):
@@ -104,7 +106,15 @@ def vis(s):
     budget -- measuring len(s) directly makes every coloured row look roughly
     twice as wide as it is and truncates almost everything.
     """
-    return sum(_cell_width(char) for char in ANSI.sub("", sanitize(s)))
+    return _visible_clean(sanitize(s))
+
+
+def _visible_clean(text):
+    """Measure text that already contains only safe SGR and printable characters."""
+    visible = ANSI.sub("", text)
+    if visible.isascii():
+        return len(visible)
+    return sum(_cell_width(char) for char in visible)
 
 
 def width():
@@ -140,16 +150,19 @@ def clip(s, budget):
     counted, and a reset is appended so a cut inside a coloured run cannot leak
     its colour into the rest of the line.
     """
-    s = sanitize(s)
+    return _clip_clean(sanitize(s), budget)
+
+
+def _clip_clean(s, budget):
     if budget <= 0:
         return ""
-    if vis(s) <= budget:
+    if _visible_clean(s) <= budget:
         return s
     keep = max(0, budget - 1)  # leave one cell for the ellipsis
     return _take_cells(s, keep) + f"{R}{D}…{R}"
 
 
-def pack(segs, sep, budget, maxlines=MAXLINES):
+def pack(segs, sep, budget, maxlines=MAXLINES, *, _measure=vis):
     """Greedily pack segments into at most `maxlines` lines.
 
     Returns (lines, dropped). Segments arrive ordered most- to least-important,
@@ -162,7 +175,7 @@ def pack(segs, sep, budget, maxlines=MAXLINES):
         if not cur:
             cur = [seg]
             continue
-        if vis(sep.join(cur + [seg])) <= budget:
+        if _measure(sep.join(cur + [seg])) <= budget:
             cur.append(seg)
             continue
         if len(lines) + 1 < maxlines:  # room for another line
@@ -191,10 +204,10 @@ def row(label, segs, sep=None, maxlines=MAXLINES, *, columns=None):
     if not segs:
         return ""
     budget = max(0, total_width - LABEL - 2)
-    segs = [clip(s, budget) for s in segs]
-    lines, dropped = pack(segs, sep, budget, maxlines)
+    segs = [_clip_clean(s, budget) for s in segs]
+    lines, dropped = pack(segs, sep, budget, maxlines, _measure=_visible_clean)
     label_text = _take_cells(label, LABEL)
-    label_text += " " * max(0, LABEL - vis(label_text))
+    label_text += " " * max(0, LABEL - _visible_clean(label_text))
     # Keep an SGR prefix on continuation lines. Claude Code was observed to
     # trim raw leading whitespace from multiline status-line output while
     # preserving spaces after an escape sequence. Re-verify if the host changes.
@@ -204,9 +217,9 @@ def row(label, segs, sep=None, maxlines=MAXLINES, *, columns=None):
     ]
     if dropped:
         marker = f" {D}…{R}"
-        available = max(0, total_width - vis(marker))
+        available = max(0, total_width - _visible_clean(marker))
         out[-1] = _take_cells(out[-1], available) + marker
-    out = [clip(line, total_width) if vis(line) > total_width else line for line in out]
+    out = [_clip_clean(line, total_width) for line in out]
     return "\n".join(out)
 
 

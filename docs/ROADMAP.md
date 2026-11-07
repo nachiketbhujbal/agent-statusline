@@ -52,7 +52,8 @@ installed-artifact evidence.
 | 0.5.9 | Installer-listing readiness and the next customization milestones | **Released** |
 | 0.5.10 | Host cost estimate provenance | **Released** |
 | 0.5.11 | Model and TTL aware cache ratio | **Released** |
-| 0.5.12 | Opt-in Claude Code timed refresh | **Current** |
+| 0.5.12 | Opt-in Claude Code timed refresh | **Released** |
+| 0.5.13 | Reduce redraw overhead | **Current** |
 
 0.2.1 through 0.2.14 and v0.3.0 through v0.5.9 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the

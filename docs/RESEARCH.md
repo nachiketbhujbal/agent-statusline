@@ -45,6 +45,45 @@ why elapsed time remains recorded evidence rather than a gate. The deterministic
 release boundary is instead that a fresh renderer import excludes `argparse`,
 `subprocess`, and `shutil`.
 
+### v0.5.13 redraw measurements
+
+Paired installed wheels on ARM64 macOS with CPython 3.11.5, measured
+2026-11-07. The baseline is the verified v0.5.12 wheel. The candidate was
+built from the v0.5.13 implementation under review. The runner alternates
+order, uses a 120-cell width, isolated state per installed version and six
+synthetic sessions with 94210 transcript bytes each. Each cell below
+is median / p95 wall time in milliseconds.
+
+| Workload | Samples per wheel | v0.5.12 | v0.5.13 candidate |
+| --- | ---: | ---: | ---: |
+| Warm render, no config | 40 | 62.31 / 127.63 | 49.56 / 108.86 |
+| Warm render, TOML | 40 | 60.30 / 68.31 | 48.58 / 59.92 |
+| Warm render, two hidden rows | 40 | 59.71 / 68.46 | 47.53 / 59.89 |
+| Fresh state and transcript replay | 12 | 140.63 / 197.62 | 126.03 / 204.75 |
+| Six concurrent redraws | 20 | 117.47 / 171.65 | 94.27 / 145.31 |
+| Six redraws on one-second cadence | 7 | 109.19 / 136.01 | 84.49 / 115.68 |
+| Six redraws on ten-second cadence | 3 | 235.08 / 242.63 | 204.35 / 205.68 |
+
+Median warm latency fell 20.5% on this workload. A separate
+paired run from the original v0.5.9 baseline recorded 58.90 ms
+versus 46.61 ms for the candidate (20.9%
+lower). Burst times include process scheduling, probe work and shared state
+contention. The timed samples use local simulated cadence and small samples.
+They measure renderer completion rather than the host's redraw schedule.
+
+Repeat from the checkout with the two wheel environments:
+
+```sh
+uv run --locked python scripts/benchmark_installed.py BASELINE_COMMAND CANDIDATE_COMMAND --timed
+```
+
+The configuration import profile identified `dataclasses` and `pathlib`
+as avoidable startup work. A deterministic import check verifies their
+absence on the renderer path. A differential row check across 4,000
+generated combinations of widths, styles, Unicode and control text matched
+the prior formatter byte for byte. See
+[ADR 0064](adrs/0064-reduce-configuration-and-fitting-overhead.md).
+
 ### Compiled implementation
 
 A compiled one-shot could approach the roughly 2.5 ms floor observed in that
