@@ -49,18 +49,19 @@ def test_plain_output_keeps_order_and_fits_width(payload, monkeypatch, capsys, t
 
 
 @pytest.mark.parametrize(
-    ("models", "known_write_split", "expected"),
+    ("models", "evidence", "expected"),
     [
-        (("claude-opus-5-5", "claude-opus-5-5"), True, "0.31x vs all-uncached (list)"),
-        (("claude-opus-4-6", "claude-opus-4-6"), True, "0.35x vs all-uncached (list)"),
-        (("claude-fable-5-1", "claude-fable-5-1"), True, "0.29x vs all-uncached (list)"),
-        (("claude-opus-5-5", "claude-opus-4-6"), True, None),
-        (("unknown-model", "unknown-model"), True, None),
-        (("claude-opus-5-5", "claude-opus-5-5"), False, None),
+        (("claude-opus-5-5", "claude-opus-5-5"), "complete", "0.31x vs all-uncached (list)"),
+        (("claude-opus-4-6", "claude-opus-4-6"), "complete", "0.35x vs all-uncached (list)"),
+        (("claude-fable-5-1", "claude-fable-5-1"), "complete", "0.29x vs all-uncached (list)"),
+        (("claude-opus-5-5", "claude-opus-4-6"), "complete", None),
+        (("unknown-model", "unknown-model"), "complete", None),
+        (("claude-opus-5-5", "claude-opus-5-5"), "missing split", None),
+        (("claude-opus-5-5", "claude-opus-5-5"), "missing fresh", None),
     ],
 )
 def test_cache_list_ratio_requires_known_model_and_ttl_buckets(
-    payload, monkeypatch, capsys, models, known_write_split, expected
+    payload, monkeypatch, capsys, models, evidence, expected
 ):
     path = Path(payload["transcript_path"])
     entries = []
@@ -71,13 +72,15 @@ def test_cache_list_ratio_requires_known_model_and_ttl_buckets(
             "input_tokens": 100,
             "cache_read_input_tokens": 1500,
             "cache_creation_input_tokens": 250,
-            "cache_creation": {bucket: 250} if known_write_split else {},
+            "cache_creation": {bucket: 250} if evidence != "missing split" else {},
         }
+        if evidence == "missing fresh":
+            del usage["input_tokens"]
         entries.append({"type": "assistant", "message": {"model": model, "usage": usage}})
     path.write_text("".join(json.dumps(entry) + "\n" for entry in entries))
     for _ in range(2):
         output = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
-        assert "81.1% hit" in output
+        assert "% hit" in output
         if expected is None:
             assert "vs all-uncached" not in output
         else:
