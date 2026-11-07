@@ -44,6 +44,8 @@ def _facts():
         "think": 150,
         "last_bucket": "1h",
         "b1h": 200,
+        "cache_pricing_model": "claude-opus-5-5",
+        "cache_pricing_complete": True,
         "tools": {"Read": 5, "Edit": 2},
         "errors": 0,
         "synth": 1,
