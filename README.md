@@ -117,6 +117,19 @@ next model turn.
 
 ## Configure the view
 
+Check `agent-statusline --version` before using the examples below. This
+guide covers the latest GitHub release. An install from PyPI follows the
+versions published on that index.
+
+| Since | Configuration support |
+| --- | --- |
+| 0.5.0 | Optional TOML, row visibility, plain output, and `config check` |
+| 0.5.1 | Field group selection |
+| 0.5.3 | `config fields [ROW]` |
+| 0.5.4 | `config show` |
+| 0.5.5 | `config example` |
+| 0.5.6 | `config preview [--width CELLS]` |
+
 Create `~/.config/agent-statusline/config.toml` (or use the same relative path
 under an absolute `XDG_CONFIG_HOME`). The file is optional. Use
 `agent-statusline config example` to print a starter file. Save it and
@@ -142,14 +155,14 @@ output. Field lists select existing groups within a visible row. Omitted lists
 keep all fields, and a list never changes their priority. Run
 `agent-statusline config fields PROJECT` to list IDs for one row, or see the
 [field IDs](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/FIELDS.md#configurable-field-groups).
-Field lists require v0.5.1 or later. The file also accepts `[context_guard]` with `warn_pct`, `warn_event`,
-and `warn_message`, and `[session_metrics]` with `enabled = false` to stop new
+The file also accepts `[context_guard]` with `warn_pct`, `warn_event`, and
+`warn_message`, and `[session_metrics]` with `enabled = false` to stop new
 snapshots. Existing environment overrides take precedence over file values.
 Run `agent-statusline config check` to validate the file. An invalid file is
 ignored as a whole during normal operation. Run `agent-statusline config show`
 to see the effective settings, environment overrides, and whether fallback
 occurred. Custom warning text is redacted. See the
-[configuration contract](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/adrs/0052-add-opt-in-toml-configuration-at-v0-5.md).
+[configuration decisions](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/adrs/README.md#configuration).
 
 Run `agent-statusline config preview --width 80` to try the configured view
 at 80 columns. Omit `--width` to use the detected terminal width. The sample
@@ -170,7 +183,7 @@ agent-statusline install
 Re-running `install` refreshes the managed Claude Code wiring while preserving
 unrelated configuration.
 
-If your 0.4.x tool uses Python 3.9 or 3.10, install 0.5.0 using Python 3.11
+If your 0.4.x tool uses Python 3.9 or 3.10, install 0.5.x using Python 3.11
 or later (for example, `uv tool install --python 3.11 --force agent-statusline`)
 before refreshing the managed hooks. Stay on 0.4.x if you need the older
 Python versions.

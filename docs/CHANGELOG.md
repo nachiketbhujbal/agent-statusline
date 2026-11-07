@@ -4,6 +4,12 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
+## Unreleased — 0.5.7
+
+- Document configuration feature availability by version, update the
+  Python 3.11 upgrade guidance, and explain TOML and environment precedence
+  for context warnings and session metrics.
+
 ## 0.5.6
 
 - Add read-only `agent-statusline config preview [--width CELLS]` to render

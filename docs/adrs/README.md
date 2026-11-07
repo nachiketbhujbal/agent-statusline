@@ -64,6 +64,16 @@ old one rather than rewriting why the earlier choice was made.
 | [0056](0056-print-starter-toml.md) | Print starter TOML |
 | [0057](0057-preview-synthetic-status-line.md) | Preview a synthetic status line |
 
+## Configuration
+
+[ADR 0052](0052-add-opt-in-toml-configuration-at-v0-5.md) establishes the TOML
+schema and precedence. [ADR 0053](0053-select-existing-display-field-groups.md)
+defines field selection. The command contracts cover
+[field discovery](0054-list-supported-display-field-ids.md),
+[effective settings](0055-show-effective-configuration.md),
+[starter TOML](0056-print-starter-toml.md), and
+[synthetic preview](0057-preview-synthetic-status-line.md).
+
 ## Reading order
 
 New here, or handing this to another agent? Read [0001](0001-exactly-accountable-money.md),

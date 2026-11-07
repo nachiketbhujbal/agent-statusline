@@ -6,10 +6,10 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.5.6, synthetic display preview.
-- Preceding release: v0.5.5, starter TOML on stdout.
-- Branch owner: none; the final configuration slice is released on GitHub.
-- Reviewer role: none active; exact candidate review is complete.
+- Current release target: 0.5.7, configuration guide alignment.
+- Preceding release: v0.5.6, synthetic display preview.
+- Branch owner: Codex, on `codex/docs/v0.5.7-configuration-guide`.
+- Reviewer role: exact documentation candidate review pending.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
   complete-ancestry audit. Documentation-only refs skip both hosted test lanes;
@@ -79,7 +79,8 @@ a whole or import a later slice into the current release.
 
 The planned 0.5.x customization work is complete on GitHub. Promote each
 verified artifact pair through TestPyPI and then PyPI. Both environments
-retain separate maintainer approvals.
+retain separate maintainer approvals. v0.5.7 aligns the documentation with
+the shipped commands and their availability.
 
 v0.5.6 is tagged on verified merge `49683fadce56849c50d1f64d3a1fbe2931fcfa5e`.
 PR #49, main CI run 42308292382 and GitHub Release run 42308425622 passed.
@@ -131,7 +132,7 @@ minimum and no runtime dependencies. See [ADR 0052](docs/adrs/0052-add-opt-in-to
 and the [roadmap](docs/ROADMAP.md#050--package-owned-toml-configuration).
 The 0.4.x line retains Python 3.9 support. v0.5.1 adds selection of existing
 field groups. See [ADR 0053](docs/adrs/0053-select-existing-display-field-groups.md)
-and the [remaining slices](docs/ROADMAP.md#05x--display-customization).
+and the [configuration release sequence](docs/ROADMAP.md#05x--display-customization).
 
 Exact candidate `0ceafa28683ebd2109c647952d4c47f926502284` passed
 independent review with no blockers against the v0.4.5 main closeout

@@ -5,6 +5,7 @@ once the regression that demonstrates it exists in this repository.
 
 | Release | Candidate scope | Evidence boundary |
 | --- | --- | --- |
+| 0.5.7 | Configuration guide, version availability, and precedence | Exact candidate review pending |
 | 0.5.6 | Synthetic preview through the regular formatter | Exact candidate `6b047130243775574db3a989c7169c2534ab00bb` passed independent review with no blockers |
 | 0.5.5 | Read-only, default-preserving starter TOML | Exact candidate `2948db6b0dabb897ded03aeb1c69a485c8dc09ed` passed independent review with no blockers |
 | 0.5.4 | Effective configuration and source reporting | Exact candidate `dc43adfb42309db92cac2d785027309c6b51885a` passed independent review with no blockers |
