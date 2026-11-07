@@ -17,13 +17,13 @@ import os
 import time
 from collections.abc import Mapping
 
-from agent_statusline.coerce import finite_integer
+from agent_statusline.coerce import MAX_DISPLAY_VALUE, finite_integer
 from agent_statusline.paths import state
 from agent_statusline.storage import update_json
 
 TSTATE = state("statusline-transcript.json")
 
-SCHEMA = 4
+SCHEMA = 5
 CACHE_RETENTION_S = 35 * 24 * 60 * 60
 CACHE_TOUCH_S = 60 * 60
 MAX_CACHED_TRANSCRIPTS = 512
@@ -135,6 +135,8 @@ def _blank():
         "perm": None,
         "tier": None,
         "last_bucket": None,
+        "cache_pricing_model": None,
+        "cache_pricing_complete": True,
     }
 
 
@@ -157,7 +159,14 @@ _COUNT_FIELDS = (
 _COUNT_MAP_FIELDS = ("tools", "cmds")
 _PATH_LIST_FIELDS = ("f_edit", "f_read")
 _COUNT_LIST_FIELDS = ("durs", "hook_ms")
-_STRING_FIELDS = ("last_ts", "perm", "tier", "last_bucket", "compact_boundary")
+_STRING_FIELDS = (
+    "last_ts",
+    "perm",
+    "tier",
+    "last_bucket",
+    "compact_boundary",
+    "cache_pricing_model",
+)
 
 
 def _normalized_totals(value):
@@ -189,8 +198,13 @@ def _normalized_totals(value):
             normalized[key] = current
     if normalized["last_bucket"] not in (None, "1h", "5m"):
         normalized["last_bucket"] = None
+    normalized["cache_pricing_complete"] = value.get("cache_pricing_complete") is True
     normalized["compact_pending"] = value.get("compact_pending") is True
     return normalized
+
+
+_CACHE_INPUT_KEYS = ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
+_CACHE_BUCKET_KEYS = ("ephemeral_1h_input_tokens", "ephemeral_5m_input_tokens")
 
 
 def _absorb(tot, e):
@@ -288,6 +302,29 @@ def _absorb(tot, e):
         cc = {}
     h1 = finite_integer(cc.get("ephemeral_1h_input_tokens"))
     m5 = finite_integer(cc.get("ephemeral_5m_input_tokens"))
+    # This evidence qualifies the list-price ratio, not the ordinary token totals.
+    # A request with no input contributes nothing to that ratio.
+    counts = [u.get("input_tokens"), *(u.get(key, 0) for key in _CACHE_INPUT_KEYS[1:])]
+    buckets = [cc.get(key, 0) for key in _CACHE_BUCKET_KEYS]
+    if (
+        not isinstance(u.get("cache_creation", {}), Mapping)
+        or any(
+            type(count) is not int or not 0 <= count <= MAX_DISPLAY_VALUE
+            for count in (*counts, *buckets)
+        )
+        or sum(buckets) != counts[1]
+    ):
+        tot["cache_pricing_complete"] = False
+    elif any(counts):
+        model = m.get("model")
+        if (
+            not isinstance(model, str)
+            or not model
+            or tot["cache_pricing_model"] not in (None, model)
+        ):
+            tot["cache_pricing_complete"] = False
+        else:
+            tot["cache_pricing_model"] = model
     tot["b1h"] += h1
     tot["b5m"] += m5
     # Retain the newest write bucket for older hosts' estimated TTL. Mixed TTLs

@@ -6,10 +6,10 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.5.10, host cost estimate provenance.
-- Preceding release: v0.5.9, installer-listing readiness and forward design.
-- Branch owner: Codex owns the v0.5.10 cost provenance patch and pending v0.5.9 promotion.
-- Reviewer role: independent review required for the v0.5.10 candidate.
+- Current release target: 0.5.11, model and ttl aware cache ratio.
+- Preceding release: v0.5.10, verified GitHub release.
+- Branch owner: Codex owns the v0.5.11 implementation and current promotions.
+- Reviewer role: independent review required for the v0.5.11 candidate.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
   complete-ancestry audit. Documentation-only refs skip both hosted test lanes;
@@ -76,6 +76,19 @@ The complete sequence and exclusions are authoritative in
 a whole or import a later slice into the current release.
 
 ## Resume point
+
+v0.5.10 is verified on GitHub. [PR #59](https://github.com/nachiketbhujbal/agent-statusline/pull/59)
+merged reviewed candidate `1646b25bf500dcf37724fbb54f0dcd54a952d4d5` as `46d08da4f6ef0f467d834ddaf83173d26d2112e3`. The exact
+main CI run 42388232317 passed before annotated tag object
+`ec26756c1b74e91a67d28ec297419b0d480138b0`. GitHub Release run 42388339747
+published the verified artifact pair:
+
+- Wheel SHA-256 `39182de85bbfd2dd0243364c2c777f0ed72288fa8afb18308fbd347088afc715`.
+- Source SHA-256 `2da392af1da3eccac4793f2b07b864d5b84adf05f07055e566907584b0fc7229`.
+
+The exact wheel clean-installed and passed version, isolated self-test and
+config checks. [TestPyPI run 42388413515](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42388413515)
+tracks the separate approval and verification for this release.
 
 v0.5.9 is verified on GitHub. Exact candidate
 `f1b23ce99d69d103d34cf24277e63f443c8b611a`, based on

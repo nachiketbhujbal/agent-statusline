@@ -77,8 +77,10 @@ def test_preview_has_sample_evidence_for_optional_fields(isolated_preview, capsy
     path.write_text(
         'schema_version = 1\n[display]\ncolor = "plain"\n'
         '[display.fields]\nMODEL = ["output_style"]\nTOOLS = ["commands"]\n'
+        'CACHE = ["relative_cost"]\n'
     )
     assert main(["config", "preview", "--width", "80"]) == 0
     output = capsys.readouterr().out
     assert "MODEL   review" in output
     assert "TOOLS   cmds /compact1" in output
+    assert "CACHE   0.06x vs all-uncached (list)" in output

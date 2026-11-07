@@ -48,6 +48,48 @@ def test_plain_output_keeps_order_and_fits_width(payload, monkeypatch, capsys, t
     assert all("\033" not in line and render.vis(line) <= columns for line in plain)
 
 
+@pytest.mark.parametrize(
+    ("models", "evidence", "expected"),
+    [
+        (("claude-opus-5-5", "claude-opus-5-5"), "complete", "0.31x vs all-uncached (list)"),
+        (("claude-opus-4-6", "claude-opus-4-6"), "complete", "0.35x vs all-uncached (list)"),
+        (("claude-fable-5-1", "claude-fable-5-1"), "complete", "0.29x vs all-uncached (list)"),
+        (("claude-opus-5-5", "claude-opus-4-6"), "complete", None),
+        (("unknown-model", "unknown-model"), "complete", None),
+        (("claude-opus-5-5", "claude-opus-5-5"), "missing split", None),
+        (("claude-opus-5-5", "claude-opus-5-5"), "missing fresh", None),
+        (("claude-opus-5-5", "claude-opus-5-5"), "invalid zero", None),
+    ],
+)
+def test_cache_list_ratio_requires_known_model_and_ttl_buckets(
+    payload, monkeypatch, capsys, models, evidence, expected
+):
+    path = Path(payload["transcript_path"])
+    entries = []
+    for model, bucket in zip(
+        models, ("ephemeral_1h_input_tokens", "ephemeral_5m_input_tokens"), strict=True
+    ):
+        usage = {
+            "input_tokens": 100,
+            "cache_read_input_tokens": 1500,
+            "cache_creation_input_tokens": 250,
+            "cache_creation": {bucket: 250} if evidence != "missing split" else {},
+        }
+        if evidence == "missing fresh":
+            del usage["input_tokens"]
+        if evidence == "invalid zero" and bucket == "ephemeral_5m_input_tokens":
+            usage = {"input_tokens": False, "output_tokens": 10}
+        entries.append({"type": "assistant", "message": {"model": model, "usage": usage}})
+    path.write_text("".join(json.dumps(entry) + "\n" for entry in entries))
+    for _ in range(2):
+        output = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
+        assert "% hit" in output
+        if expected is None:
+            assert "vs all-uncached" not in output
+        else:
+            assert expected in output
+
+
 def test_all_hidden_still_records_cost_and_snapshot(payload, monkeypatch, capsys, tmp_path):
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
     monkeypatch.delenv(statusline.session_metrics.OPT_OUT_ENV, raising=False)

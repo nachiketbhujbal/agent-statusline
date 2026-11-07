@@ -62,9 +62,21 @@ RATE_HISTORY_MAX_BYTES = 1024 * 1024
 
 # Legacy fallback before either native cache state or a transcript TTL bucket.
 CACHE_TTL_S = 3600
-# Provider-defined cache billing ratios, NOT prices -- safe to hardcode where a
-# $/token table would silently drift. Used only for the effective multiplier.
-W_READ, W_WRITE, W_FRESH = 0.1, 1.25, 1.0
+# Published Claude API list-price ratios for explicitly supported model IDs.
+# https://platform.claude.com/docs/en/about-claude/pricing
+_CACHE_READ_WEIGHTS = {
+    "claude-opus-4-6": 0.1,
+    "claude-opus-4-7": 0.1,
+    "claude-opus-4-8": 0.1,
+    "claude-opus-5": 0.1,
+    "claude-opus-5-5": 0.05,
+    "claude-sonnet-4-6": 0.1,
+    "claude-sonnet-5": 0.1,
+    "claude-sonnet-5-5": 0.05,
+    "claude-haiku-4-5-20251001": 0.1,
+    "claude-fable-5-1": 0.025,
+    "claude-mythos-5-1": 0.025,
+}
 
 # Permission-mode colours and labels, read out of Claude Code v2.1.246 itself so
 # this field matches the indicator under the prompt instead of inventing a scheme:
@@ -527,12 +539,18 @@ def render_facts(facts, config, *, find_git, probe, record_limits, summarize_cos
             hc = GRN if hit >= 80 else YEL if hit >= 50 else RED
             r3.append(("hit_rate", f"{hc}{B}{hit:.1f}%{R}{D} hit{R}"))
         r3.append(("ttl", _cache_ttl(cache, t)))
-        if served:
-            eff = (t_cr * W_READ + t_cw * W_WRITE + t_in * W_FRESH) / served
-            ec = GRN if eff <= 0.4 else YEL if eff <= 0.8 else RED
-            r3.append(("relative_cost", f"{ec}{eff:.2f}x{R}{D} vs all-uncached{R}"))
         t_b1h = finite_integer(t.get("b1h"))
         t_b5m = finite_integer(t.get("b5m"))
+        read_weight = _CACHE_READ_WEIGHTS.get(t.get("cache_pricing_model"))
+        if (
+            served > 0
+            and read_weight is not None
+            and t.get("cache_pricing_complete") is True
+            and t_cw == t_b1h + t_b5m
+        ):
+            eff = (t_cr * read_weight + t_b5m * 1.25 + t_b1h * 2 + t_in) / served
+            ec = GRN if eff <= 0.4 else YEL if eff <= 0.8 else RED
+            r3.append(("relative_cost", f"{ec}{eff:.2f}x{R}{D} vs all-uncached (list){R}"))
         if t_b1h or t_b5m:
             r3.append(("writes", f"{D}writes{R} {tok(t_b1h)}{D} 1h ·{R} {tok(t_b5m)}{D} 5m{R}"))
         rows["CACHE"] = display_row("CACHE", r3)
