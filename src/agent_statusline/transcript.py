@@ -304,21 +304,23 @@ def _absorb(tot, e):
     m5 = finite_integer(cc.get("ephemeral_5m_input_tokens"))
     # This evidence qualifies the list-price ratio, not the ordinary token totals.
     # A request with no input contributes nothing to that ratio.
-    if "input_tokens" not in u or any(u.get(key, 0) != 0 for key in _CACHE_INPUT_KEYS) or h1 or m5:
+    counts = [u.get("input_tokens"), *(u.get(key, 0) for key in _CACHE_INPUT_KEYS[1:])]
+    buckets = [cc.get(key, 0) for key in _CACHE_BUCKET_KEYS]
+    if (
+        not isinstance(u.get("cache_creation", {}), Mapping)
+        or any(
+            type(count) is not int or not 0 <= count <= MAX_DISPLAY_VALUE
+            for count in (*counts, *buckets)
+        )
+        or sum(buckets) != counts[1]
+    ):
+        tot["cache_pricing_complete"] = False
+    elif any(counts):
         model = m.get("model")
-        counts = [u.get(key, 0) for key in _CACHE_INPUT_KEYS]
-        buckets = [cc.get(key, 0) for key in _CACHE_BUCKET_KEYS]
         if (
             not isinstance(model, str)
             or not model
-            or "input_tokens" not in u
             or tot["cache_pricing_model"] not in (None, model)
-            or not isinstance(u.get("cache_creation", {}), Mapping)
-            or any(
-                type(count) is not int or not 0 <= count <= MAX_DISPLAY_VALUE
-                for count in (*counts, *buckets)
-            )
-            or sum(buckets) != counts[1]
         ):
             tot["cache_pricing_complete"] = False
         else:

@@ -58,6 +58,7 @@ def test_plain_output_keeps_order_and_fits_width(payload, monkeypatch, capsys, t
         (("unknown-model", "unknown-model"), "complete", None),
         (("claude-opus-5-5", "claude-opus-5-5"), "missing split", None),
         (("claude-opus-5-5", "claude-opus-5-5"), "missing fresh", None),
+        (("claude-opus-5-5", "claude-opus-5-5"), "invalid zero", None),
     ],
 )
 def test_cache_list_ratio_requires_known_model_and_ttl_buckets(
@@ -76,6 +77,8 @@ def test_cache_list_ratio_requires_known_model_and_ttl_buckets(
         }
         if evidence == "missing fresh":
             del usage["input_tokens"]
+        if evidence == "invalid zero" and bucket == "ephemeral_5m_input_tokens":
+            usage = {"input_tokens": False, "output_tokens": 10}
         entries.append({"type": "assistant", "message": {"model": model, "usage": usage}})
     path.write_text("".join(json.dumps(entry) + "\n" for entry in entries))
     for _ in range(2):
