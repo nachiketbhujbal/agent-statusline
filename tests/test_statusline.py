@@ -242,7 +242,9 @@ class TestContent:
 
     def test_cost_comes_straight_from_the_payload(self, payload, monkeypatch, capsys):
         out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
-        assert "$1.25" in out, "cost must be passed through, never recomputed"
+        assert "~$1.25 session" in out, "cost must be passed through, never recomputed"
+        assert "last5 ~$1.25" in out
+        assert "all ~$1.25" in out
 
     def test_spanning_legacy_cost_renders_as_a_lower_bound(self, payload, monkeypatch, capsys):
         now = 1_800_000_000
@@ -261,9 +263,9 @@ class TestContent:
 
         out = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys)))
 
-        assert "24h ≥$1.25" in out
-        assert "7d $11.25" in out
-        assert "30d $11.25" in out
+        assert "24h ≥~$1.25" in out
+        assert "7d ~$11.25" in out
+        assert "30d ~$11.25" in out
 
     def test_cost_attribution_receives_assistant_time_and_wall_duration(
         self, payload, monkeypatch, capsys

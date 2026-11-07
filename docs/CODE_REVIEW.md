@@ -5,6 +5,7 @@ once the regression that demonstrates it exists in this repository.
 
 | Release | Candidate scope | Evidence boundary |
 | --- | --- | --- |
+| 0.5.10 | Host cost estimate provenance | Candidate review pending |
 | 0.5.9 | Installer-listing readiness and documented customization milestones | Exact candidate `f1b23ce99d69d103d34cf24277e63f443c8b611a` passed independent review with no blockers |
 | 0.5.8 | Native cache-state precedence and qualified older-client estimates | Exact candidate `0b76de6e810b7ad3280e6e3f39b311973618633b` passed renewed independent review with no blockers |
 | 0.5.7 | Configuration guide, version availability, and precedence | Exact candidate `345950f813066d4dfcf666a15389a6f222f7b962` passed independent review with no blockers |

@@ -6,10 +6,10 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.5.9, installer-listing readiness and forward design.
-- Preceding release: v0.5.8, native prompt-cache reporting.
-- Branch owner: Codex retains v0.5.9 publication ownership; no implementation branch is active.
-- Reviewer role: implementation review complete; release records require independent exact-SHA review before merge.
+- Current release target: 0.5.10, host cost estimate provenance.
+- Preceding release: v0.5.9, installer-listing readiness and forward design.
+- Branch owner: Codex owns the v0.5.10 cost provenance patch and pending v0.5.9 promotion.
+- Reviewer role: independent review required for the v0.5.10 candidate.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
   complete-ancestry audit. Documentation-only refs skip both hosted test lanes;
