@@ -50,6 +50,7 @@ installed-artifact evidence.
 | 0.5.7 | Align the configuration guide with installed versions and setting precedence | **Released** |
 | 0.5.8 | Prefer native prompt-cache state and qualify legacy estimates | **Released** |
 | 0.5.9 | Installer-listing readiness and the next customization milestones | **Released** |
+| 0.5.10 | Host cost estimate provenance | **Current** |
 
 0.2.1 through 0.2.14 and v0.3.0 through v0.5.9 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
@@ -670,7 +671,7 @@ Collection and calculation always precede display choices: hiding a cost period
 must never stop its accounting. No profiles or alternate config-path switches.
 
 **0.5.9** is verified on GitHub and TestPyPI; production approval/publication
-remains pending. No successor implementation is started. Subsequent numbers are ordered
+remains pending. Subsequent numbers are ordered
 planning slots, not release dates or shipped features. A concrete fix can take
 **any** next patch number and shift all following planned patches. Reassess
 milestone boundaries as evidence develops; do not manufacture releases to fill

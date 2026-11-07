@@ -692,21 +692,21 @@ def render_facts(facts, config, *, find_git, probe, record_limits, summarize_cos
     if usd is not None:
         life = agg["session"]
         # After a resume the payload reports only this run; the ledger carries the
-        # lifetime. Show both when they differ so the run's own spend stays visible.
+        # lifetime. Show both when they differ so the run's own estimate stays visible.
         if agg["base"] > 1e-9:
             p8.append(
                 (
                     "session",
-                    f"{CYN}${life:.2f}{R}{D} session{R} "
-                    f"{D}(run {R}{CYN}${usd:.2f}{R}{D} · {agg['runs']} runs){R}",
+                    f"{CYN}~${life:.2f}{R}{D} session{R} "
+                    f"{D}(run {R}{CYN}~${usd:.2f}{R}{D} · {agg['runs']} runs){R}",
                 )
             )
         else:
-            p8.append(("session", f"{CYN}${life:.2f}{R}{D} session{R}"))
+            p8.append(("session", f"{CYN}~${life:.2f}{R}{D} session{R}"))
 
     def rolling_amount(label, key):
         marker = "" if agg[key + "_complete"] else f"{D}≥{R}"
-        return f"{D}{label}{R} {marker}${agg[key]:.2f}"
+        return f"{D}{label}{R} {marker}~${agg[key]:.2f}"
 
     p8.append(
         (
@@ -718,7 +718,7 @@ def render_facts(facts, config, *, find_git, probe, record_limits, summarize_cos
     p8.append(
         (
             "history",
-            f"{D}last5{R} ${agg['last5']:.2f} {D}·{R} {D}all{R} ${agg['all']:.2f} "
+            f"{D}last5{R} ~${agg['last5']:.2f} {D}·{R} {D}all{R} ~${agg['all']:.2f} "
             f"{D}({agg['convos']} convo{'s' if agg['convos']!=1 else ''} · {agg['n']} sess"
             + (f" · {agg['forks']} fork{'s' if agg['forks']!=1 else ''}" if agg["forks"] else "")
             + f"){R}",

@@ -4,6 +4,12 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
+## Unreleased — 0.5.10
+
+- Mark session, run, rolling and historical host cost estimates with `~$`.
+  The `≥~$` prefix identifies a rolling lower bound on recorded estimates.
+- Apply the same estimate notation to the human-readable ledger listing.
+
 ## 0.5.9
 
 - Wait for the exact non-yanked wheel and source hashes in the installer's

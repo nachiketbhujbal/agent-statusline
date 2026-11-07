@@ -194,7 +194,7 @@ when their evidence is unknown:
 | `host` | acquisition host, currently `claude` |
 | `model` | host model display name, falling back to its identifier |
 | `context_used_pct` / `context_window_size` | current context occupancy and capacity |
-| `cost_usd` | exact ledger-backed lifetime session cost; omitted unless the current host cost and ledger history are exact |
+| `cost_usd` | ledger-backed lifetime total of host-reported cost estimates, omitted when accounting evidence is incomplete |
 | `turns` | cumulative assistant responses carrying usage evidence |
 | `lines_added` / `lines_removed` | host-supplied session line counts |
 | `session_title` | host-supplied title |
@@ -280,7 +280,7 @@ python3 -m json.tool ~/.claude/statusline-last-payload.json
 | `context_window.used_percentage` | used |
 | `context_window.remaining_percentage` | UNUSED — inverse of `used_percentage` |
 | `context_window.total_input_tokens` / `total_output_tokens` | UNUSED — per-request, **not** session totals |
-| `cost.total_cost_usd` | used — authoritative, never recompute |
+| `cost.total_cost_usd` | used as a host cost estimate, with no local repricing |
 | `cost.total_duration_ms` / `total_api_duration_ms` | used |
 | `cost.total_lines_added` / `total_lines_removed` | used |
 | `cwd`, `session_id`, `session_name`, `transcript_path`, `version` | used |
