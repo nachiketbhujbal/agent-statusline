@@ -290,8 +290,8 @@ def _absorb(tot, e):
     m5 = finite_integer(cc.get("ephemeral_5m_input_tokens"))
     tot["b1h"] += h1
     tot["b5m"] += m5
-    # Which bucket the newest write landed in is the live TTL. Cumulative sums lag:
-    # an account crossing into usage overage switches from 1h to 5m mid-session.
+    # Retain the newest write bucket for older hosts' estimated TTL. Mixed TTLs
+    # can coexist; native prompt_cache state takes precedence when supplied.
     if h1 or m5:
         tot["last_bucket"] = "1h" if h1 >= m5 else "5m"
     if u.get("service_tier"):

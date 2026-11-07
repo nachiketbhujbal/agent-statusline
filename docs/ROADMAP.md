@@ -48,6 +48,7 @@ installed-artifact evidence.
 | 0.5.5 | Print starter TOML with `config example` | **Released** |
 | 0.5.6 | Preview a synthetic session with `config preview --width 80` | **Released** |
 | 0.5.7 | Align the configuration guide with installed versions and setting precedence | **Released** |
+| 0.5.8 | Prefer native prompt-cache state and qualify legacy estimates | **Current** |
 
 0.2.1 through 0.2.14 and v0.3.0 through v0.5.7 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
@@ -629,3 +630,44 @@ Released and verified on GitHub, TestPyPI, and production PyPI.
 Document which installed versions support each configuration feature.
 Align the upgrade instructions and the context warning and metrics guides
 with the shipped TOML and environment behavior.
+
+
+## 0.5.8 — native prompt-cache reporting
+
+- Prefer validated `prompt_cache` TTL, warmth and expiry from Claude Code
+  v2.1.251+; use only the current session payload, never shared last-payload state.
+- Retain older-client transcript fallback, explicitly qualify estimated expiry,
+  and remove the claim that every expired prefix forces a full resend.
+- Treat five minutes as a supported TTL, without inferring billing trouble.
+- Preserve rows, field IDs, default collection, accounting and configuration.
+- Verify native precedence, expiry boundaries, missing or malformed optional
+  signals, no-transcript rendering, separate sessions, plain output and width.
+
+See [ADR 0058](adrs/0058-prefer-native-prompt-cache-state.md).
+
+## Further host coverage — one opt-in slice at a time
+
+The maintainer approved broader coverage of documented host facts, with useful
+existing defaults and detailed customization. The current
+[capability inventory](RESEARCH.md#claude-code-status-line-capability-audit)
+separates already supported fields from gaps. Next candidate slices, in order:
+
+1. Cost semantics: distinguish exact retention of host-reported totals from
+   invoice reconciliation, and audit relative multipliers across TTLs/models.
+2. Native cache performance: request/miss/rebuild counts and recache tokens.
+3. Native cache diagnostics: last miss and its reported likely causes.
+4. Agent and task identity for main conversations and subagent status lines.
+5. Native worktree identity and origin directory/branch.
+6. Pull-request link and review state.
+7. Editor mode and optional context detail.
+8. Gateway spend-limit percentage and period, where available. Host-estimated
+   dollars cannot enter exact accounting; any presentation requires a separate
+   explicit design consistent with the money contract.
+
+Each slice must document field availability, client minimum, missing-data
+behavior and opt-in selection, and preserve the existing default field set.
+The field-selection extension needs an ADR before new optional field IDs ship.
+Keep native host data separate from local ledger facts. Do not request network
+APIs from the renderer to fill absent data. Concrete defects can take any next
+patch slot and move the remaining sequence forward. Release numbers for these
+follow-ups are selected from the next free patch after v0.5.8 is verified.

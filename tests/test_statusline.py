@@ -358,16 +358,18 @@ class TestContent:
         assert statusline.MODES["plan"][0] == render.CYN
         assert statusline.MODES["bypassPermissions"][0] == render.RED
 
-    def test_five_minute_cache_ttl_is_flagged_red(self, payload, monkeypatch, capsys):
-        """The 5m bucket means the account dropped to a short TTL: the real signal."""
+    def test_five_minute_cache_ttl_is_an_estimate_without_a_warning(
+        self, payload, monkeypatch, capsys
+    ):
         monkeypatch.setattr(statusline, "transcript_totals", lambda _p: _totals(last_bucket="5m"))
         out = "\n".join(draw(payload, monkeypatch, capsys))
-        assert f"{render.RED}{render.B}5m" in out
+        assert f"{render.CYN}{render.B}5m" in out
+        assert "(estimated)" in out
 
     def test_one_hour_cache_ttl_is_not_flagged(self, payload, monkeypatch, capsys):
         monkeypatch.setattr(statusline, "transcript_totals", lambda _p: _totals(last_bucket="1h"))
         out = "\n".join(draw(payload, monkeypatch, capsys))
-        assert f"{render.GRN}{render.B}1h" in out
+        assert f"{render.CYN}{render.B}1h" in out
 
 
 class TestRobustness:
@@ -1160,3 +1162,81 @@ def _totals(**over):
     )
     tot.update(over)
     return tot
+
+
+def test_native_cache_state_overrides_stale_transcript_estimate(payload, monkeypatch, capsys):
+    now = 1800000000
+    monkeypatch.setattr(statusline.time, "time", lambda: now)
+    monkeypatch.setattr(
+        statusline,
+        "transcript_totals",
+        lambda _: _totals(last_bucket="5m", last_ts="2020-01-01T00:00:00Z"),
+    )
+    payload["prompt_cache"] = {
+        "warm": True,
+        "caching_observed": True,
+        "ttl": "1h",
+        "expires_at": now + 3000,
+    }
+    row = next(
+        line
+        for line in map(render.plain, draw(payload, monkeypatch, capsys, cols=600))
+        if line.startswith("CACHE")
+    )
+    assert "1h ttl" in row and "expires" in row
+    assert "COLD" not in row and "estimated" not in row
+    assert "re-sends everything" not in row
+
+
+@pytest.mark.parametrize(
+    "native,expected",
+    [
+        (
+            {"warm": True, "caching_observed": True, "ttl": "5m", "expires_at": 1800000001},
+            "expires",
+        ),
+        ({"warm": True, "caching_observed": True, "ttl": "5m", "expires_at": 1800000000}, "COLD"),
+        ({"warm": False, "caching_observed": True, "ttl": "1h", "expires_at": None}, "COLD"),
+        ({"warm": False, "caching_observed": False, "ttl": "5m"}, "cache not observed"),
+        ({"warm": True, "caching_observed": True, "ttl": "1h"}, "warm"),
+    ],
+)
+def test_native_cache_freshness(native, expected, monkeypatch):
+    monkeypatch.setattr(statusline.time, "time", lambda: 1800000000)
+    result = render.plain(statusline._cache_ttl(native, {}))
+    assert expected in result
+    assert "estimated" not in result and "re-sends" not in result
+
+
+def test_legacy_cache_expiry_is_explicitly_uncertain(monkeypatch):
+    monkeypatch.setattr(statusline.time, "time", lambda: 1800000000)
+    old = {"last_bucket": "5m", "last_ts": "2020-01-01T00:00:00Z"}
+    result = render.plain(statusline._cache_ttl({}, old))
+    assert "5m ttl (estimated)" in result and "possibly cold" in result
+    assert "COLD" not in result
+    assert "assumed" in render.plain(statusline._cache_ttl({}, {}))
+
+
+@pytest.mark.parametrize("columns", [1, 28, 80, 240])
+@pytest.mark.parametrize("plain", [False, True])
+def test_native_cache_without_transcript_fits_and_respects_selection(
+    payload, monkeypatch, capsys, tmp_path, columns, plain
+):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    config = tmp_path / "agent-statusline/config.toml"
+    config.parent.mkdir()
+    config.write_text(
+        'schema_version = 1\n[display]\ncolor = "'
+        + ("plain" if plain else "default")
+        + '"\n[display.fields]\nCACHE = ["ttl"]\n'
+    )
+    payload.pop("transcript_path")
+    payload["prompt_cache"] = {"warm": False, "caching_observed": True, "ttl": "5m"}
+    lines = draw(payload, monkeypatch, capsys, cols=columns)
+    assert all(render.vis(line) <= columns for line in lines)
+    if plain:
+        assert all("\033" not in line for line in lines)
+    if columns >= 28:
+        assert any(
+            "5m ttl" in render.plain(line) and "COLD" in render.plain(line) for line in lines
+        )

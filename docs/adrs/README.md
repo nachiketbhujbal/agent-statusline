@@ -13,7 +13,7 @@ old one rather than rewriting why the earlier choice was made.
 | [0005](0005-hatchling-vcs-versioning.md) | Hatchling and Git-tag versions |
 | [0006](0006-cached-probes-only.md) | Cached probes, never direct subprocesses |
 | [0007](0007-incremental-transcript-with-versioned-totals.md) | Incremental transcript with versioned totals |
-| [0008](0008-observe-the-cache-ttl.md) | Observed, not assumed, cache TTL |
+| [0008](0008-observe-the-cache-ttl.md) | Observed, not assumed, cache TTL *(superseded by 0058)* |
 | [0009](0009-suppress-derived-rate-limit-figures-in-overage.md) | Suppressed rate-limit derivations in overage |
 | [0010](0010-wrap-then-truncate.md) | Wrap to two lines, then truncate |
 | [0011](0011-row-order-is-data.md) | Row order as data |
@@ -63,6 +63,7 @@ old one rather than rewriting why the earlier choice was made.
 | [0055](0055-show-effective-configuration.md) | Show effective configuration |
 | [0056](0056-print-starter-toml.md) | Print starter TOML |
 | [0057](0057-preview-synthetic-status-line.md) | Preview a synthetic status line |
+| [0058](0058-prefer-native-prompt-cache-state.md) | Prefer native prompt-cache lifetime state |
 
 ## Configuration
 

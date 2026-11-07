@@ -178,3 +178,46 @@ session's last-render window size with the current transcript's token count.
 The v0.4.5 correction requires matching identity and omits the warning when
 current-session window evidence is unavailable. It does not establish that the
 reported real-world equal compaction counts were caused by cache crossover.
+
+## Claude Code status-line capability audit
+
+Checked 2026-11-07 against Anthropic's current
+[status-line reference](https://code.claude.com/docs/en/statusline),
+[cache policy](https://code.claude.com/docs/en/prompt-caching),
+[API cache contract](https://platform.claude.com/docs/en/build-with-claude/prompt-caching),
+and [changelog](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md#21251).
+The API's per-TTL usage keys remain documented. No rename was found.
+
+A synthetic reproduction on v0.5.7 showed a current warm/1h host signal being
+ignored while older transcript evidence rendered 5m/COLD. Read-only cache hits
+already advance the transcript timestamp; the timer is not write-only.
+Mixed TTL history cannot be represented exactly by the newest write bucket.
+v0.5.8 resolves the source-precedence defect and labels older-client inference.
+This does not establish the cause in a particular private session.
+
+| Host surface | Current support and next boundary |
+| --- | --- |
+| Model, effort, thinking, fast mode, output style | Existing `MODEL` fields |
+| Session name and directory | Existing `PROJECT` fields |
+| Context use and per-turn tokens | Existing `CONTEXT` and `TOKENS`; optional additional detail later |
+| Session cost, timing, changed lines | Existing fields; host totals, not independent invoice evidence |
+| Five-hour and weekly limits | Existing `USAGE` fields |
+| Native cache lifetime | v0.5.8, host minimum 2.1.251 |
+| Native cache performance counters | Separate optional slice |
+| Cache miss causes | Separate optional slice; host minimum 2.1.260 |
+| Agent identity, prompt identity, Vim mode | Available upstream; not yet exposed |
+| Repository identity and worktree metadata | Local git facts supported; native metadata not yet exposed |
+| PR/MR and review state | Not yet exposed |
+| Gateway spend limits | Not yet exposed; estimated currency requires separate design |
+| Subagent panel | Separate input/output protocol; needs its own adapter and opt-in installer contract |
+
+Inventory is not a promise that every client provides every field. Each follow-up
+must pin its supported schema, client minimum and absence behavior before coding.
+Subagent panel support is not equivalent to the main renderer accepting task JSON.
+No automatic host settings changes or network lookups are implied by this audit.
+
+Two economic questions remain separate from native TTL precedence: the existing
+relative multiplier applies fixed read/write weights across models and TTLs;
+and host-reported session cost is described upstream as a client-side estimate,
+which should not be represented as an independently reconciled bill. Audit those
+claims in a dedicated correction before adding more currency presentation.

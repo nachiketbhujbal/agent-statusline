@@ -60,8 +60,7 @@ RLHIST = state("rate-limit-history.jsonl")
 PAYLOAD = state("statusline-last-payload.json")
 RATE_HISTORY_MAX_BYTES = 1024 * 1024
 
-# Server-side prompt cache TTL. Detected from the usage block's cache_creation
-# buckets (ephemeral_1h vs ephemeral_5m); this is only the fallback.
+# Legacy fallback before either native cache state or a transcript TTL bucket.
 CACHE_TTL_S = 3600
 # Provider-defined cache billing ratios, NOT prices -- safe to hardcode where a
 # $/token table would silently drift. Used only for the effective multiplier.
@@ -339,6 +338,33 @@ def _summarize_cost(facts, config, proj, procs, wall):
     return agg
 
 
+def _cache_ttl(cache, activity):
+    now = time.time()
+    if cache:
+        window = cache["ttl"]
+        text = f"{CYN}{B}{window}{R}{D} ttl{R}"
+        if not cache["caching_observed"]:
+            return text + f" {D}cache not observed{R}"
+        expiry = cache.get("expires_at")
+        if not cache["warm"] or (expiry is not None and expiry <= now):
+            return text + f" {RED}{B}COLD{R}"
+        if expiry is not None:
+            return text + f"{D} ▸ expires {R}{time.strftime('%H:%M', time.localtime(expiry))}"
+        return text + f" {GRN}warm{R}"
+
+    window = activity.get("last_bucket") or "1h"
+    ttl = CACHE_TTL_S if window == "1h" else 300
+    qualifier = "estimated" if activity.get("last_bucket") else "assumed"
+    text = f"{CYN}{B}{window}{R}{D} ttl ({qualifier}){R}"
+    epoch = iso_epoch(activity.get("last_ts"))
+    if epoch and now - epoch >= 0:
+        if now - epoch >= ttl:
+            text += f" {YEL}possibly cold{R}"
+        else:
+            text += f"{D} ▸ expires {R}{time.strftime('%H:%M', time.localtime(epoch + ttl))}"
+    return text
+
+
 def render_facts(facts, config, *, find_git, probe, record_limits, summarize_cost, columns=None):
     """Format one set of facts using live or synthetic evidence providers."""
     identity = facts["identity"]
@@ -493,44 +519,26 @@ def render_facts(facts, config, *, find_git, probe, record_limits, summarize_cos
     record_limits(fh_, limits.get("seven_day"))
 
     # ---------- row 3: cache economics ----------
-    if served:
-        hit = t_cr / served * 100
-        hc = GRN if hit >= 80 else YEL if hit >= 50 else RED
-        r3 = [("hit_rate", f"{hc}{B}{hit:.1f}%{R}{D} hit{R}")]
-        # TTL is detected from which ephemeral bucket the writes landed in, so this
-        # is observed rather than assumed. Falls back to CACHE_TTL_S if neither.
-        ttl = CACHE_TTL_S
-        win = "1h"
-        obs = False
-        if t.get("last_bucket"):
-            win = t["last_bucket"]
-            ttl = 3600 if win == "1h" else 300
-            obs = True
-        age = None
-        if t.get("last_ts"):
-            ep = iso_epoch(t["last_ts"])
-            if ep:
-                age = time.time() - ep
-        wc = RED if win == "5m" else GRN
-        w = f"{wc}{B}{win}{R}{D} ttl{R}" + ("" if obs else f"{D} (assumed){R}")
-        if age is not None and age >= 0:
-            if age >= ttl:
-                w += f" {RED}{B}COLD{R}{D} — next turn re-sends everything{R}"
-            else:
-                w += (
-                    f"{D} ▸ expires {R}{time.strftime('%H:%M',time.localtime(time.time()-age+ttl))}"
-                )
-        r3.append(("ttl", w))
-        eff = (t_cr * W_READ + t_cw * W_WRITE + t_in * W_FRESH) / served
-        ec = GRN if eff <= 0.4 else YEL if eff <= 0.8 else RED
-        r3.append(("relative_cost", f"{ec}{eff:.2f}x{R}{D} vs all-uncached{R}"))
+    cache = facts.get("cache", {})
+    if served or cache:
+        r3 = []
+        if served:
+            hit = t_cr / served * 100
+            hc = GRN if hit >= 80 else YEL if hit >= 50 else RED
+            r3.append(("hit_rate", f"{hc}{B}{hit:.1f}%{R}{D} hit{R}"))
+        r3.append(("ttl", _cache_ttl(cache, t)))
+        if served:
+            eff = (t_cr * W_READ + t_cw * W_WRITE + t_in * W_FRESH) / served
+            ec = GRN if eff <= 0.4 else YEL if eff <= 0.8 else RED
+            r3.append(("relative_cost", f"{ec}{eff:.2f}x{R}{D} vs all-uncached{R}"))
         t_b1h = finite_integer(t.get("b1h"))
         t_b5m = finite_integer(t.get("b5m"))
         if t_b1h or t_b5m:
             r3.append(("writes", f"{D}writes{R} {tok(t_b1h)}{D} 1h ·{R} {tok(t_b5m)}{D} 5m{R}"))
         rows["CACHE"] = display_row("CACHE", r3)
 
-        # ---------- row 4: token flow ----------
+    # ---------- row 4: token flow ----------
+    if served:
         cur_cr = finite_integer(cur.get("cache_read_input_tokens"))
         cur_cw = finite_integer(cur.get("cache_creation_input_tokens"))
         cur_in = finite_integer(cur.get("input_tokens"))

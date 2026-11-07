@@ -64,6 +64,12 @@ Linux environment rather than the Windows host's full physical capacity.
 - `SYSTEM` and `TOOLS`: process, memory, disk, tool, file, subagent, and compaction activity.
 - `CACHE`, `TOKENS`, and `TIMING`: cache efficiency, token flow, turn time, wall time, and hooks.
 
+v0.5.8 uses Claude Code's native cache lifetime state when available
+(Claude Code v2.1.251+). Older clients retain a clearly labelled estimate.
+Five-minute TTL is supported normally; expiry does not guarantee a full miss.
+The existing `CACHE` field selectors apply to both sources. See the
+[cache field reference](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/FIELDS.md#cache).
+
 The [field reference](https://github.com/nachiketbhujbal/agent-statusline/blob/main/docs/FIELDS.md)
 documents every value and its source.
 
