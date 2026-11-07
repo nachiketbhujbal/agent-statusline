@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify that a package index exposes one exact release artifact pair."""
+"""Verify exact release artifacts and their readiness in the installer listing."""
 
 import argparse
 import json
@@ -14,6 +14,10 @@ from typing import NamedTuple
 INDEX_JSON_BASES = {
     "pypi": "https://pypi.org/pypi",
     "testpypi": "https://test.pypi.org/pypi",
+}
+INDEX_SIMPLE_BASES = {
+    "pypi": "https://pypi.org/simple",
+    "testpypi": "https://test.pypi.org/simple",
 }
 MAX_RESPONSE_BYTES = 1024 * 1024
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -41,10 +45,10 @@ def _release_url(index: str, project: str, version: str) -> str:
     )
 
 
-def _request_json(url: str, timeout_seconds: float) -> object:
+def _request_json(url: str, timeout_seconds: float, *, accept: str = "application/json") -> object:
     request = urllib.request.Request(
         url,
-        headers={"User-Agent": "agent-statusline-release-verifier/1"},
+        headers={"User-Agent": "agent-statusline-release-verifier/1", "Accept": accept},
     )
     with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
         body = response.read(MAX_RESPONSE_BYTES + 1)
@@ -109,6 +113,33 @@ def validate_release(
             raise ValueError(f"package-index type does not match for {wanted.filename}")
 
 
+def validate_installer_listing(
+    payload: object, *, project: str, expected: Sequence[ExpectedFile]
+) -> None:
+    """Require both exact, non-yanked files; older versions may also be listed."""
+    if not isinstance(payload, Mapping):
+        raise ValueError("installer listing is not an object")
+    if _normalized_project(str(payload.get("name", ""))) != _normalized_project(project):
+        raise ValueError("installer listing project identity does not match")
+    files = payload.get("files")
+    if not isinstance(files, list):
+        raise ValueError("installer listing lacks distribution files")
+    for wanted in expected:
+        matches = [
+            item
+            for item in files
+            if isinstance(item, Mapping) and item.get("filename") == wanted.filename
+        ]
+        if len(matches) != 1:
+            raise ValueError(f"installer listing does not expose one exact {wanted.filename}")
+        item = matches[0]
+        hashes = item.get("hashes")
+        if not isinstance(hashes, Mapping) or hashes.get("sha256") != wanted.sha256:
+            raise ValueError(f"installer listing SHA-256 does not match for {wanted.filename}")
+        if item.get("yanked", False) is not False:
+            raise ValueError(f"installer listing file is yanked: {wanted.filename}")
+
+
 def verify_with_retries(
     *,
     index: str,
@@ -125,11 +156,16 @@ def verify_with_retries(
         raise ValueError("retry delay must be nonnegative and timeout must be positive")
 
     url = _release_url(index, project, version)
+    listing_url = f"{INDEX_SIMPLE_BASES[index]}/{_normalized_project(project)}/"
     last_error: Exception | None = None
     for attempt in range(1, attempts + 1):
         try:
             payload = _request_json(url, timeout_seconds)
             validate_release(payload, project=project, version=version, expected=expected)
+            listing = _request_json(
+                listing_url, timeout_seconds, accept="application/vnd.pypi.simple.v1+json"
+            )
+            validate_installer_listing(listing, project=project, expected=expected)
             return
         except (OSError, ValueError) as error:
             last_error = error
@@ -171,7 +207,7 @@ def main(argv: Sequence[str]) -> int:
     except (OSError, ValueError) as error:
         print(f"package index: {error}", file=sys.stderr)
         return 1
-    print(f"verified exact {args.project} {args.version} files and SHA-256 identities")
+    print(f"verified exact {args.project} {args.version} files, SHA-256 and installer listing")
     return 0
 
 

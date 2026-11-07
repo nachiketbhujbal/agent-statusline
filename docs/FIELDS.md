@@ -63,6 +63,12 @@ hide a whole row. Empty lists, duplicate IDs, and unknown IDs are invalid.
 Run `agent-statusline config fields` for the complete catalog, or
 `agent-statusline config fields PROJECT` to see one row.
 
+Visibility filters presentation after collection and calculation; it does not
+stop the ledger or probe scheduling. Current group selectors cannot split
+compound values such as `rolling` into individual periods. The planned
+[element controls](CUSTOMIZATION_DESIGN.md#configuration-model-before-the-editor)
+are not yet accepted TOML keys and do not change this shipped catalog.
+
 ---
 
 ## PROJECT

@@ -37,6 +37,17 @@ def payload(*, name="agent-statusline", version="0.3.4", files=None):
     return {"info": {"name": name, "version": version}, "urls": files}
 
 
+def listing():
+    return {
+        "meta": {"api-version": "1.4"},
+        "name": "agent-statusline",
+        "files": [
+            {"filename": item.filename, "hashes": {"sha256": item.sha256}, "yanked": False}
+            for item in EXPECTED
+        ],
+    }
+
+
 def test_validate_release_accepts_exact_pair_and_normalized_project_name():
     verify_package_index.validate_release(
         payload(name="agent_statusline"),
@@ -99,12 +110,12 @@ def test_validate_release_rejects_identity_membership_hash_or_type(candidate, me
 
 
 def test_verify_retries_bounded_partial_index_state(monkeypatch):
-    responses = [payload(files=[]), payload()]
+    responses = [payload(files=[]), payload(), listing()]
     sleeps = []
     monkeypatch.setattr(
         verify_package_index,
         "_request_json",
-        lambda _url, _timeout: responses.pop(0),
+        lambda _url, _timeout, **_kwargs: responses.pop(0),
     )
     monkeypatch.setattr(verify_package_index.time, "sleep", sleeps.append)
 
@@ -152,9 +163,9 @@ def test_verify_fails_after_the_exact_attempt_bound(monkeypatch):
 def test_production_index_uses_the_exact_versioned_json_endpoint(monkeypatch):
     calls = []
 
-    def available(url, timeout):
-        calls.append((url, timeout))
-        return payload()
+    def available(url, timeout, **kwargs):
+        calls.append((url, timeout, kwargs))
+        return listing() if "/simple/" in url else payload()
 
     monkeypatch.setattr(verify_package_index, "_request_json", available)
 
@@ -168,7 +179,120 @@ def test_production_index_uses_the_exact_versioned_json_endpoint(monkeypatch):
         timeout_seconds=3,
     )
 
-    assert calls == [("https://pypi.org/pypi/agent-statusline/0.3.4/json", 3)]
+    assert calls == [
+        ("https://pypi.org/pypi/agent-statusline/0.3.4/json", 3, {}),
+        (
+            "https://pypi.org/simple/agent-statusline/",
+            3,
+            {"accept": "application/vnd.pypi.simple.v1+json"},
+        ),
+    ]
+
+
+def test_ready_release_metadata_waits_for_installer_listing(monkeypatch):
+    calls = []
+    sleeps = []
+    listings = [dict(listing(), files=[]), listing()]
+
+    def response(url, timeout, **kwargs):
+        calls.append(url)
+        return listings.pop(0) if "/simple/" in url else payload()
+
+    monkeypatch.setattr(verify_package_index, "_request_json", response)
+    monkeypatch.setattr(verify_package_index.time, "sleep", sleeps.append)
+    verify_package_index.verify_with_retries(
+        index="testpypi",
+        project="agent_statusline",
+        version="0.3.4",
+        expected=EXPECTED,
+        attempts=2,
+        delay_seconds=0.25,
+        timeout_seconds=1,
+    )
+    assert (
+        calls
+        == [
+            "https://test.pypi.org/pypi/agent_statusline/0.3.4/json",
+            "https://test.pypi.org/simple/agent-statusline/",
+        ]
+        * 2
+    )
+    assert sleeps == [0.25]
+    assert not listings
+
+
+@pytest.mark.parametrize("index", ["pypi", "testpypi"])
+def test_installer_listing_failure_exhausts_bound_without_success(monkeypatch, index):
+    calls = []
+
+    def response(url, timeout, **kwargs):
+        calls.append(url)
+        return dict(listing(), files=[]) if "/simple/" in url else payload()
+
+    monkeypatch.setattr(verify_package_index, "_request_json", response)
+    monkeypatch.setattr(verify_package_index.time, "sleep", lambda _delay: None)
+    with pytest.raises(ValueError, match="after 2 attempts: installer listing"):
+        verify_package_index.verify_with_retries(
+            index=index,
+            project="agent-statusline",
+            version="0.3.4",
+            expected=EXPECTED,
+            attempts=2,
+            delay_seconds=0,
+            timeout_seconds=1,
+        )
+    assert len(calls) == 4
+
+
+def test_installer_listing_allows_previous_versions_and_normalized_project():
+    candidate = listing()
+    candidate["name"] = "Agent_Statusline"
+    candidate["files"].append({"filename": "previous.whl", "hashes": {"sha256": "c" * 64}})
+    verify_package_index.validate_installer_listing(
+        candidate, project="agent-statusline", expected=EXPECTED
+    )
+
+
+@pytest.mark.parametrize(
+    "defect", ["missing_wheel", "missing_sdist", "hash", "duplicate", "yanked", "yanked_empty"]
+)
+def test_installer_listing_rejects_uninstallable_or_wrong_pair(defect):
+    candidate = listing()
+    files = candidate["files"]
+    if defect == "missing_wheel":
+        files.pop(0)
+    elif defect == "missing_sdist":
+        files.pop()
+    elif defect == "hash":
+        files[0]["hashes"]["sha256"] = "c" * 64
+    elif defect == "duplicate":
+        files.append(files[0])
+    else:
+        files[0]["yanked"] = "" if defect == "yanked_empty" else True
+    with pytest.raises(ValueError, match="installer listing"):
+        verify_package_index.validate_installer_listing(
+            candidate, project="agent-statusline", expected=EXPECTED
+        )
+
+
+def test_request_negotiates_simple_json(monkeypatch):
+    import io
+
+    requests = []
+
+    def open_response(request, *, timeout):
+        requests.append((request, timeout))
+        return io.BytesIO(b'{"name":"agent-statusline","files":[]}')
+
+    monkeypatch.setattr(verify_package_index.urllib.request, "urlopen", open_response)
+    verify_package_index._request_json(
+        "https://pypi.org/simple/agent-statusline/",
+        2,
+        accept="application/vnd.pypi.simple.v1+json",
+    )
+    request, timeout = requests[0]
+    assert request.get_header("Accept") == "application/vnd.pypi.simple.v1+json"
+    assert timeout == 2
 
 
 @pytest.mark.parametrize(

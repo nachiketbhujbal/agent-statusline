@@ -221,3 +221,55 @@ relative multiplier applies fixed read/write weights across models and TTLs;
 and host-reported session cost is described upstream as a client-side estimate,
 which should not be represented as an independently reconciled bill. Audit those
 claims in a dedicated correction before adding more currency presentation.
+
+## Customization and refresh comparison
+
+Checked 2026-11-07 against released source: agent-statusline v0.5.8,
+[ccstatusline v2.2.34 usage guide](https://github.com/sirmalloc/ccstatusline/blob/v2.2.34/docs/USAGE.md)
+and [widget types](https://github.com/sirmalloc/ccstatusline/blob/v2.2.34/src/types/Widget.ts),
+and the distinct Rust project
+[scottlz0310/agent-statusline v0.5.0](https://github.com/scottlz0310/agent-statusline/tree/v0.5.0).
+Competitor code was inspected, not executed or installed. These are dated
+feature comparisons, not equivalent-load speed or reliability benchmarks.
+
+| Capability | This package v0.5.8 | ccstatusline v2.2.34 | Rust project v0.5.0 |
+| --- | --- | --- | --- |
+| Configuration | Optional TOML, schema 1, one canonical location | JSON, config-path option, import/export | TOML, config-path option/environment override |
+| Selection/layout | Ten fixed rows, show/hide and 41 group selectors | Widgets and multi-line ordering | Module format strings and line ordering |
+| Presentation | Default/plain, existing fixed formatting | Labels, symbols, numeric styles, themes, colors, conditional widget choices | Per-module styles/symbols/formats and thresholds |
+| Interactive editor | Read-only discovery/show/example/synthetic preview; no editor | Interactive editor and live preview | Released TUI with layout/style editing and preview |
+| System RAM | Built-in native pressure plus process scopes | Built-in Memory Usage widget | No corresponding module found in released config model |
+| Disk | Built-in capacity/free-space fields | No built-in disk widget found in the inspected catalog; Custom Command can supply it | No corresponding module found in released config model |
+| Timed host refresh | Not managed by our installer | Supports native refresh interval | Not assessed in this comparison |
+
+Memory is therefore not unique to this package. Built-in disk and session-aware
+process/memory integration distinguish the inspected defaults, but arbitrary
+command widgets can reproduce individual metrics. A widget count is not evidence
+of accounting accuracy. Our local-only runtime, stdlib dependency boundary,
+collection-independent visibility, session isolation and attributable rolling
+ledger are product commitments; no competitor-wide superiority is established.
+The Rust TUI was verified in
+[released command handling](https://github.com/scottlz0310/agent-statusline/blob/v0.5.0/src/main.rs)
+and [configuration storage](https://github.com/scottlz0310/agent-statusline/blob/v0.5.0/src/tui/storage.rs),
+rather than inferred from an inconsistent README implementation-status sentence.
+Its configuration model is in
+[engine/config.rs](https://github.com/scottlz0310/agent-statusline/blob/v0.5.0/src/engine/config.rs).
+
+Anthropic's current [status-line reference](https://code.claude.com/docs/en/statusline#when-the-status-line-updates)
+documents assistant-message/event updates and an optional timer, not only one
+invocation per user turn. `statusLine.refreshInterval` accepts at least one
+second and can run while idle. Events are debounced at 300 ms; another update
+can cancel an unfinished invocation. ccstatusline's released guide identifies
+Claude Code 2.1.97 as the refresh minimum, recommends 10 seconds on supported
+fresh installs, and preserves an existing interval on reinstall. Verify the
+current host minimum again when implementing our installer option.
+
+A timer refreshes local observations and time-derived displays; it does not
+guarantee fresh host account data or per-token streaming. Our next implementation
+must prove repeated-payload accounting idempotence, session identity and cached
+probe behavior. Compare installed commands under equivalent synthetic workloads
+before making performance claims. The approved
+[customization design](CUSTOMIZATION_DESIGN.md) and
+[release sequence](ROADMAP.md#next-release-and-milestones) turn these findings
+into focused work without adding profiles, alternate config locations,
+runtime networking or a daemon.

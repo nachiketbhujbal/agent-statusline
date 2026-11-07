@@ -6,10 +6,10 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.5.8, native prompt-cache reporting.
-- Preceding release: v0.5.7, configuration guide alignment.
-- Branch owner: none; v0.5.8 is fully published and verified.
-- Reviewer role: none active at the completed release boundary; exact implementation review is complete.
+- Current release target: 0.5.9, installer-listing readiness and forward design.
+- Preceding release: v0.5.8, native prompt-cache reporting.
+- Branch owner: Codex on `codex/fix/v0.5.9-index-readiness`.
+- Reviewer role: none active; an independent exact-SHA review follows the complete local gate.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
   complete-ancestry audit. Documentation-only refs skip both hosted test lanes;
@@ -76,6 +76,29 @@ The complete sequence and exclusions are authoritative in
 a whole or import a later slice into the current release.
 
 ## Resume point
+
+v0.5.9 is in development from verified main
+`bb529f60e2241d36e89a67e221f62fcd70800d83`. It corrects the repeated release
+JSON/Simple Index propagation race by requiring both advertised artifact hashes
+and installer listing readiness within the existing bounded verifier. Runtime
+source, live Claude settings, installed command and ledger are not changed.
+Focused synthetic tests pass; complete local gate, independent exact review,
+hosted CI, artifacts and publication are pending. No release approval has been
+requested for this candidate.
+
+The maintainer approved a broader plan without forcing a version ceiling:
+remaining 0.5.x correctness/refresh/measured performance, schema-2 element controls
+in 0.6.0 and the first interactive editor in 0.6.1, later typed presentation and
+native host facts, optional 0.7.x layouts, then capability-dependent 0.8.x host
+acquisition. Keep one config location, no profiles/path option, and collection
+independent of hiding. Numbers after 0.5.9 are provisional slots; fixes can take
+any next patch and shift planned work. See
+[CUSTOMIZATION_DESIGN.md](docs/CUSTOMIZATION_DESIGN.md),
+[roadmap](docs/ROADMAP.md#next-release-and-milestones) and ADRs
+[0059](docs/adrs/0059-verify-installer-listing-before-index-install.md)/
+[0060](docs/adrs/0060-evolve-one-config-with-collection-independent-views.md).
+
+### Completed v0.5.8 boundary
 
 v0.5.8 corrects cache-state acquisition: prefer the current payload's validated
 native TTL, warmth and expiry; retain explicitly estimated transcript fallback

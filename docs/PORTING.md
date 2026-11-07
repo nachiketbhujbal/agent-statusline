@@ -58,6 +58,14 @@ appear in Codex's widget-only footer. See [ADR 0046](adrs/0046-separate-host-acq
 
 ## Porting to a third agent
 
+The [future host milestone](ROADMAP.md#08x--proven-additional-host-acquisition)
+plans isolated non-currency acquisition before a public cross-host query.
+It is not shipped support. The
+[customization design](CUSTOMIZATION_DESIGN.md#host-generalization) keeps one
+config location, host-namespaced identity and separate installation protocols.
+Revalidate each host interface before implementation; a view customization
+feature does not grant an otherwise unavailable rendering capability.
+
 Ask one question first: **does the agent render an arbitrary command's stdout, or a fixed
 widget list?**
 

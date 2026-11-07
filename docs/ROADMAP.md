@@ -49,6 +49,7 @@ installed-artifact evidence.
 | 0.5.6 | Preview a synthetic session with `config preview --width 80` | **Released** |
 | 0.5.7 | Align the configuration guide with installed versions and setting precedence | **Released** |
 | 0.5.8 | Prefer native prompt-cache state and qualify legacy estimates | **Released** |
+| 0.5.9 | Installer-listing readiness and the next customization milestones | **Current** |
 
 0.2.1 through 0.2.14 and v0.3.0 through v0.5.8 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
@@ -652,32 +653,108 @@ See [ADR 0058](adrs/0058-prefer-native-prompt-cache-state.md).
 
 ## Further host coverage — one opt-in slice at a time
 
-The maintainer approved broader coverage of documented host facts, with useful
-existing defaults and detailed customization. The current
-[capability inventory](RESEARCH.md#claude-code-status-line-capability-audit)
-separates already supported fields from gaps. Next candidate slices, in order:
+The [capability inventory](RESEARCH.md#claude-code-status-line-capability-audit)
+separates supported facts from gaps. Their planned slots now appear below;
+inventory alone does not imply implementation. Each host-field slice documents
+source, scope, client minimum, absence, freshness and opt-in selection. Preserve
+the existing default field set and keep native host facts separate from local
+ledger evidence. Never use runtime network APIs to fill absent facts.
 
-1. Package promotion verification: wait for the exact installer listing before
-   attempting the clean index install. v0.5.8 again reproduced the race after
-   successful publication and hash verification. Keep build-once artifacts,
-   separate approvals and verification-only retries; add focused synthetic
-   coverage when implementing this workflow correction.
-2. Cost semantics: distinguish exact retention of host-reported totals from
-   invoice reconciliation, and audit relative multipliers across TTLs/models.
-3. Native cache performance: request/miss/rebuild counts and recache tokens.
-4. Native cache diagnostics: last miss and its reported likely causes.
-5. Agent and task identity for main conversations and subagent status lines.
-6. Native worktree identity and origin directory/branch.
-7. Pull-request link and review state.
-8. Editor mode and optional context detail.
-9. Gateway spend-limit percentage and period, where available. Host-estimated
-   dollars cannot enter exact accounting; any presentation requires a separate
-   explicit design consistent with the money contract.
+## Next release and milestones
 
-Each slice must document field availability, client minimum, missing-data
-behavior and opt-in selection, and preserve the existing default field set.
-The field-selection extension needs an ADR before new optional field IDs ship.
-Keep native host data separate from local ledger facts. Do not request network
-APIs from the renderer to fill absent data. Concrete defects can take any next
-patch slot and move the remaining sequence forward. Release numbers for these
-follow-ups are selected from the next free patch after v0.5.8 is verified.
+The maintainer approved a richer view model and an early interactive editor,
+while retaining one opinionated configuration location. See
+[ADR 0060](adrs/0060-evolve-one-config-with-collection-independent-views.md) and
+[the design](CUSTOMIZATION_DESIGN.md) for contracts and acceptance evidence.
+Collection and calculation always precede display choices: hiding a cost period
+must never stop its accounting. No profiles or alternate config-path switches.
+
+Only **0.5.9** is selected for implementation. Subsequent numbers are ordered
+planning slots, not release dates or shipped features. A concrete fix can take
+**any** next patch number and shift all following planned patches. Reassess
+milestone boundaries as evidence develops; do not manufacture releases to fill
+a version range or bundle independent features to meet these labels.
+
+### 0.5.9 — installer-listing readiness and forward design
+
+- Require exact non-yanked wheel/source hashes in the installer's Simple JSON
+  listing as well as release JSON before clean index installation. Poll both
+  within the existing bounded verification window. Cover the observed delayed
+  listing regression synthetically for both package indexes.
+- Preserve exact artifacts, separate approvals, clean installation/self-test
+  and verification-only retries. No upload retry or runtime networking.
+- Publish the customization/refresh design, dated comparison and focused
+  milestones; align README, field/porting pointers, ADRs and current records.
+- No runtime rendering, configuration schema, ledger or Claude settings changes.
+
+See [ADR 0059](adrs/0059-verify-installer-listing-before-index-install.md).
+
+### Remaining 0.5.x — correctness, refresh and measured speed
+
+| Planning slot | One primary change | Evidence required before release |
+| --- | --- | --- |
+| 0.5.10 | Clarify host-reported cost versus invoice/billing truth | Source qualifiers in display/docs; retained totals, `≥`, resume and rolling-window parity; no ledger rewrite |
+| 0.5.11 | Correct relative cache-cost multipliers for supported TTL/model facts | Explicit inputs and assumptions; mixed-TTL fixtures; unknown pricing omits ratio instead of inventing it; no derived dollars |
+| 0.5.12 | Opt-in host-supported timed refresh | Explicit installer set/remove with dry-run; preserve omitted interval and unrelated settings; repeated-payload idempotence and idle cross-session rolling totals |
+| 0.5.13 | Optimize demonstrated render overhead under frequent redraws | Paired installed cold/warm/import and six-session measurements; retain probes, accounting and isolation; record no-change result if no justified optimization exists |
+
+No schema-2 work is hidden in a 0.5.x patch. Existing schema-1 files, group IDs,
+default view and environment overrides remain compatible. Refresh uses Claude's
+timer, not a daemon. One-second host support does not guarantee one-second
+remote facts. Performance is measured with full collection, not by dropping
+hidden metrics. No timing-only release is required without a useful change.
+
+### 0.6.x — finer controls and the interactive editor
+
+0.6.0 is the stable richer configuration boundary. 0.6.1 is deliberately the
+first follow-up: users get a useful editor before themes, layouts or every
+possible host field is complete. New controls extend the same editor and catalog.
+
+| Planning slot | One primary change | Acceptance boundary |
+| --- | --- | --- |
+| 0.6.0 | Schema-2 element visibility within current compound groups | Accept schema 1 unchanged; keep row `show`/`hide` and group gates; independent 24h/7d/30d visibility; shared discover/check/show/example/preview catalog; hidden/re-shown collection parity |
+| 0.6.1 | Interactive `config edit` for the shipped view controls | Synthetic preview, undo, source indicators, diff, explicit save/cancel, comment preservation, migration and concurrent-edit refusal; no live state or implicit Claude settings writes |
+| 0.6.2 | Opt-in native cache performance elements | Requests, misses, expected rebuilds, hit ratio and recache counters with documented host scope; absent versus zero and no change to ledger |
+| 0.6.3 | Opt-in native cache miss diagnostics | Last miss, host-reported cause and age; unknown-cause and older-client behavior, no inferred blame |
+| 0.6.4 | Typed labels, symbols, number/unit/path/time formatting | Finite catalog choices; preserve source/estimate/lower-bound qualifiers; Unicode/ASCII and plain width parity |
+| 0.6.5 | Accessible semantic colors and visual thresholds | Product-defined palettes/roles; warnings work without color; plain output wins; context guard stays independent |
+| 0.6.6 | Bounded conditional visibility | Available/nonzero/active and typed thresholds, no expression language; missing is not zero; collection unchanged |
+| 0.6.7 | Opt-in main-conversation agent/prompt identity | Session-scoped host facts with client availability; no subagent-protocol claim |
+| 0.6.8 | Opt-in native repository/worktree identity | Distinguish current and origin workspace facts, preserve local Git fallback and session identity |
+| 0.6.9 | Opt-in PR/MR and review-state elements | Native payload only, safe links, missing/stale state, no runtime network lookup |
+| 0.6.10 | Opt-in Vim/editor mode | Native mode availability; installer indicator changes only through an explicit separately previewed choice |
+| 0.6.11 | Opt-in additional context detail | Inventory concrete native counters first; distinguish current window from lifetime throughput |
+| 0.6.12 | Opt-in gateway spend-limit percentages/period | Availability and scope, missing/zero semantics; no estimated dollars in the exact ledger |
+
+Field IDs, formatting keys and host minimums are finalized in the relevant
+slice-specific ADR and field documentation before implementation. If a host
+contract cannot be proven, defer that item without blocking unrelated controls
+or the editor. Each compatible addition is opt-in; it cannot enlarge defaults.
+
+### 0.7.x — optional layouts with the same opinionated defaults
+
+| Planning slot | One primary change | Acceptance boundary |
+| --- | --- | --- |
+| 0.7.0 | Optional ordering of existing canonical rows | Default ten-row order unchanged; complete duplicate-free order; schema compatibility and deterministic width fitting |
+| 0.7.1 | Optional per-row element ordering | Stable IDs and explicit priority under width pressure; no arbitrary rows, templates or duplicate metrics |
+| 0.7.2 | Layout editing in the interactive editor | Keyboard reorder, preview/diff/reset/undo and lossless save reuse the existing configuration transaction |
+| 0.7.3 | Product-defined density, separators and wrap choices | Finite options; terminal-cell bounds across ANSI/ASCII/Unicode and narrow widths; qualifiers survive fitting |
+
+These are view changes only. The editor is already available from 0.6.1.
+Layouts do not select acquisition behavior, create profiles or move the file.
+If this work is smaller than expected, revise the milestone rather than padding
+the series. Custom rows and programmable formatting remain separate ideas.
+
+### 0.8.x — proven additional host acquisition
+
+| Planning slot | One primary change | Acceptance boundary |
+| --- | --- | --- |
+| 0.8.0 | Local non-currency Codex acquisition | Reverify current official interface; synthetic schema-tolerant fixtures, host-namespaced state and explicit hook installation; no command-renderer claim |
+| 0.8.1 | Public query of the new host's supported metrics | Versioned host/source/freshness contract and absence semantics; no collision with Claude identities or money |
+| 0.8.2 | Claude subagent status-line adapter | Separate batch input/JSONL output, task identity and explicit opt-in managed installation; no parent/child metric crossover |
+
+This is a capability-dependent milestone, not a promise that Codex will accept
+an arbitrary renderer. Revalidate [PORTING.md](PORTING.md) at implementation.
+Third-host adapters need a current official contract and a real use case before
+receiving a release slot. Acquisition, presentation and monetary evidence stay
+independent. There is no forced 0.9 milestone; further scope follows evidence.
