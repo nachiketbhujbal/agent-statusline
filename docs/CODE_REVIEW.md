@@ -29,7 +29,8 @@ reproduced lower warm and six-session median latency. Both runs observed
 higher cold p95. See the [benchmark record](RESEARCH.md#v0513-redraw-measurements).
 
 TestPyPI verified v0.5.10 through v0.5.13 after separate approvals.
-Production verification also passed for v0.5.10.
+Production verified the same artifact hashes, installer listings and isolated
+installations for all four patches after separate approvals.
 The [handoff](../HANDOFF.md#resume-point) records each run and its exact artifacts.
 
 The v0.5.9 owner gate passed 838 tests with 91.30% subprocess-aware coverage,

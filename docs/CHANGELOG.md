@@ -18,7 +18,8 @@ artifact pair and clean installed wheel passed verification.
 [TestPyPI run 42391169563](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42391169563)
 verified the artifact pair and clean installation after approval.
 [Production run 42391457249](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42391457249)
-passed preparation and tracks the separate production approval and verification.
+passed after approval and verified the identical artifact hashes, installer
+listing, clean installation and isolated self-test.
 
 ## 0.5.12
 
@@ -33,7 +34,8 @@ artifact pair and clean installed wheel passed verification.
 [TestPyPI run 42390195049](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42390195049)
 verified the artifact pair and clean installation after approval.
 [Production run 42391433494](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42391433494)
-passed preparation and tracks the separate production approval and verification.
+passed after approval and verified the identical artifact hashes, installer
+listing, clean installation and isolated self-test.
 
 ## 0.5.11
 
@@ -48,7 +50,8 @@ artifact pair and clean installed wheel passed verification.
 [TestPyPI run 42389477232](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42389477232)
 verified the artifact pair and clean installation after approval.
 [Production run 42391426138](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42391426138)
-passed preparation and tracks the separate production approval and verification.
+passed after approval and verified the identical artifact hashes, installer
+listing, clean installation and isolated self-test.
 
 ## 0.5.10
 

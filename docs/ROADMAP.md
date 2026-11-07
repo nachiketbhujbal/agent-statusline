@@ -701,7 +701,7 @@ See [ADR 0059](adrs/0059-verify-installer-listing-before-index-install.md).
 
 ### Final 0.5.x patches — correctness, refresh and measured speed
 
-v0.5.10 through v0.5.13 are verified on GitHub and TestPyPI. The
+v0.5.10 through v0.5.13 are verified on GitHub, TestPyPI and production PyPI. The
 [handoff](../HANDOFF.md#resume-point) links the exact package promotions.
 The [installed benchmark results](RESEARCH.md#v0513-redraw-measurements)
 record the measured redraw improvements.

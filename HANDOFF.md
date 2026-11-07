@@ -8,7 +8,7 @@ the roadmap, or accepted ADRs.
 
 - Current release target: 0.5.13, reduce redraw overhead.
 - Preceding release: v0.5.12, verified GitHub release.
-- Branch owner: Codex retains ownership of the pending package promotions.
+- Branch owner: none. All 0.5.x package promotions are verified.
 - Reviewer role: implementation reviews complete. Release records receive independent review.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
@@ -90,7 +90,8 @@ The exact wheel clean-installed and passed version, isolated self-test and
 config checks. [TestPyPI run 42391169563](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42391169563)
 verified the artifact pair and clean installation after approval.
 [Production run 42391457249](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42391457249)
-passed preparation and tracks the separate production approval and verification.
+passed after approval and verified the identical artifact hashes, installer
+listing, clean installation and isolated self-test.
 
 v0.5.12 is verified on GitHub. [PR #61](https://github.com/nachiketbhujbal/agent-statusline/pull/61)
 merged reviewed candidate `42645b189f01fcd0e3686e6fbfcdbced744ff7cc` as `cd9476ed3088ca2e362816e0d7ec91a73427fcf4`. The exact
@@ -105,7 +106,8 @@ The exact wheel clean-installed and passed version, isolated self-test and
 config checks. [TestPyPI run 42390195049](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42390195049)
 verified the artifact pair and clean installation after approval.
 [Production run 42391433494](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42391433494)
-passed preparation and tracks the separate production approval and verification.
+passed after approval and verified the identical artifact hashes, installer
+listing, clean installation and isolated self-test.
 
 v0.5.11 is verified on GitHub. [PR #60](https://github.com/nachiketbhujbal/agent-statusline/pull/60)
 merged reviewed candidate `312ca4e7170823a026dc40c2762827bd4498442c` as `78da91bf4b4fc4bd2558242727b85e2da0de25ce`. The exact
@@ -120,7 +122,8 @@ The exact wheel clean-installed and passed version, isolated self-test and
 config checks. [TestPyPI run 42389477232](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42389477232)
 verified the artifact pair and clean installation after approval.
 [Production run 42391426138](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42391426138)
-passed preparation and tracks the separate production approval and verification.
+passed after approval and verified the identical artifact hashes, installer
+listing, clean installation and isolated self-test.
 
 v0.5.10 is verified on GitHub. [PR #59](https://github.com/nachiketbhujbal/agent-statusline/pull/59)
 merged reviewed candidate `1646b25bf500dcf37724fbb54f0dcd54a952d4d5` as `46d08da4f6ef0f467d834ddaf83173d26d2112e3`. The exact
