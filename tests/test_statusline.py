@@ -90,6 +90,40 @@ def test_cache_list_ratio_requires_known_model_and_ttl_buckets(
             assert expected in output
 
 
+def test_timed_redraw_keeps_local_totals_fresh_without_recounting(
+    payload, tmp_path, monkeypatch, capsys
+):
+    ledger_file = tmp_path / "ledger.json"
+    rate_history = tmp_path / "rate-history.jsonl"
+    monkeypatch.setattr(statusline.ledger, "LEDGER", ledger_file)
+    monkeypatch.setattr(statusline, "RLHIST", rate_history)
+    now = statusline.time.time()
+    monkeypatch.setattr(statusline.time, "time", lambda: now)
+    with Path(payload["transcript_path"]).open("a") as stream:
+        stream.write('{"type":"system","subtype":"compact_boundary"}\n')
+
+    def redraw(current):
+        return ANSI.sub("", "\n".join(draw(current, monkeypatch, capsys)))
+
+    assert "24h ~$1.25" in redraw(payload)
+    other = {
+        **payload,
+        "session_id": "other-timer-session",
+        "transcript_path": None,
+        "cost": {**payload["cost"], "total_cost_usd": 2.5},
+    }
+    now += 1
+    redraw(other)
+    before = ledger_file.read_bytes()
+    rate_before = rate_history.read_bytes()
+    now += 10
+    output = redraw(payload)
+    assert "~$1.25 session" in output and "24h ~$3.75" in output
+    assert "1 compaction" in output
+    assert ledger_file.read_bytes() == before
+    assert rate_history.read_bytes() == rate_before
+
+
 def test_all_hidden_still_records_cost_and_snapshot(payload, monkeypatch, capsys, tmp_path):
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
     monkeypatch.delenv(statusline.session_metrics.OPT_OUT_ENV, raising=False)

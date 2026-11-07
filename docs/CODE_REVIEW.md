@@ -5,7 +5,8 @@ once the regression that demonstrates it exists in this repository.
 
 | Release | Candidate scope | Evidence boundary |
 | --- | --- | --- |
-| 0.5.11 | Model and TTL aware cache ratio | Candidate review pending |
+| 0.5.12 | Opt-in Claude Code timed refresh | Candidate review pending |
+| 0.5.11 | Model and TTL aware cache ratio | Exact candidate `312ca4e7170823a026dc40c2762827bd4498442c` passed independent review and the full gate |
 | 0.5.10 | Host cost estimate provenance | Exact candidate `1646b25bf500dcf37724fbb54f0dcd54a952d4d5` passed independent review and the full gate |
 | 0.5.9 | Installer-listing readiness and documented customization milestones | Exact candidate `f1b23ce99d69d103d34cf24277e63f443c8b611a` passed independent review with no blockers |
 | 0.5.8 | Native cache-state precedence and qualified older-client estimates | Exact candidate `0b76de6e810b7ad3280e6e3f39b311973618633b` passed renewed independent review with no blockers |
@@ -33,9 +34,9 @@ passed Linux Python 3.11–3.13, macOS and the required result. GitHub Release
 run 42338736056 produced the exact pair; the downloaded wheel passed a clean
 Python 3.11 installation, exact version, self-test and config check. TestPyPI
 run 42338823484 passed all jobs on attempt one, including the new installer
-listing check and clean index installation. Production run 42339018724 passed
-preparation and awaits its separate approval; the [handoff](../HANDOFF.md#resume-point)
-records the publication boundary.
+listing check and clean index installation. Production run 42339018724
+passed after separate approval on attempt one. Direct verification confirmed
+both artifact hashes and the installer listing.
 
 The v0.5.8 owner gate passed 827 tests with 91.53% subprocess-aware coverage.
 Independent review passed 164 focused tests on Python 3.12, proved the native

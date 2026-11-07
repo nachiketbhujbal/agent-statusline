@@ -122,6 +122,23 @@ Run `agent-statusline selftest` after changing these values. Stop warnings are
 user-visible only; `submit` and `both` allow the configured advice to enter the
 next model turn.
 
+## Refresh while idle
+
+Starting in v0.5.12, opt in to a redraw every ten seconds in addition to
+Claude Code's event-driven updates:
+
+```sh
+agent-statusline install --refresh-interval 10 --dry-run
+agent-statusline install --refresh-interval 10
+```
+
+The installer checks for Claude Code 2.1.97 or newer on `PATH`. Restart
+Claude Code to apply the setting. A normal reinstall retains the interval.
+Run `agent-statusline install --event-only` to remove it. Idle redraws can
+update local rolling totals and clock-based fields. Account and model facts
+update when Claude Code supplies new data.
+[Claude Code status line settings](https://code.claude.com/docs/en/statusline#when-the-status-line-updates)
+
 ## Configure the view
 
 Check `agent-statusline --version` before using the examples below. This
