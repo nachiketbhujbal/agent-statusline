@@ -4,7 +4,7 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.5.9
+## 0.5.9
 
 - Wait for the exact non-yanked wheel and source hashes in the installer's
   Simple Index listing as well as release JSON before index installation.
@@ -15,8 +15,15 @@ string in the source.
 - Runtime rendering, schema 1, the default view, ledger and Claude settings
   are unchanged. Future schema-2 examples are explicitly design-only.
 
-Implementation and synthetic index tests are in progress; full local gate,
-independent exact-SHA review and hosted/artifact evidence remain pending.
+[PR #57](https://github.com/nachiketbhujbal/agent-statusline/pull/57) passed
+independent exact-SHA review and the full local gate (838 tests). Exact PR and
+merged-main CI passed Linux Python 3.11–3.13, macOS and the required result.
+The [GitHub Release](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.9)
+pair and clean installed wheel/self-test were verified.
+[TestPyPI](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42338823484)
+verified the exact pair, installer listing and clean installation on attempt one.
+[Production](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42339018724)
+preparation passed and awaits its separate maintainer approval.
 
 ## 0.5.8
 

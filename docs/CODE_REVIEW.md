@@ -5,7 +5,7 @@ once the regression that demonstrates it exists in this repository.
 
 | Release | Candidate scope | Evidence boundary |
 | --- | --- | --- |
-| 0.5.9 | Installer-listing readiness and documented customization milestones | Focused synthetic tests pass; complete gate and independent exact-SHA review pending |
+| 0.5.9 | Installer-listing readiness and documented customization milestones | Exact candidate `f1b23ce99d69d103d34cf24277e63f443c8b611a` passed independent review with no blockers |
 | 0.5.8 | Native cache-state precedence and qualified older-client estimates | Exact candidate `0b76de6e810b7ad3280e6e3f39b311973618633b` passed renewed independent review with no blockers |
 | 0.5.7 | Configuration guide, version availability, and precedence | Exact candidate `345950f813066d4dfcf666a15389a6f222f7b962` passed independent review with no blockers |
 | 0.5.6 | Synthetic preview through the regular formatter | Exact candidate `6b047130243775574db3a989c7169c2534ab00bb` passed independent review with no blockers |
@@ -16,12 +16,24 @@ once the regression that demonstrates it exists in this repository.
 | 0.5.1 | Display-only selection of existing field groups | Exact candidate `24ed27673cffea09c77a9503991b0b193c023304` passed independent review with no blockers |
 | 0.5.0 | Optional TOML, display-only visibility, plain output and a Python 3.11 minimum | Exact candidate `0ceafa28683ebd2109c647952d4c47f926502284` passed independent review with no blockers |
 
-v0.5.9 adds a regression for ready release metadata with a delayed installer
-listing. The shared verifier must wait for both exact non-yanked filenames and
-hashes before the existing clean install. Tests cover both index endpoints,
-bounded failure, prior versions, mismatches and yanked files. Runtime source
-and live settings/state remain outside this slice. Complete evidence follows
-before review or publication is requested.
+The v0.5.9 owner gate passed 838 tests with 91.30% subprocess-aware coverage,
+locked documentation/all-files/static checks, build, artifact privacy/metadata
+and Twine. Independent detached Python 3.12 review passed 23 focused verifier
+tests, locked checks and artifact checks. The delayed-listing regression failed
+the preceding verifier and passed the candidate; both reviewers checked existing
+v0.5.8 exact artifacts against the real TestPyPI/PyPI endpoints. Synthetic tests
+cover both index URLs, bounded failure, prior versions, hashes and yanked files.
+Runtime source, dependencies and workflows are identical to the preceding release.
+
+An isolated installed upgrade from v0.5.8 preserved complete synthetic settings
+and ledger bytes and modes. PR run 42338545863 and exact main run 42338654277
+passed Linux Python 3.11–3.13, macOS and the required result. GitHub Release
+run 42338736056 produced the exact pair; the downloaded wheel passed a clean
+Python 3.11 installation, exact version, self-test and config check. TestPyPI
+run 42338823484 passed all jobs on attempt one, including the new installer
+listing check and clean index installation. Production run 42339018724 passed
+preparation and awaits its separate approval; the [handoff](../HANDOFF.md#resume-point)
+records the publication boundary.
 
 The v0.5.8 owner gate passed 827 tests with 91.53% subprocess-aware coverage.
 Independent review passed 164 focused tests on Python 3.12, proved the native
@@ -105,6 +117,7 @@ the immutable published artifact pair remains unchanged.
 
 | ID | Severity | Finding | Release | Status |
 | --- | --- | --- | --- | --- |
+| RELEASE-010 | Medium | Matching release JSON hashes could precede the installer listing, so a successful upload was followed by a premature no-matching-distribution failure. | 0.5.9 | Resolved by [ADR 0059](adrs/0059-verify-installer-listing-before-index-install.md), exact non-yanked Simple JSON evidence in the existing retry loop and a regression that rejects the preceding verifier |
 | INSTALL-001 | High | Installation rewrote `settings.json` wholesale, discarding unrelated settings and unrelated hook entries in managed events. | 0.2.1 | Resolved by [ADR 0020](adrs/0020-own-only-managed-configuration.md) and ownership-preserving regressions |
 | INSTALL-002 | High | A malformed, unreadable, non-UTF-8, or non-object settings file was overwritten instead of refused. | 0.2.1 | Resolved by fail-closed loading with byte-preservation regressions |
 | INSTALL-003 | Medium | Uninstallation removed a `statusLine` entry and a `~/.claude/statusline` symlink it could not prove it owned. | 0.2.1 | Resolved by managed-command matching and preservation regressions |

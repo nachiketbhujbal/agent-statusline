@@ -4,7 +4,7 @@ This is the approved direction, recorded with v0.5.9; it is **not the installed
 configuration reference**. The [README](../README.md#configure-the-view) and
 [field catalog](FIELDS.md#configurable-field-groups) describe shipped schema 1.
 The [roadmap](ROADMAP.md#next-release-and-milestones) assigns focused slices.
-Only v0.5.9 is the current implementation target. Later numbers are planning
+v0.5.9 is verified on GitHub and TestPyPI; production is pending. Later numbers are planning
 slots; fixes can take any next patch and shift the remaining work.
 
 ## Product contract

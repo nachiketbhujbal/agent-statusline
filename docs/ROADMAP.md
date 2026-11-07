@@ -49,9 +49,9 @@ installed-artifact evidence.
 | 0.5.6 | Preview a synthetic session with `config preview --width 80` | **Released** |
 | 0.5.7 | Align the configuration guide with installed versions and setting precedence | **Released** |
 | 0.5.8 | Prefer native prompt-cache state and qualify legacy estimates | **Released** |
-| 0.5.9 | Installer-listing readiness and the next customization milestones | **Current** |
+| 0.5.9 | Installer-listing readiness and the next customization milestones | **Released** |
 
-0.2.1 through 0.2.14 and v0.3.0 through v0.5.8 are tagged and released. The
+0.2.1 through 0.2.14 and v0.3.0 through v0.5.9 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
 production-ready supported public baseline. Each boundary retains its exact
 review and artifact evidence; GitHub Release objects begin at v0.2.4. The
@@ -669,13 +669,19 @@ while retaining one opinionated configuration location. See
 Collection and calculation always precede display choices: hiding a cost period
 must never stop its accounting. No profiles or alternate config-path switches.
 
-Only **0.5.9** is selected for implementation. Subsequent numbers are ordered
+**0.5.9** is verified on GitHub and TestPyPI; production approval/publication
+remains pending. No successor implementation is started. Subsequent numbers are ordered
 planning slots, not release dates or shipped features. A concrete fix can take
 **any** next patch number and shift all following planned patches. Reassess
 milestone boundaries as evidence develops; do not manufacture releases to fill
 a version range or bundle independent features to meet these labels.
 
 ### 0.5.9 — installer-listing readiness and forward design
+
+Released and verified on GitHub after the complete gate, independent exact-SHA
+review and Linux/macOS CI. The exact wheel passed clean installation and an
+isolated self-test. See the [handoff](../HANDOFF.md#resume-point) for hashes and
+the verified TestPyPI promotion and pending production approval.
 
 - Require exact non-yanked wheel/source hashes in the installer's Simple JSON
   listing as well as release JSON before clean index installation. Poll both

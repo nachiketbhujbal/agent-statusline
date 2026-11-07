@@ -1,6 +1,6 @@
 # ADR 0059: Verify installer listing before index installation
 
-- Status: Accepted; implementation target v0.5.9
+- Status: Accepted; implemented in v0.5.9
 - Date: 2026-11-07
 - Extends: [ADR 0045](0045-promote-github-releases-through-separate-package-index-workflows.md)
 
