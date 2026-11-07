@@ -8,8 +8,8 @@ the roadmap, or accepted ADRs.
 
 - Current release target: 0.5.7, configuration guide alignment.
 - Preceding release: v0.5.6, synthetic display preview.
-- Branch owner: Codex, on `codex/docs/v0.5.7-configuration-guide`.
-- Reviewer role: exact documentation candidate review pending.
+- Branch owner: none; v0.5.7 is released on GitHub.
+- Reviewer role: none active; exact candidate review is complete.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
   complete-ancestry audit. Documentation-only refs skip both hosted test lanes;
@@ -77,10 +77,16 @@ a whole or import a later slice into the current release.
 
 ## Resume point
 
+v0.5.7 is tagged on verified merge `c88aed96889f3c557874d0ac8814eef08b8c39b6`.
+PR #51, main CI run 42319063882 and GitHub Release run 42319102964 passed.
+The exact published artifacts and isolated Python 3.11 install were verified.
+Wheel SHA-256 `06d794b32bed17fabf04af22165c52b717b26f9ae270df8d67017ced2ef5d2e4`.
+Source SHA-256 `0f131e006c794544e272a5214ebc0a9098fd1f12592806ef70a44361b93cbdad`.
+Package promotion follows v0.5.6 in the approval sequence.
+
 The planned 0.5.x customization work is complete on GitHub. Promote each
 verified artifact pair through TestPyPI and then PyPI. Both environments
-retain separate maintainer approvals. v0.5.7 aligns the documentation with
-the shipped commands and their availability.
+retain separate maintainer approvals. v0.5.7 documents the shipped commands and their availability.
 
 v0.5.6 is tagged on verified merge `49683fadce56849c50d1f64d3a1fbe2931fcfa5e`.
 PR #49, main CI run 42308292382 and GitHub Release run 42308425622 passed.
