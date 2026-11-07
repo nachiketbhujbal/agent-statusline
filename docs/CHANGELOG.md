@@ -15,8 +15,10 @@ string in the source.
 [PR #62](https://github.com/nachiketbhujbal/agent-statusline/pull/62) passed independent review, the local gate, and
 Linux/macOS CI. The [GitHub Release](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.13)
 artifact pair and clean installed wheel passed verification.
-[TestPyPI promotion](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42391169563)
-tracks its separate maintainer approval and verification.
+[TestPyPI run 42391169563](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42391169563)
+verified the artifact pair and clean installation after approval.
+[Production run 42391457249](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42391457249)
+passed preparation and tracks the separate production approval and verification.
 
 ## 0.5.12
 
@@ -28,8 +30,10 @@ tracks its separate maintainer approval and verification.
 [PR #61](https://github.com/nachiketbhujbal/agent-statusline/pull/61) passed independent review, the local gate, and
 Linux/macOS CI. The [GitHub Release](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.12)
 artifact pair and clean installed wheel passed verification.
-[TestPyPI promotion](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42390195049)
-tracks its separate maintainer approval and verification.
+[TestPyPI run 42390195049](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42390195049)
+verified the artifact pair and clean installation after approval.
+[Production run 42391433494](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42391433494)
+passed preparation and tracks the separate production approval and verification.
 
 ## 0.5.11
 
@@ -41,8 +45,10 @@ tracks its separate maintainer approval and verification.
 [PR #60](https://github.com/nachiketbhujbal/agent-statusline/pull/60) passed independent review, the local gate, and
 Linux/macOS CI. The [GitHub Release](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.11)
 artifact pair and clean installed wheel passed verification.
-[TestPyPI promotion](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42389477232)
-tracks its separate maintainer approval and verification.
+[TestPyPI run 42389477232](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42389477232)
+verified the artifact pair and clean installation after approval.
+[Production run 42391426138](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42391426138)
+passed preparation and tracks the separate production approval and verification.
 
 ## 0.5.10
 
@@ -55,7 +61,8 @@ Linux/macOS CI. The [GitHub Release](https://github.com/nachiketbhujbal/agent-st
 artifact pair and clean installed wheel passed verification.
 [TestPyPI run 42388413515](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42388413515) verified the exact pair
 and clean installation after approval. [Production run 42388958597](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42388958597)
-passed preparation and awaits maintainer approval.
+passed after approval and verified the identical artifact hashes, installer
+listing, clean installation and isolated self-test.
 
 ## 0.5.9
 
