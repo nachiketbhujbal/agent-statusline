@@ -6,9 +6,10 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.5.14, optional cost estimate marker.
+- Current release target: 0.5.14, the completed release recorded at this boundary.
 - Preceding release: v0.5.13, verified on GitHub, TestPyPI and PyPI.
-- Branch owner: Codex owns the v0.5.14 cost presentation patch.
+- Active release target: none.
+- Branch owner: none. All 0.5.x package promotions are verified.
 - Reviewer role: implementation reviews complete. Release records receive independent review.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
@@ -76,6 +77,22 @@ The complete sequence and exclusions are authoritative in
 a whole or import a later slice into the current release.
 
 ## Resume point
+
+v0.5.14 is verified on GitHub. [PR #64](https://github.com/nachiketbhujbal/agent-statusline/pull/64)
+merged reviewed candidate `a15445b74c7e32a48026af73047b6ea92ef5d937` as `f1683c2a0bef86d0e0203dcec64bfc1802efd20a`. The exact
+main CI run 42393289307 passed before annotated tag object
+`8268a6fa84ef35e8517d269113e1b8e41205c2da`. GitHub Release run 42393387725
+published the verified artifact pair:
+
+- Wheel SHA-256 `492c022c3a7afea6c0f152cd974cd4d4ab7c3cfd2fbfd8fbf24615893419ef16`.
+- Source SHA-256 `e537aa17e7f6d8bc7e36e3d4ad117540013e8e7d03233078f7be3ef2e71d4283`.
+
+The exact wheel clean-installed and passed version, isolated self-test and
+config checks. [TestPyPI run 42393479848](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42393479848)
+verified the exact pair and isolated installation after approval.
+[Production run 42393883813](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42393883813)
+passed after separate approval. Direct index verification matched both
+hashes and the installer listing. The clean installation and self-test passed.
 
 v0.5.13 is verified on GitHub. [PR #62](https://github.com/nachiketbhujbal/agent-statusline/pull/62)
 merged reviewed candidate `f78d69c2155a5b96e13c50d23ad6c2a5bd9d39f1` as `2308173be6a50f176852f94e9ce4c2a355811064`. The exact

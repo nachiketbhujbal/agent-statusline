@@ -54,9 +54,9 @@ installed-artifact evidence.
 | 0.5.11 | Model and TTL aware cache ratio | **Released** |
 | 0.5.12 | Opt-in Claude Code timed refresh | **Released** |
 | 0.5.13 | Reduce redraw overhead | **Released** |
-| 0.5.14 | Optional cost estimate marker | **Current** |
+| 0.5.14 | Optional cost estimate marker | **Released** |
 
-0.2.1 through 0.2.14 and v0.3.0 through v0.5.13 are tagged and released. The
+0.2.1 through 0.2.14 and v0.3.0 through v0.5.14 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
 production-ready supported public baseline. Each boundary retains its exact
 review and artifact evidence; GitHub Release objects begin at v0.2.4. The
@@ -702,7 +702,7 @@ See [ADR 0059](adrs/0059-verify-installer-listing-before-index-install.md).
 
 ### 0.5.x correctness, refresh and measured speed
 
-v0.5.10 through v0.5.13 are verified on GitHub, TestPyPI and production PyPI. The
+v0.5.10 through v0.5.14 are verified on GitHub, TestPyPI and production PyPI. The
 [handoff](../HANDOFF.md#resume-point) links the exact package promotions.
 The [installed benchmark results](RESEARCH.md#v0513-redraw-measurements)
 record the measured redraw improvements.
@@ -713,6 +713,7 @@ record the measured redraw improvements.
 | 0.5.11 | Calculate cache ratios from supported model IDs and write TTLs | Mixed-TTL fixtures verify model-specific rates and omission when evidence is incomplete |
 | 0.5.12 | Add opt-in Claude Code timed refresh | Installed controls set, preserve and remove the interval. Repeated redraws show updated local totals without duplicate accounting |
 | 0.5.13 | Reduce redraw overhead | Paired installed wheels show lower warm and six-session median latency. Formatter comparisons are byte-identical |
+| 0.5.14 | Make the cost estimate marker optional | Installed preview uses plain dollars by default and matches 0.5.13 with the tilde setting enabled. Rolling lower bounds retain their marker |
 
 No schema-2 work is hidden in a 0.5.x patch. Existing schema-1 files, group IDs,
 default view and environment overrides remain compatible. Refresh uses Claude's
