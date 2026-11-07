@@ -100,9 +100,12 @@ passed its isolated self-test and config check.
 - Source SHA-256 `5d58f27822aaead4bb52ff837951e2526219276f4f650a1d54cfad2292da22db`.
 
 [TestPyPI run 42338823484](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42338823484)
-is prepared for the separate maintainer approval. After it publishes, verify
-its exact files, installer listing and isolated install before dispatching
-production for its own approval. No package-index publication is claimed yet.
+passed preparation, publication and verification on attempt one after maintainer
+approval. It verified the exact pair, installer listing, clean Python 3.11 index
+installation, exact version and isolated self-test.
+[Production run 42339018724](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42339018724)
+passed preparation and awaits its separate maintainer approval. Verify its
+publication/listing/install after approval, then close the publication records.
 Do not dispatch duplicate promotions or replace artifacts. Runtime source,
 the installed iMac command, live settings and ledger remain outside this work.
 

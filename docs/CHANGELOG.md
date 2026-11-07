@@ -19,9 +19,11 @@ string in the source.
 independent exact-SHA review and the full local gate (838 tests). Exact PR and
 merged-main CI passed Linux Python 3.11–3.13, macOS and the required result.
 The [GitHub Release](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.9)
-pair and clean installed wheel/self-test were verified. Separate
-[TestPyPI approval](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42338823484)
-and subsequent production promotion remain pending; neither is claimed complete.
+pair and clean installed wheel/self-test were verified.
+[TestPyPI](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42338823484)
+verified the exact pair, installer listing and clean installation on attempt one.
+[Production](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42339018724)
+preparation passed and awaits its separate maintainer approval.
 
 ## 0.5.8
 

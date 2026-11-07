@@ -29,8 +29,11 @@ An isolated installed upgrade from v0.5.8 preserved complete synthetic settings
 and ledger bytes and modes. PR run 42338545863 and exact main run 42338654277
 passed Linux Python 3.11–3.13, macOS and the required result. GitHub Release
 run 42338736056 produced the exact pair; the downloaded wheel passed a clean
-Python 3.11 installation, exact version, self-test and config check. Package
-promotions remain pending; the [handoff](../HANDOFF.md#resume-point) records them.
+Python 3.11 installation, exact version, self-test and config check. TestPyPI
+run 42338823484 passed all jobs on attempt one, including the new installer
+listing check and clean index installation. Production run 42339018724 passed
+preparation and awaits its separate approval; the [handoff](../HANDOFF.md#resume-point)
+records the publication boundary.
 
 The v0.5.8 owner gate passed 827 tests with 91.53% subprocess-aware coverage.
 Independent review passed 164 focused tests on Python 3.12, proved the native

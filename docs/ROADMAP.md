@@ -669,8 +669,8 @@ while retaining one opinionated configuration location. See
 Collection and calculation always precede display choices: hiding a cost period
 must never stop its accounting. No profiles or alternate config-path switches.
 
-**0.5.9** is verified on GitHub; TestPyPI and production approvals/publication
-remain pending. No successor implementation is started. Subsequent numbers are ordered
+**0.5.9** is verified on GitHub and TestPyPI; production approval/publication
+remains pending. No successor implementation is started. Subsequent numbers are ordered
 planning slots, not release dates or shipped features. A concrete fix can take
 **any** next patch number and shift all following planned patches. Reassess
 milestone boundaries as evidence develops; do not manufacture releases to fill
@@ -681,7 +681,7 @@ a version range or bundle independent features to meet these labels.
 Released and verified on GitHub after the complete gate, independent exact-SHA
 review and Linux/macOS CI. The exact wheel passed clean installation and an
 isolated self-test. See the [handoff](../HANDOFF.md#resume-point) for hashes and
-the pending package-index approval. No package-index publication is claimed yet.
+the verified TestPyPI promotion and pending production approval.
 
 - Require exact non-yanked wheel/source hashes in the installer's Simple JSON
   listing as well as release JSON before clean index installation. Poll both
