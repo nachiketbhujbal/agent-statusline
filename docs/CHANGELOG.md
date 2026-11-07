@@ -4,11 +4,16 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
-## Unreleased — 0.5.7
+## 0.5.7
 
 - Document configuration feature availability by version, update the
   Python 3.11 upgrade guidance, and explain TOML and environment precedence
   for context warnings and session metrics.
+
+[PR #51](https://github.com/nachiketbhujbal/agent-statusline/pull/51) and exact
+merged main passed the required documentation-only checks. The
+[GitHub Release](https://github.com/nachiketbhujbal/agent-statusline/releases/tag/v0.5.7)
+artifacts and isolated Python 3.11 installation were verified.
 
 ## 0.5.6
 

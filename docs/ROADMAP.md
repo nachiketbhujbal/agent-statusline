@@ -47,9 +47,9 @@ installed-artifact evidence.
 | 0.5.4 | Inspect effective settings and their sources with `config show` | **Released** |
 | 0.5.5 | Print starter TOML with `config example` | **Released** |
 | 0.5.6 | Preview a synthetic session with `config preview --width 80` | **Released** |
-| 0.5.7 | Align the configuration guide with installed versions and setting precedence | **Current** |
+| 0.5.7 | Align the configuration guide with installed versions and setting precedence | **Released** |
 
-0.2.1 through 0.2.14 and v0.3.0 through v0.5.6 are tagged and released. The
+0.2.1 through 0.2.14 and v0.3.0 through v0.5.7 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
 production-ready supported public baseline. Each boundary retains its exact
 review and artifact evidence; GitHub Release objects begin at v0.2.4. The
@@ -622,6 +622,8 @@ The planned customization work is complete on GitHub. The
 [handoff](../HANDOFF.md#resume-point) tracks package-index promotions.
 
 ## 0.5.7 — configuration guide alignment
+
+Released on GitHub.
 
 Document which installed versions support each configuration feature.
 Align the upgrade instructions and the context warning and metrics guides
