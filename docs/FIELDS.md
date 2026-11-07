@@ -235,16 +235,23 @@ The observed marker relationship and its verification limits are recorded in
 | field | source | meaning |
 | --- | --- | --- |
 | `97.9% hit` | transcript | cache reads / all served input tokens |
-| `1h ttl` / `5m ttl` | transcript | which TTL is live, read from the newest write's bucket. **Red on `5m`** |
-| `(assumed)` | derived | no cache write seen yet, so the TTL is the fallback rather than observed |
-| `▸ expires 16:15` | derived | wall-clock time the cache goes cold if nothing touches it |
-| `COLD` | derived | TTL elapsed; the next turn re-sends the whole conversation |
+| `1h ttl` / `5m ttl` | payload, else transcript | native cache TTL on Claude Code v2.1.251+; five minutes is a normal supported option |
+| `(estimated)` / `(assumed)` | derived | older-client fallback uses the newest write bucket; before any bucket, assumes one hour |
+| `▸ expires 16:15` | payload, else derived | native expiry when supplied; legacy timestamp-based expiry is only an estimate |
+| `COLD` | payload | native warmth is false, or its expiry has passed; does not promise a full cache miss |
+| `possibly cold` | derived | the legacy estimated window elapsed; mixed prefixes and timing are not fully observable |
+| `cache not observed` | payload | the host has not observed cache tokens; caching may be off or unreported |
+| `warm` | payload | native state is warm but a usable expiry clock was not supplied |
 | `0.14x vs all-uncached` | derived | cost of served tokens relative to sending them all uncached (0.1x read, 1.25x write). Unit-free, **not dollars** |
-| `writes 313k 1h · 0 5m` | transcript | cumulative cache writes per TTL bucket. A growing `5m` figure means the TTL switched |
+| `writes 313k 1h · 0 5m` | transcript | cumulative writes per TTL bucket; different TTLs may coexist |
 
-**`5m` is the field to watch.** An account crossing into usage overage drops from a 1-hour
-cache TTL to 300 seconds, mid-session, between one turn and the next. The cache then dies
-between turns and every turn re-sends the conversation as writes.
+The native payload covers the main conversation and excludes subagents.
+Our transcript hit rate, write totals and relative multiplier retain their
+existing scope. Native lifetime state does not replace those metrics.
+A five-minute TTL does not itself diagnose a billing problem. Claude Code
+chooses defaults by request type and billing mode, and users can override them.
+See [Anthropic's caching guide](https://code.claude.com/docs/en/prompt-caching)
+and [ADR 0058](adrs/0058-prefer-native-prompt-cache-state.md).
 
 ## TOKENS
 

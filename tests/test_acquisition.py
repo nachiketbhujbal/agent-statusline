@@ -1,5 +1,7 @@
 """Normalized host acquisition facts."""
 
+import pytest
+
 from agent_statusline.acquisition import GROUPS, claude_facts
 
 
@@ -55,3 +57,37 @@ def test_claude_adapter_uses_safe_shapes_for_malformed_optional_groups(tmp_path)
 
 def test_claude_adapter_rejects_a_non_object_payload():
     assert claude_facts([]) is None
+
+
+def test_native_prompt_cache_keeps_only_normalized_current_session_facts():
+    node = {"warm": True, "caching_observed": True, "ttl": "1h", "expires_at": 1800003000}
+    payload = {"session_id": "synthetic-a", "prompt_cache": dict(node, future_field="ignored")}
+    assert claude_facts(payload, lambda _: {})["cache"] == node
+    assert claude_facts({"session_id": "synthetic-b"}, lambda _: {})["cache"] == {}
+
+
+@pytest.mark.parametrize(
+    "node",
+    [
+        None,
+        [],
+        "bad",
+        {},
+        {"warm": "false", "ttl": "5m"},
+        {"warm": True, "caching_observed": True, "ttl": "unknown"},
+    ],
+)
+def test_invalid_native_cache_uses_legacy_fallback(node):
+    assert claude_facts({"prompt_cache": node}, lambda _: {})["cache"] == {}
+
+
+@pytest.mark.parametrize(
+    "expiry", [None, True, "1800003000", float("nan"), float("inf"), -1, 10**400]
+)
+def test_invalid_optional_cache_clock_retains_native_state(expiry):
+    node = {"warm": True, "caching_observed": True, "ttl": "5m", "expires_at": expiry}
+    assert claude_facts({"prompt_cache": node}, lambda _: {})["cache"] == {
+        "warm": True,
+        "caching_observed": True,
+        "ttl": "5m",
+    }

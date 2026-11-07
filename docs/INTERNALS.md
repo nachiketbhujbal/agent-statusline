@@ -265,7 +265,9 @@ done
 
 ## The payload
 
-Every key Claude Code pipes in, as of v2.1.246. Regenerate with:
+Historical payload inventory from v2.1.246, updated for native cache state.
+Newer optional host fields are tracked in the
+[capability audit](RESEARCH.md#claude-code-status-line-capability-audit). Inspect a local payload with:
 
 ```bash
 python3 -m json.tool ~/.claude/statusline-last-payload.json
@@ -288,6 +290,7 @@ python3 -m json.tool ~/.claude/statusline-last-payload.json
 | `model.display_name` / `model.id` | used |
 | `output_style.name` | used |
 | `prompt_id` | UNUSED |
+| `prompt_cache.{warm,caching_observed,ttl,expires_at}` | used when valid; native current-session lifetime state takes precedence (v2.1.251+) |
 | `rate_limits.five_hour.{used_percentage,resets_at}` | used |
 | `rate_limits.seven_day.{used_percentage,resets_at}` | used |
 | `workspace.current_dir` / `project_dir` / `added_dirs` | used |
@@ -315,7 +318,7 @@ transcripts — they are **not documented anywhere**, so do not guess at them.
 | api errors | assistant entries with `message.model == "<synthetic>"` |
 | subagents | top-level `isSidechain` |
 | permission mode | top-level `permissionMode` |
-| last activity | top-level `timestamp` on assistant entries (drives cache expiry) |
+| last activity | top-level `timestamp` on assistant entries (legacy estimated cache expiry) |
 
 Other `system` subtypes seen but unused: `informational`, `away_summary`. Other entry types
 seen: `mode`, `permission-mode`, `atis-latch`, `file-history-snapshot`, `file-history-delta`,
@@ -326,7 +329,7 @@ seen: `mode`, `permission-mode`, `atis-latch`, `file-history-snapshot`, `file-hi
 | wanted | verdict |
 | --- | --- |
 | credit balance / remaining | **Not available.** Not in the payload, not in `~/.claude.json`, no non-interactive CLI |
-| cache TTL / expiry field | **Not in the payload.** But the TTL *is* observable from the `cache_creation` buckets |
+| cache TTL / expiry field | Now supplied by `prompt_cache` on v2.1.251+; prefer it over legacy bucket inference, per [ADR 0058](adrs/0058-prefer-native-prompt-cache-state.md) |
 | terminal width in the payload | **Not there.** `COLUMNS` in the subprocess env is the only source — see [width fitting](#width-fitting) |
 | session cost broken down by model | not in the payload; `~/.claude.json` has `projects.<dir>.lastModelUsage`, but it is last-request, not cumulative |
 | rate-limit history | nothing cached on disk; now logged locally by `rl_log()`; see [ADR 0009](adrs/0009-suppress-derived-rate-limit-figures-in-overage.md) |

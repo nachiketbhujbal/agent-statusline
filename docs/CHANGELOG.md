@@ -4,6 +4,14 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
+## Unreleased — 0.5.8
+
+- Prefer Claude Code's native prompt-cache TTL, warmth and expiry over
+  transcript inference; support native state even without a transcript.
+- Label older-client cache expiry as estimated, treat five-minute TTL as a
+  normal supported setting, and remove the categorical full-resend warning.
+- Preserve existing cache field IDs, row order, configuration and accounting.
+
 ## 0.5.7
 
 - Document configuration feature availability by version, update the

@@ -12,7 +12,17 @@ from collections.abc import Mapping
 from agent_statusline.coerce import MAX_DISPLAY_VALUE, finite_integer, finite_number
 from agent_statusline.transcript import dig, transcript_totals
 
-GROUPS = ("identity", "workspace", "model", "context", "tokens", "limits", "activity", "money")
+GROUPS = (
+    "identity",
+    "workspace",
+    "model",
+    "context",
+    "tokens",
+    "limits",
+    "cache",
+    "activity",
+    "money",
+)
 
 
 def _text(value):
@@ -44,6 +54,29 @@ def _optional_exact_number(source, key):
     if not math.isfinite(parsed) or abs(parsed) > MAX_DISPLAY_VALUE:
         return None
     return finite_number(value)
+
+
+def _prompt_cache(payload):
+    node = payload.get("prompt_cache")
+    if not isinstance(node, Mapping):
+        return {}
+    if (
+        type(node.get("warm")) is not bool
+        or type(node.get("caching_observed")) is not bool
+        or node.get("ttl") not in ("5m", "1h")
+    ):
+        return {}
+    result = {key: node[key] for key in ("warm", "caching_observed", "ttl")}
+    expiry = node.get("expires_at")
+    # A malformed optional clock must not discard otherwise useful host state.
+    if (
+        isinstance(expiry, (int, float))
+        and not isinstance(expiry, bool)
+        and 0 < expiry <= 253402300799
+        and math.isfinite(expiry)
+    ):
+        result["expires_at"] = expiry
+    return result
 
 
 def claude_facts(payload, transcript_reader=transcript_totals, default_cwd=None):
@@ -134,6 +167,7 @@ def claude_facts(payload, transcript_reader=transcript_totals, default_cwd=None)
             )
             if isinstance(value, Mapping)
         },
+        "cache": _prompt_cache(payload),
         "activity": dict(activity),
         "money": _group(
             run_cost_usd=run_cost,

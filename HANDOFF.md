@@ -6,10 +6,10 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.5.7, configuration guide alignment.
-- Preceding release: v0.5.6, synthetic display preview.
-- Branch owner: none; v0.5.1 through v0.5.7 are fully published and verified.
-- Reviewer role: none active; exact candidate review is complete.
+- Current release target: 0.5.8, native prompt-cache reporting.
+- Preceding release: v0.5.7, configuration guide alignment.
+- Branch owner: codex on `codex/fix/v0.5.8-native-cache`.
+- Reviewer role: independent exact-candidate review pending.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
   complete-ancestry audit. Documentation-only refs skip both hosted test lanes;
@@ -76,6 +76,24 @@ The complete sequence and exclusions are authoritative in
 a whole or import a later slice into the current release.
 
 ## Resume point
+
+v0.5.8 corrects cache-state acquisition: prefer the current payload's validated
+native TTL, warmth and expiry; retain explicitly estimated transcript fallback
+for older clients. It keeps ten rows, the 41 field IDs, TOML and environment
+behavior, ledger and installer contracts. New cache statistics and other host
+fields follow as separate opt-in slices after the capability inventory.
+See [ADR 0058](docs/adrs/0058-prefer-native-prompt-cache-state.md) and the
+[research inventory](docs/RESEARCH.md#claude-code-status-line-capability-audit).
+Run the full locked gate, installed-wheel verification, exact independent review
+and hosted checks before merging or releasing this candidate.
+Tests must use disposable state; live settings and ledger are not fixtures.
+
+The separately requested terminal Claude Code update completed from 2.1.270 to
+2.1.319. Both Claude settings files retained exact bytes and modes. The live
+ledger remained valid with its mode preserved but changed during the update
+window while a Desktop-managed Code process was running; no accounting code
+was exercised against it and no ledger restoration or mutation was performed.
+
 
 The planned configuration series and documentation patch are complete.
 Every release from v0.5.1 through v0.5.7 is available on GitHub, TestPyPI,
