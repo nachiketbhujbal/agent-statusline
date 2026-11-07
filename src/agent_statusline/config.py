@@ -3,8 +3,7 @@
 import os
 import stat
 import sys
-from dataclasses import dataclass
-from pathlib import Path
+from typing import NamedTuple
 
 ROW_IDS = (
     "PROJECT",
@@ -86,8 +85,7 @@ DEFAULT_WARN = 80.0
 VALID_EVENTS = frozenset({"stop", "submit", "both"})
 
 
-@dataclass(frozen=True)
-class Config:
+class Config(NamedTuple):
     warn_pct: float = DEFAULT_WARN
     warn_event: str = "stop"
     warn_message: str | None = None
@@ -104,12 +102,21 @@ class InvalidConfig(ValueError):
     """A diagnostic assembled from known keys, never file values."""
 
 
-def config_path(environ=None):
+def _config_filename(environ=None):
     source = os.environ if environ is None else environ
-    base = Path(source.get("XDG_CONFIG_HOME") or "")
-    if not base.is_absolute():
-        base = Path.home() / ".config"
-    return base / "agent-statusline" / "config.toml"
+    base = source.get("XDG_CONFIG_HOME") or ""
+    if not os.path.isabs(base):
+        home = os.path.expanduser("~")
+        if home == "~":
+            raise RuntimeError("could not determine the home directory")
+        base = os.path.join(home, ".config")
+    return os.path.join(base, "agent-statusline", "config.toml")
+
+
+def config_path(environ=None):
+    from pathlib import Path
+
+    return Path(_config_filename(environ))
 
 
 def _table(value, name, keys):
@@ -182,7 +189,7 @@ def _validate(doc) -> Config:
     )
 
 
-def _read_document(path: Path) -> dict | None:
+def _read_document(path: str | os.PathLike[str]) -> dict | None:
     """Read a bounded, regular TOML file, or return None when absent."""
     try:
         # Refuse non-regular files without waiting on a FIFO.
@@ -210,7 +217,7 @@ def _read_document(path: Path) -> dict | None:
         raise InvalidConfig("invalid UTF-8 or TOML syntax") from None
 
 
-def read_config(path: Path) -> Config | None:
+def read_config(path: str | os.PathLike[str]) -> Config | None:
     """Return validated settings, or None when the file is absent."""
     doc = _read_document(path)
     return None if doc is None else _validate(doc)
@@ -219,7 +226,7 @@ def read_config(path: Path) -> Config | None:
 def load_config(environ=None) -> Config:
     """A bad optional file must not interrupt rendering or hooks."""
     try:
-        return read_config(config_path(environ)) or DEFAULTS
+        return read_config(_config_filename(environ)) or DEFAULTS
     except (InvalidConfig, RuntimeError):
         return DEFAULTS
 

@@ -6,10 +6,10 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.5.12, opt-in claude code timed refresh.
-- Preceding release: v0.5.11, verified GitHub release.
-- Branch owner: Codex owns the v0.5.12 implementation and current promotions.
-- Reviewer role: independent review required for the v0.5.12 candidate.
+- Current release target: 0.5.13, reduce redraw overhead.
+- Preceding release: v0.5.12, verified GitHub release.
+- Branch owner: Codex owns the v0.5.13 implementation and current promotions.
+- Reviewer role: independent review required for the v0.5.13 candidate.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
   complete-ancestry audit. Documentation-only refs skip both hosted test lanes;
@@ -76,6 +76,19 @@ The complete sequence and exclusions are authoritative in
 a whole or import a later slice into the current release.
 
 ## Resume point
+
+v0.5.12 is verified on GitHub. [PR #61](https://github.com/nachiketbhujbal/agent-statusline/pull/61)
+merged reviewed candidate `42645b189f01fcd0e3686e6fbfcdbced744ff7cc` as `cd9476ed3088ca2e362816e0d7ec91a73427fcf4`. The exact
+main CI run 42390015848 passed before annotated tag object
+`ae0dcc8af11c015e9787f5a9f6fac09aa0160465`. GitHub Release run 42390101223
+published the verified artifact pair:
+
+- Wheel SHA-256 `7010997a0d7f71ab87d7f11dc4e141918761ad003ce909283d8640c2cdf57c01`.
+- Source SHA-256 `7be0ea405091cff0cf71adc31a014012bb33b7d5d449a606992e05bbfb348591`.
+
+The exact wheel clean-installed and passed version, isolated self-test and
+config checks. [TestPyPI run 42390195049](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42390195049)
+tracks the separate approval and verification for this release.
 
 v0.5.11 is verified on GitHub. [PR #60](https://github.com/nachiketbhujbal/agent-statusline/pull/60)
 merged reviewed candidate `312ca4e7170823a026dc40c2762827bd4498442c` as `78da91bf4b4fc4bd2558242727b85e2da0de25ce`. The exact
