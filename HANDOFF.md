@@ -8,8 +8,8 @@ the roadmap, or accepted ADRs.
 
 - Current release target: 0.5.9, installer-listing readiness and forward design.
 - Preceding release: v0.5.8, native prompt-cache reporting.
-- Branch owner: Codex on `codex/fix/v0.5.9-index-readiness`.
-- Reviewer role: none active; an independent exact-SHA review follows the complete local gate.
+- Branch owner: Codex retains v0.5.9 publication ownership; no implementation branch is active.
+- Reviewer role: implementation review complete; release records require independent exact-SHA review before merge.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
   complete-ancestry audit. Documentation-only refs skip both hosted test lanes;
@@ -77,14 +77,34 @@ a whole or import a later slice into the current release.
 
 ## Resume point
 
-v0.5.9 is in development from verified main
-`bb529f60e2241d36e89a67e221f62fcd70800d83`. It corrects the repeated release
-JSON/Simple Index propagation race by requiring both advertised artifact hashes
-and installer listing readiness within the existing bounded verifier. Runtime
-source, live Claude settings, installed command and ledger are not changed.
-Focused synthetic tests pass; complete local gate, independent exact review,
-hosted CI, artifacts and publication are pending. No release approval has been
-requested for this candidate.
+v0.5.9 is verified on GitHub. Exact candidate
+`f1b23ce99d69d103d34cf24277e63f443c8b611a`, based on
+`bb529f60e2241d36e89a67e221f62fcd70800d83`, passed the complete local gate:
+838 tests, 91.30% subprocess-aware coverage, locked documentation/all-files/static
+checks, build, privacy/metadata and Twine. Independent detached Python 3.12
+review passed 23 verifier tests and locked/build/artifact checks with no findings.
+The regression fails the preceding verifier and passes this candidate. Both
+index endpoints were checked read-only against already released v0.5.8 artifacts.
+An isolated v0.5.8 upgrade preserved full synthetic settings/ledger bytes and modes.
+
+[PR #57](https://github.com/nachiketbhujbal/agent-statusline/pull/57) merged as
+`6f642e688dd8c2bc8b0937f74d1b1d2e76004d00`. Exact PR run 42338545863 and
+main run 42338654277 passed Linux Python 3.11–3.13, macOS and the required result.
+Annotated tag object `c89014d169cd85e9a177e2702d500af9ac6849b2` peels to that merge.
+[GitHub Release run 42338736056](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42338736056)
+published the pair. Downloaded hashes matched GitHub, privacy/metadata and Twine
+passed, and the exact wheel clean-installed on Python 3.11, reported 0.5.9 and
+passed its isolated self-test and config check.
+
+- Wheel SHA-256 `dd24de46b4fcc9fe32f1618782a3861eb6ac64881967bdbf5e703b42fe9ff3a2`.
+- Source SHA-256 `5d58f27822aaead4bb52ff837951e2526219276f4f650a1d54cfad2292da22db`.
+
+[TestPyPI run 42338823484](https://github.com/nachiketbhujbal/agent-statusline/actions/runs/42338823484)
+is prepared for the separate maintainer approval. After it publishes, verify
+its exact files, installer listing and isolated install before dispatching
+production for its own approval. No package-index publication is claimed yet.
+Do not dispatch duplicate promotions or replace artifacts. Runtime source,
+the installed iMac command, live settings and ledger remain outside this work.
 
 The maintainer approved a broader plan without forcing a version ceiling:
 remaining 0.5.x correctness/refresh/measured performance, schema-2 element controls
