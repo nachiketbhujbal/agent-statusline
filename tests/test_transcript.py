@@ -338,6 +338,12 @@ def test_requires_unambiguous_result_evidence():
 
 def test_reports_zero_only_with_readable_evidence():
     assert transcript.subagent_count(transcript._blank()) is None
+    empty = {"type": "assistant", "message": {"content": [None, {}]}}
+    assert transcript.subagent_count(absorb(empty)) is None
+    readable = {"type": "assistant", "message": {"content": [{"type": "text", "text": "Ready"}]}}
+    assert transcript.subagent_count(absorb(readable)) == 0
+    orphan = agent_result("unseen-call", "other-agent", "async_launched")
+    assert transcript.subagent_count(absorb(readable, orphan)) is None
     assert transcript.subagent_count(absorb(agent_call(None), agent_call("read", "Read"))) is None
     assert transcript.subagent_count(absorb(agent_call("read", "Read"))) == 0
     totals = absorb(
