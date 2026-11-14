@@ -52,6 +52,7 @@ from agent_statusline.transcript import (
     conversation_root,
     dig,
     iso_epoch,
+    subagent_count,
     transcript_totals,
 )
 
@@ -597,10 +598,15 @@ def render_facts(facts, config, *, find_git, probe, record_limits, summarize_cos
             f"{len(t['f_read'])}{D} read{R}",
         )
     )
-    if t["side"]:
+    agents = subagent_count(t)
+    if agents is not None:
+        color = MAG if agents else D
+        suffix = "subagent" if agents == 1 else "subagents"
+        r5.append(("subagents", f"{color}{agents}{R}{D} {suffix}{R}"))
+    elif t["side"]:
         r5.append(("subagents", f"{MAG}{t['side']}{R}{D} subagent msgs{R}"))
     else:
-        r5.append(("subagents", f"{D}0 subagents{R}"))
+        r5.append(("subagents", f"{D}subagents n/a{R}"))
     cc = RED if t["compact"] else D
     r5.append(("compactions", f"{cc}{t['compact']}{R}{D} compactions{R}"))
     if t["cmds"]:

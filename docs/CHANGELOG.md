@@ -4,6 +4,13 @@ This project follows semantic versioning. Versions come from immutable Git tags
 ([ADR 0019](adrs/0019-release-tags-are-immutable.md)); there is no version
 string in the source.
 
+## Unreleased — 0.6.0
+
+- Count distinct subagents confirmed by Claude Code's parent transcript.
+  Repeated results and resumes of the same agent count once.
+- Distinguish unavailable counts from zero and label legacy sidechain messages
+  separately. The existing `TOOLS.subagents` field remains selectable.
+
 ## 0.5.14
 
 - Show plain dollar amounts by default and document that they are estimates.

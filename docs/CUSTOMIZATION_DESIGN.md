@@ -30,7 +30,7 @@ slots; fixes can take any next patch and shift the remaining work.
 
 ## Configuration model before the editor
 
-0.6.0 introduces schema 2 for the richer view contract. It continues accepting
+0.6.1 introduces schema 2 for the richer view contract. It continues accepting
 schema 1 unchanged. Migration is explicit and previewed; a renderer never rewrites
 configuration. Earlier versions reject schema 2 as a whole and fall back to
 defaults plus existing environment values, so downgrade guidance must make that
@@ -81,7 +81,7 @@ schema 1 implicitly.
 
 ## Interactive editor: the first follow-up to schema 2
 
-0.6.1 delivers `agent-statusline config edit` for row, group and element
+0.6.2 delivers `agent-statusline config edit` for row, group and element
 visibility, plain/default color, and synthetic width preview. It edits the one
 canonical file. The first release is useful without layouts or a theme engine.
 Use standard-library terminal support on supported macOS/Linux terminals,

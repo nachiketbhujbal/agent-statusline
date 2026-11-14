@@ -234,6 +234,27 @@ class TestRowOrder:
         verify_render_contract(output, statusline.ORDER)
 
 
+def test_tools_row_counts_agents_from_parent_results(payload, monkeypatch, capsys):
+    with Path(payload["transcript_path"]).open("a") as handle:
+        for number in range(3):
+            call_id = f"synthetic-call-{number}"
+            call = {"type": "tool_use", "id": call_id, "name": "Agent"}
+            result = {"type": "tool_result", "tool_use_id": call_id}
+            for event in (
+                {"type": "assistant", "message": {"content": [call]}},
+                {
+                    "type": "user",
+                    "message": {"content": [result]},
+                    "toolUseResult": {"status": "async_launched", "agentId": f"agent-{number}"},
+                },
+            ):
+                handle.write(json.dumps(event) + "\n")
+
+    for _ in range(2):
+        output = ANSI.sub("", "\n".join(draw(payload, monkeypatch, capsys, cols=240)))
+        assert "3 subagents" in output
+
+
 class TestWidth:
     @pytest.mark.parametrize("cols", [240, 200, 160, 120, 100, 80, 60, 40])
     def test_no_line_ever_exceeds_the_terminal(self, payload, monkeypatch, capsys, cols):

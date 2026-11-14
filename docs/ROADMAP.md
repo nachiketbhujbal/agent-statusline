@@ -55,6 +55,7 @@ installed-artifact evidence.
 | 0.5.12 | Opt-in Claude Code timed refresh | **Released** |
 | 0.5.13 | Reduce redraw overhead | **Released** |
 | 0.5.14 | Optional cost estimate marker | **Released** |
+| 0.6.0 | Correct the Claude Code subagent count in `TOOLS` | **Current** |
 
 0.2.1 through 0.2.14 and v0.3.0 through v0.5.14 are tagged and released. The
 v0.3.0 boundary names that completed, independently proven train as the
@@ -721,27 +722,46 @@ timer, not a daemon. One-second host support does not guarantee one-second
 remote facts. Performance is measured with full collection, not by dropping
 hidden metrics. No timing-only release is required without a useful change.
 
+### 0.6.0 — count confirmed Claude Code subagents
+
+The shipped `TOOLS.subagents` field counts `isSidechain` messages in the
+main transcript. On Claude Code 2.1.319, one observed parent transcript had
+three `Agent` calls with structured results identifying three agents and
+zero sidechain messages. Claude wrote the child messages to separate
+transcripts. Both agent-statusline 0.4.5 and 0.5.14 reproduced the false zero
+with synthetic copies of this structure. See the
+[Claude Code hooks reference](https://code.claude.com/docs/en/hooks#subagentstop).
+
+Match parent `Agent` and legacy `Task` calls to structured results with a
+confirmed agent ID. Count distinct IDs over the current transcript, including
+background launches. Keep the existing field ID and priority. On older logs
+the renderer can still label sidechain message totals separately. The parser
+uses the existing incremental cache, including a one-time replay of older
+cache entries. See [ADR 0066](adrs/0066-count-confirmed-claude-subagents.md).
+
+The 0.8.2 panel adapter covers the separate per-subagent display protocol.
+
 ### 0.6.x — finer controls and the interactive editor
 
-0.6.0 is the stable richer configuration boundary. 0.6.1 is deliberately the
+0.6.1 is the stable richer configuration boundary. 0.6.2 is deliberately the
 first follow-up: users get a useful editor before themes, layouts or every
 possible host field is complete. New controls extend the same editor and catalog.
 
 | Planning slot | One primary change | Acceptance boundary |
 | --- | --- | --- |
-| 0.6.0 | Schema-2 element visibility within current compound groups | Accept schema 1 unchanged; keep row `show`/`hide` and group gates; independent 24h/7d/30d visibility; shared discover/check/show/example/preview catalog; hidden/re-shown collection parity |
-| 0.6.1 | Interactive `config edit` for the shipped view controls | Synthetic preview, undo, source indicators, diff, explicit save/cancel, comment preservation, migration and concurrent-edit refusal; no live state or implicit Claude settings writes |
-| 0.6.2 | Opt-in native cache performance elements | Requests, misses, expected rebuilds, hit ratio and recache counters with documented host scope; absent versus zero and no change to ledger |
-| 0.6.3 | Opt-in native cache miss diagnostics | Last miss, host-reported cause and age; unknown-cause and older-client behavior, no inferred blame |
-| 0.6.4 | Typed labels, symbols, number/unit/path/time formatting | Finite catalog choices; preserve source/estimate/lower-bound qualifiers; Unicode/ASCII and plain width parity |
-| 0.6.5 | Accessible semantic colors and visual thresholds | Product-defined palettes/roles; warnings work without color; plain output wins; context guard stays independent |
-| 0.6.6 | Bounded conditional visibility | Available/nonzero/active and typed thresholds, no expression language; missing is not zero; collection unchanged |
-| 0.6.7 | Opt-in main-conversation agent/prompt identity | Session-scoped host facts with client availability; no subagent-protocol claim |
-| 0.6.8 | Opt-in native repository/worktree identity | Distinguish current and origin workspace facts, preserve local Git fallback and session identity |
-| 0.6.9 | Opt-in PR/MR and review-state elements | Native payload only, safe links, missing/stale state, no runtime network lookup |
-| 0.6.10 | Opt-in Vim/editor mode | Native mode availability; installer indicator changes only through an explicit separately previewed choice |
-| 0.6.11 | Opt-in additional context detail | Inventory concrete native counters first; distinguish current window from lifetime throughput |
-| 0.6.12 | Opt-in gateway spend-limit percentages/period | Availability and scope, missing/zero semantics; no estimated dollars in the exact ledger |
+| 0.6.1 | Schema-2 element visibility within current compound groups | Accept schema 1 unchanged; keep row `show`/`hide` and group gates; independent 24h/7d/30d visibility; shared discover/check/show/example/preview catalog; hidden/re-shown collection parity |
+| 0.6.2 | Interactive `config edit` for the shipped view controls | Synthetic preview, undo, source indicators, diff, explicit save/cancel, comment preservation, migration and concurrent-edit refusal; no live state or implicit Claude settings writes |
+| 0.6.3 | Opt-in native cache performance elements | Requests, misses, expected rebuilds, hit ratio and recache counters with documented host scope; absent versus zero and no change to ledger |
+| 0.6.4 | Opt-in native cache miss diagnostics | Last miss, host-reported cause and age; unknown-cause and older-client behavior, no inferred blame |
+| 0.6.5 | Typed labels, symbols, number/unit/path/time formatting | Finite catalog choices; preserve source/estimate/lower-bound qualifiers; Unicode/ASCII and plain width parity |
+| 0.6.6 | Accessible semantic colors and visual thresholds | Product-defined palettes/roles; warnings work without color; plain output wins; context guard stays independent |
+| 0.6.7 | Bounded conditional visibility | Available/nonzero/active and typed thresholds, no expression language; missing is not zero; collection unchanged |
+| 0.6.8 | Opt-in main-conversation agent/prompt identity | Session-scoped host facts with client availability; no subagent-protocol claim |
+| 0.6.9 | Opt-in native repository/worktree identity | Distinguish current and origin workspace facts, preserve local Git fallback and session identity |
+| 0.6.10 | Opt-in PR/MR and review-state elements | Native payload only, safe links, missing/stale state, no runtime network lookup |
+| 0.6.11 | Opt-in Vim/editor mode | Native mode availability; installer indicator changes only through an explicit separately previewed choice |
+| 0.6.12 | Opt-in additional context detail | Inventory concrete native counters first; distinguish current window from lifetime throughput |
+| 0.6.13 | Opt-in gateway spend-limit percentages/period | Availability and scope, missing/zero semantics; no estimated dollars in the exact ledger |
 
 Field IDs, formatting keys and host minimums are finalized in the relevant
 slice-specific ADR and field documentation before implementation. If a host
@@ -757,7 +777,7 @@ or the editor. Each compatible addition is opt-in; it cannot enlarge defaults.
 | 0.7.2 | Layout editing in the interactive editor | Keyboard reorder, preview/diff/reset/undo and lossless save reuse the existing configuration transaction |
 | 0.7.3 | Product-defined density, separators and wrap choices | Finite options; terminal-cell bounds across ANSI/ASCII/Unicode and narrow widths; qualifiers survive fitting |
 
-These are view changes only. The editor is already available from 0.6.1.
+These are view changes only. The editor is already available from 0.6.2.
 Layouts do not select acquisition behavior, create profiles or move the file.
 If this work is smaller than expected, revise the milestone rather than padding
 the series. Custom rows and programmable formatting remain separate ideas.
