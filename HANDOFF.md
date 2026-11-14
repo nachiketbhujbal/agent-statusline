@@ -6,11 +6,11 @@ the roadmap, or accepted ADRs.
 
 ## Current release boundary
 
-- Current release target: 0.5.14, the completed release recorded at this boundary.
-- Preceding release: v0.5.13, verified on GitHub, TestPyPI and PyPI.
-- Active release target: none.
-- Branch owner: none. All 0.5.x package promotions are verified.
-- Reviewer role: implementation reviews complete. Release records receive independent review.
+- Current release target: 0.6.0, correct Claude Code subagent counting.
+- Preceding release: v0.5.14, verified on GitHub, TestPyPI and PyPI.
+- Branch owner: Codex on `codex/fix/v0.6.0-subagent-count`.
+- Reviewer role: independent exact-candidate review pending.
+- Next planned slices: 0.6.1 schema-2 element visibility and 0.6.2 interactive editor.
 - Hosted CI, Release, and paired package-index promotion workflows are active.
   Every pull request and `main` push runs one
   complete-ancestry audit. Documentation-only refs skip both hosted test lanes;
@@ -190,7 +190,7 @@ installer listing. The clean Python 3.11 installation and self-test passed.
 
 The maintainer approved a broader plan without forcing a version ceiling:
 remaining 0.5.x correctness/refresh/measured performance, schema-2 element controls
-in 0.6.0 and the first interactive editor in 0.6.1, later typed presentation and
+and an early interactive editor, later typed presentation and
 native host facts, optional 0.7.x layouts, then capability-dependent 0.8.x host
 acquisition. Keep one config location, no profiles/path option, and collection
 independent of hiding. Numbers after 0.5.9 are provisional slots; fixes can take

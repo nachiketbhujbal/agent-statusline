@@ -226,7 +226,7 @@ absorbed rather than relieved, and it is the warning that comes before swapping 
 | `1 tool errors` | transcript | tool results flagged `is_error`. Red when nonzero |
 | `N api errors` | transcript | `<synthetic>` assistant messages — API failures. Hidden at zero |
 | `6 files edited · 14 read` | transcript | distinct paths via `Edit`/`Write`/`NotebookEdit` vs `Read` |
-| `0 subagents` | transcript | `isSidechain` messages |
+| `3 subagents` | main transcript | Distinct agents confirmed by structured results matched to this session's `Agent` or legacy `Task` calls, including background launches. `subagents n/a` means the count cannot be established. Older sidechain evidence can appear as `subagent msgs`. |
 | `0 compactions` | transcript | context compaction events. Red when nonzero |
 | `cmds /effort2` | transcript | slash commands used |
 

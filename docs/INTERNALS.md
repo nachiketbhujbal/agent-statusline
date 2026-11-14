@@ -316,7 +316,7 @@ transcripts — they are **not documented anywhere**, so do not guess at them.
 | tool calls | `message.content[]` blocks, `type:"tool_use"` -> `name`, `input.file_path` |
 | tool errors | `message.content[]` blocks, `type:"tool_result"` with `is_error` truthy |
 | api errors | assistant entries with `message.model == "<synthetic>"` |
-| subagents | top-level `isSidechain` |
+| subagents | Parent `Agent`/`Task` tool-use IDs matched to structured `toolUseResult.agentId` on completion or background launch. Legacy top-level `isSidechain` counts remain in message units. |
 | permission mode | top-level `permissionMode` |
 | last activity | top-level `timestamp` on assistant entries (legacy estimated cache expiry) |
 

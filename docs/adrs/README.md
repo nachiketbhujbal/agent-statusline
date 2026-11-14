@@ -71,6 +71,7 @@ old one rather than rewriting why the earlier choice was made.
 | [0063](0063-use-claude-code-timed-refresh.md) | Use Claude Code timed refresh |
 | [0064](0064-reduce-configuration-and-fitting-overhead.md) | Reduce configuration and width-fitting overhead |
 | [0065](0065-make-cost-estimate-marker-optional.md) | Make the cost estimate marker optional |
+| [0066](0066-count-confirmed-claude-subagents.md) | Count confirmed Claude Code subagents |
 
 ## Configuration
 

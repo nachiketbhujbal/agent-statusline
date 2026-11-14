@@ -284,6 +284,104 @@ class TestTopLevelFlags:
         assert absorb({"type": "user", "isCompactSummary": True})["compact"] == 1
 
 
+def agent_call(call_id, tool="Agent", **extra):
+    return {
+        "type": "assistant",
+        "message": {"content": [{"type": "tool_use", "name": tool, "id": call_id}]},
+        **extra,
+    }
+
+
+def agent_result(call_id, agent_id, status="completed", *, error=False, **extra):
+    return {
+        "type": "user",
+        "message": {
+            "content": [{"type": "tool_result", "tool_use_id": call_id, "is_error": error}]
+        },
+        "toolUseResult": {"status": status, "agentId": agent_id},
+        **extra,
+    }
+
+
+def test_counts_distinct_confirmed_parent_subagents():
+    totals = absorb(
+        agent_call("call-1"),
+        agent_result("call-1", "agent-1", "async_launched"),
+        agent_result("call-1", "agent-1"),
+        agent_call("call-2", "Task"),
+        agent_result("call-2", "agent-2"),
+        agent_call("call-3"),
+        agent_result("call-3", "agent-3"),
+        agent_call("resume"),
+        agent_result("resume", "agent-2"),
+        agent_call("call-1"),
+        agent_result("call-1", "duplicate-conflicting-id"),
+        agent_call("nested", isSidechain=True),
+        agent_result("nested", "nested-agent", isSidechain=True),
+    )
+    assert transcript.subagent_count(totals) == 3
+
+
+def test_requires_unambiguous_result_evidence():
+    ambiguous = agent_result("second", "some-agent")
+    ambiguous["message"]["content"] += agent_result("first", "other-agent")["message"]["content"]
+    totals = absorb(
+        agent_call("first"),
+        agent_call("second"),
+        agent_result("first", None),
+        agent_result("second", "some-agent", "unknown"),
+        agent_result("unmatched", "some-agent"),
+        ambiguous,
+    )
+    assert transcript.subagent_count(totals) is None
+
+
+def test_reports_zero_only_with_readable_evidence():
+    assert transcript.subagent_count(transcript._blank()) is None
+    empty = {"type": "assistant", "message": {"content": [None, {}]}}
+    assert transcript.subagent_count(absorb(empty)) is None
+    readable = {"type": "assistant", "message": {"content": [{"type": "text", "text": "Ready"}]}}
+    assert transcript.subagent_count(absorb(readable)) == 0
+    orphan = agent_result("unseen-call", "other-agent", "async_launched")
+    assert transcript.subagent_count(absorb(readable, orphan)) is None
+    assert transcript.subagent_count(absorb(agent_call(None), agent_call("read", "Read"))) is None
+    assert transcript.subagent_count(absorb(agent_call("read", "Read"))) == 0
+    totals = absorb(
+        agent_call("denied"),
+        agent_result("denied", "unused", error=True),
+        agent_call("denied"),
+        agent_result("denied", "unused"),
+    )
+    assert transcript.subagent_count(totals) == 0
+
+
+def test_subagent_evidence_replays_and_survives_incremental_compaction(tmp_path, monkeypatch):
+    path = tmp_path / "one.jsonl"
+    other = tmp_path / "other.jsonl"
+    state = tmp_path / "state.json"
+    monkeypatch.setattr(transcript, "TSTATE", str(state))
+    path.write_text(json.dumps(agent_call("same-call")) + "\n")
+    other.write_text(json.dumps(agent_result("same-call", "wrong-session")) + "\n")
+    state.write_text(json.dumps({str(path): {"schema": 5, "offset": path.stat().st_size}}))
+    assert transcript.subagent_count(transcript.transcript_totals(str(path))) is None
+    assert transcript.subagent_count(transcript.transcript_totals(str(other))) is None
+    with path.open("a") as handle:
+        for event in (
+            agent_result("same-call", "right-session"),
+            {"type": "system", "subtype": "compact_boundary", "uuid": "boundary"},
+            {"type": "user", "isCompactSummary": True, "parentUuid": "boundary"},
+            agent_call("resume"),
+            agent_result("resume", "right-session"),
+        ):
+            handle.write(json.dumps(event) + "\n")
+    for _ in range(2):
+        totals = transcript.transcript_totals(str(path))
+        assert transcript.subagent_count(totals) == 1
+        assert totals["compact"] == 1
+    other.write_text(json.dumps(agent_call("read", "Read")) + "\n")
+    assert transcript.subagent_count(transcript.transcript_totals(str(other))) == 0
+
+
 class TestCompactions:
     def test_boundary_and_linked_summary_count_as_one_event(self):
         totals = absorb(

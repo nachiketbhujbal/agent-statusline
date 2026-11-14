@@ -60,7 +60,7 @@ FIELD_CATALOG = {
         "tool_errors": "Tool error count",
         "api_errors": "API error count",
         "files": "Distinct files edited and read",
-        "subagents": "Subagent messages",
+        "subagents": "Confirmed subagents",
         "compactions": "Context compaction count",
         "commands": "Most-used slash commands",
     },

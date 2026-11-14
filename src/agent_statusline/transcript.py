@@ -23,7 +23,7 @@ from agent_statusline.storage import update_json
 
 TSTATE = state("statusline-transcript.json")
 
-SCHEMA = 5
+SCHEMA = 6
 CACHE_RETENTION_S = 35 * 24 * 60 * 60
 CACHE_TOUCH_S = 60 * 60
 MAX_CACHED_TRANSCRIPTS = 512
@@ -124,6 +124,10 @@ def _blank():
         "f_edit": [],
         "f_read": [],
         "side": 0,
+        "subagent_calls": {},
+        "subagent_ids": {},
+        "subagent_observed": False,
+        "subagent_unmatched": False,
         "compact": 0,
         "compact_pending": False,
         "compact_boundary": None,
@@ -184,6 +188,17 @@ def _normalized_totals(value):
                 for name, count in current.items()
                 if isinstance(name, str)
             }
+    for key in ("subagent_calls", "subagent_ids"):
+        current = value.get(key)
+        if isinstance(current, Mapping):
+            normalized[key] = {
+                name: present
+                for name, present in current.items()
+                if isinstance(name, str)
+                and name
+                and type(present) is bool
+                and (key == "subagent_calls" or present)
+            }
     for key in _PATH_LIST_FIELDS:
         current = value.get(key)
         if isinstance(current, list):
@@ -200,7 +215,54 @@ def _normalized_totals(value):
         normalized["last_bucket"] = None
     normalized["cache_pricing_complete"] = value.get("cache_pricing_complete") is True
     normalized["compact_pending"] = value.get("compact_pending") is True
+    normalized["subagent_observed"] = value.get("subagent_observed") is True
+    normalized["subagent_unmatched"] = value.get("subagent_unmatched") is True
     return normalized
+
+
+def _absorb_subagent_result(tot, entry, body, block):
+    call_id = block.get("tool_use_id")
+    pending = tot["subagent_calls"]
+    matched = isinstance(call_id, str) and call_id in pending
+    error = block.get("is_error")
+    if error is True:
+        if matched:
+            pending[call_id] = False
+        return
+    result = entry.get("toolUseResult")
+    if not isinstance(result, Mapping) or result.get("status") not in (
+        "completed",
+        "async_launched",
+    ):
+        return
+    agent_id = result.get("agentId")
+    if not isinstance(agent_id, str) or not agent_id or (error is not None and error is not False):
+        return
+    if not matched:
+        tot["subagent_unmatched"] = True
+        return
+    # The structured result is attached to the record, not the content block.
+    if (
+        pending[call_id]
+        and sum(isinstance(item, dict) and item.get("type") == "tool_result" for item in body) == 1
+    ):
+        tot["subagent_ids"][agent_id] = True
+        pending[call_id] = False
+
+
+def subagent_count(totals):
+    """Count confirmed agents, or return None when zero cannot be established."""
+    count = len(totals.get("subagent_ids", ()))
+    if count:
+        return count
+    if (
+        totals.get("subagent_observed")
+        and not totals.get("side")
+        and not totals.get("subagent_unmatched")
+        and not any(totals.get("subagent_calls", {}).values())
+    ):
+        return 0
+    return None
 
 
 _CACHE_INPUT_KEYS = ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
@@ -265,14 +327,35 @@ def _absorb(tot, e):
     if not isinstance(m, Mapping):
         m = {}
     body = m.get("content")
+    parent = not e.get("isSidechain")
+    parent_assistant = parent and t == "assistant"
+    if parent_assistant and isinstance(body, str) and body:
+        tot["subagent_observed"] = True
     if isinstance(body, list):
         for b in body:
             if not isinstance(b, dict):
                 continue
-            if b.get("type") == "tool_use":
+            block_type = b.get("type")
+            if (
+                parent_assistant
+                and block_type == "text"
+                and isinstance(b.get("text"), str)
+                and b["text"]
+            ):
+                tot["subagent_observed"] = True
+            if block_type == "tool_use":
                 name_value = b.get("name")
                 n = name_value if isinstance(name_value, str) and name_value else "?"
                 tot["tools"][n] = tot["tools"].get(n, 0) + 1
+                call_id = b.get("id")
+                if parent_assistant and isinstance(name_value, str) and name_value:
+                    tot["subagent_observed"] = True
+                if parent_assistant and n in ("Agent", "Task"):
+                    if isinstance(call_id, str) and call_id:
+                        tot["subagent_calls"].setdefault(call_id, True)
+                    else:
+                        # No ID means this invocation cannot be reconciled.
+                        tot["subagent_unmatched"] = True
                 inp = b.get("input") or {}
                 if not isinstance(inp, Mapping):
                     inp = {}
@@ -281,8 +364,11 @@ def _absorb(tot, e):
                     key = "f_edit" if n in ("Edit", "Write", "NotebookEdit") else "f_read"
                     if fp not in tot[key] and len(tot[key]) < 400:
                         tot[key].append(fp)
-            elif b.get("type") == "tool_result" and b.get("is_error"):
-                tot["errors"] += 1
+            elif block_type == "tool_result":
+                if b.get("is_error"):
+                    tot["errors"] += 1
+                if parent and t == "user":
+                    _absorb_subagent_result(tot, e, body, b)
 
     if t != "assistant":
         return
